@@ -1,10 +1,12 @@
 require("dotenv").config(); // loading env variables
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const Todo = require("../models/Todo");
+import jwt, { Secret } from "jsonwebtoken";
+import User from "../models/User";
+import Todo from "../models/Todo";
+import { Request, Response, NextFunction, RequestHandler } from "express";
+import ReqType from "../typedefs/request";
 
 // CREATE CONTEXT MIDDLEWARE
-const createContext = (req, res, next) => {
+const createContext: RequestHandler = (req, res, next) => {
   // put any data you want in the object below to be accessible to all routes
   req.context = {
     models: {
@@ -16,14 +18,14 @@ const createContext = (req, res, next) => {
 };
 
 // MIDDLEWARE FOR AUTHORIZATION (MAKING SURE THEY ARE LOGGED IN)
-const isLoggedIn = async (req, res, next) => {
+const isLoggedIn: RequestHandler = async (req, res, next) => {
   try {
     // check if auth header exists
     if (req.headers.authorization) {
       // parse token from header
       const token = req.headers.authorization.split(" ")[1]; //split the header and get the token
       if (token) {
-        const payload = await jwt.verify(token, process.env.SECRET);
+        const payload = await jwt.verify(token, process.env.SECRET as Secret);
         if (payload) {
           // store user data in request object
           req.user = payload;
@@ -43,7 +45,7 @@ const isLoggedIn = async (req, res, next) => {
 };
 
 // export custom middleware
-module.exports = {
+export default {
   isLoggedIn,
   createContext
 };

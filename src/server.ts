@@ -1,12 +1,12 @@
 require("dotenv").config() // load .env variables
-const express = require("express") // import express
-const morgan = require("morgan") //import morgan
-const {log} = require("mercedlogger") // import mercedlogger's log function
-const cors = require("cors") // import cors
-const bodyParser = require("body-parser")
-const UserRouter = require("./controllers/User") //import User Routes
-const TodoRouter = require("./controllers/Todo") // import Todo Routes
-const {createContext} = require("./controllers/middleware")
+import express from "express" // import express
+import morgan from "morgan" //import morgan
+import log from "mercedlogger" // import mercedlogger's log function
+import cors from "cors" // import cors
+import bodyParser from "body-parser"
+import UserRouter from "./controllers/User" //import User Routes
+import TodoRouter from "./controllers/Todo" // import Todo Routes
+import middleware from "./controllers/middleware";
 
 
 //DESTRUCTURE ENV VARIABLES WITH DEFAULT VALUES
@@ -25,7 +25,7 @@ app.use(
   );
   
   app.use(bodyParser.json());
-  app.use(createContext) // create req.context
+  app.use(middleware.createContext) // create req.context
   
 //app.use(express.json()) // parse json bodies
 
@@ -38,4 +38,5 @@ app.use("/user", UserRouter) // send all "/user" requests to UserRouter for rout
 app.use("/todos", TodoRouter) // send all "/todos" request to TodoROuter
 
 // APP LISTENER
-app.listen(PORT, () => log.green("SERVER STATUS", `Listening on port ${PORT}`))
+
+app.listen(PORT, () => log.log.green("SERVER STATUS", `Listening on port ${PORT}`))

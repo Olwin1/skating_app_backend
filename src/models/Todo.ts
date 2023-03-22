@@ -1,13 +1,13 @@
-const {Schema, model} = require("../db/connection") // import Schema & model
+import mongoose from "../db/connection" // import Schema & model
 
 // .Todo Schema
-const TodoSchema = new Schema({
+const TodoSchema = new mongoose.Schema({
     username: {type: String, required: true},
     reminder: {type: String, required: true},
     completed: {type: Boolean, required: true, default: false}
 })
 
 // .Todo model
-const Todo = model("Todo", TodoSchema)
+const Todo = mongoose.model("Todo", TodoSchema)
 
-module.exports = Todo
+export default Todo;

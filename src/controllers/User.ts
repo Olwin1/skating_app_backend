@@ -1,7 +1,7 @@
 require("dotenv").config(); // load .env variables
-const { Router } = require("express"); // import router from express
-const bcrypt = require("bcryptjs"); // import bcrypt to hash passwords
-const jwt = require("jsonwebtoken"); // import jwt to sign tokens
+import { Router } from "express" // import router from express
+import bcrypt from "bcryptjs" // import bcrypt to hash passwords
+import jwt from "jsonwebtoken" // import jwt to sign tokens
 
 const router = Router(); // create router to create route bundle
 
@@ -9,7 +9,7 @@ const router = Router(); // create router to create route bundle
 const { SECRET = "secret" } = process.env;
 
 // Signup route to create a new user
-router.post("/signup", async (req, res) => {
+router.post("/signup", async (req:any, res) => {
   const { User } = req.context.models;
   try {
     // hash the password
@@ -24,7 +24,7 @@ router.post("/signup", async (req, res) => {
 });
 
 // Login route to verify a user and get a token
-router.post("/login", async (req, res) => {
+router.post("/login", async (req:any, res) => {
   const { User } = req.context.models;
   try {
     // check if the user exists
@@ -47,4 +47,4 @@ router.post("/login", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
