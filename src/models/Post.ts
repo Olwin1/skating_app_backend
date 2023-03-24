@@ -1,27 +1,26 @@
-import { Schema, model, ObjectId } from "mongoose";
-import "../db/connection";
+import mongoose from "../db/connection";
 
 
-interface IPost extends Document {
+interface IPost {
     description: string;
     like_count: number;
-    comments: Array<ObjectId>;
-    author: ObjectId;
-    image: string;// ADD POST DATE
+    comments: Array<mongoose.Schema.Types.ObjectId>;
+    author: mongoose.Schema.Types.ObjectId;
+    image: mongoose.Schema.Types.ObjectId;
     date: Date;
 }
 
-const PostSchema = new Schema<IPost>({
+const PostSchema: mongoose.Schema<IPost> = new mongoose.Schema<IPost>({
     description: { type: String },
     like_count: { type: Number },
-    comments: [{ type: Schema.Types.ObjectId }],
-    author: { type: Schema.Types.ObjectId },
-    image: { type: String, required: true }, // Required image for all posts || Changeme
+    comments: [{ type: mongoose.Schema.Types.ObjectId }],
+    author: { type: mongoose.Schema.Types.ObjectId },
+    image: { type: mongoose.Schema.Types.ObjectId, required: true }, // Required image for all posts || Changeme
     date: { type: Date, required: true }, // Required date that the post was uploaded
 })
 
 
-const Post = model<IPost>("Post", PostSchema)
+const Post = mongoose.model<IPost>("Post", PostSchema)
 
 
 export default Post;

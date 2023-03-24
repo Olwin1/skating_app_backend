@@ -1,42 +1,47 @@
-require("dotenv").config() // load .env variables
-import express from "express" // import express
-import morgan from "morgan" //import morgan
-import log from "mercedlogger" // import mercedlogger's log function
-import cors from "cors" // import cors
-import bodyParser from "body-parser"
-import UserRouter from "./controllers/User" //import User Routes
-import TodoRouter from "./controllers/Todo" // import Todo Routes
+// Load environment variables from .env file
+require("dotenv").config();
+
+// Import required modules
+import express from "express";
+import morgan from "morgan";
+import log from "mercedlogger";
+import cors from "cors";
+import bodyParser from "body-parser";
+import UserRouter from "./controllers/User"; // Import User Router
+import TodoRouter from "./controllers/Todo"; // Import Todo Router
 import middleware from "./controllers/middleware";
+import upload from "./db/bucket"; // Import upload utility from bucket.ts
 
+// Destructure environment variables with default values
+const { PORT = 3000 } = process.env;
 
-//DESTRUCTURE ENV VARIABLES WITH DEFAULT VALUES
-const {PORT = 3000} = process.env
+// Create application object
+const app = express();
 
-// Create Application Object
-const app = express()
-
-// GLOBAL MIDDLEWARE
-app.use(cors()) // add cors headers
-app.use(morgan("tiny")) // log the request for debugging
+// Apply global middleware
+app.use(cors()); // add CORS headers to allow cross-origin requests
+app.use(morgan("tiny")); // log incoming requests to console for debugging
 app.use(
-    bodyParser.urlencoded({
-      extended: true
-    })
-  );
-  
-  app.use(bodyParser.json());
-  app.use(middleware.createContext) // create req.context
-  
-//app.use(express.json()) // parse json bodies
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+app.use(bodyParser.json());
+app.use(middleware.createContext); // create req.context for each request
 
-
-// ROUTES AND ROUTES
+// Define routes
 app.get("/", (req, res) => {
-    res.send("this is the test route to make sure server is working")
-})
-app.use("/user", UserRouter) // send all "/user" requests to UserRouter for routing
-app.use("/todos", TodoRouter) // send all "/todos" request to TodoROuter
+  res.send("This is the test route to make sure server is working");
+});
+app.use("/user", UserRouter); // route all "/user" requests to UserRouter for further processing
+app.use("/todos", TodoRouter); // route all "/todos" requests to TodoRouter for further processing
 
-// APP LISTENER
+// Define route for file uploads using the upload utility
+app.post("/upload", upload.single("file"), (req, res) => {
+  res.json(req.file) // Send back file information
+});
 
-app.listen(PORT, () => log.log.green("SERVER STATUS", `Listening on port ${PORT}`))
+// Start listening for incoming requests
+app.listen(PORT, () =>
+  log.log.green("SERVER STATUS", `Listening on port ${PORT}`)
+);
