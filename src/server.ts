@@ -37,7 +37,7 @@ app.use("/user", UserRouter); // route all "/user" requests to UserRouter for fu
 app.use("/todos", TodoRouter); // route all "/todos" requests to TodoRouter for further processing
 
 // Define route for file uploads using the upload utility
-app.post("/upload", upload.single("file"), (req, res) => {
+app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {
   res.json(req.file) // Send back file information
 });
 
