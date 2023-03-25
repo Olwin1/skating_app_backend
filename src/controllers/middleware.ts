@@ -2,8 +2,15 @@ require("dotenv").config(); // loading env variables
 import jwt, { Secret } from "jsonwebtoken";
 import User from "../models/User";
 import Todo from "../models/Todo";
-import { Request, Response, NextFunction, RequestHandler } from "express";
-import ReqType from "../typedefs/request";
+import Post from "../models/Post";
+import MessageChannels from "../models/MessageChannels";
+import MessageChannel from "../models/MessageChannel";
+import Message from "../models/Message";
+import Friends from "../models/Friends";
+import Following from "../models/Following";
+import Followers from "../models/Followers";
+import Comment from "../models/Comment";
+import { RequestHandler } from "express";
 
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (req, res, next) => {
@@ -12,6 +19,14 @@ const createContext: RequestHandler = (req, res, next) => {
     models: {
       User,
       Todo,
+      Post,
+      MessageChannels,
+      MessageChannel,
+      Message,
+      Friends,
+      Following,
+      Followers,
+      Comment,
     },
   };
   next();

@@ -9,7 +9,7 @@ interface IMessageConversation {
 }
 
 // Defining the IMessage interface
-interface IMessage {
+interface IMessageChannels {
     channels: IMessageConversation[];
 }
 
@@ -21,12 +21,12 @@ const MessageConversationSchema: mongoose.Schema<IMessageConversation> = new mon
 })
 
 // Defining the MessageSchema
-const MessageSchema: mongoose.Schema<IMessage> = new mongoose.Schema<IMessage>({
+const MessageChannelsSchema: mongoose.Schema<IMessageChannels> = new mongoose.Schema<IMessageChannels>({
     channels: [{ type: MessageConversationSchema }] // Array of message conversations
 })
 
 // Creating the Message model using the MessageSchema
-const Message = mongoose.model<IMessage>("Message", MessageSchema)
+const MessageChannels = mongoose.model<IMessageChannels>("MessageChannels", MessageChannelsSchema)
 
 // Exporting the Message model
-export default Message;
+export default MessageChannels;
