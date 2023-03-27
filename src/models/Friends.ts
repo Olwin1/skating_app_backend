@@ -6,6 +6,7 @@ interface IFriendsUser {
     user: mongoose.Schema.Types.ObjectId;
     last_session_location: String;
     last_session_date: Date;
+    requested: boolean;
 }
 
 // Define the shape of the whole Friends document
@@ -18,7 +19,8 @@ const FriendsUserSchema: mongoose.Schema<IFriendsUser> = new mongoose.Schema<IFr
     friend_date: { type: Date, required: true }, // A date field indicating when the user was friended
     user: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true }, // A reference to the User document of the friend
     last_session_location: { type: String },
-    last_session_date: { type: Date }
+    last_session_date: { type: Date },
+    requested: { type: Boolean },
 })
 
 // Define a schema for the entire Friends document

@@ -4,6 +4,7 @@ import mongoose from  "../db/connection";
 interface IFollowingUser {
     follow_date: Date;
     user: mongoose.Schema.Types.ObjectId;
+    requested: boolean;
 }
 
 // Define the shape of the whole Following document
@@ -15,6 +16,7 @@ interface IFollowing {
 const FollowingUserSchema: mongoose.Schema<IFollowingUser> = new mongoose.Schema<IFollowingUser>({
     follow_date: { type: Date, required: true }, // A date field indicating when the user started following
     user: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true }, // A reference to the User document this follower follows
+    requested: { type: Boolean },   // If not yet accepted & is private accound
 })
 
 // Define a schema for the entire Following document
