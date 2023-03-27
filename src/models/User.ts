@@ -21,6 +21,7 @@ interface IUser {
     following: mongoose.Schema.Types.ObjectId;
     followers: mongoose.Schema.Types.ObjectId;
     friends: mongoose.Schema.Types.ObjectId;
+    private: boolean;
 }
 
 // Defining the User schema
@@ -38,9 +39,10 @@ const UserSchema = new mongoose.Schema<IUser>({
     saved_posts: [{type: mongoose.Schema.Types.ObjectId}], // an array of saved post object ids
     avatar: {type: mongoose.Schema.Types.ObjectId}, // Avatar Image
     description: {type: String}, // a short bio/description of the user
-    following: { type: mongoose.Schema.Types.ObjectId, unique: true },// Reference to following collection
-    followers: { type: mongoose.Schema.Types.ObjectId, unique: true },// Reference to followers collection
-    friends: { type: mongoose.Schema.Types.ObjectId, unique: true },// Reference to friends collection
+    following: { type: mongoose.Schema.Types.ObjectId},// Reference to following collection
+    followers: { type: mongoose.Schema.Types.ObjectId},// Reference to followers collection
+    friends: { type: mongoose.Schema.Types.ObjectId},// Reference to friends collection
+    private: { type: Boolean }, // Do follows need to be requested
 })
 
 // Defining the User model using the User schema
