@@ -15,7 +15,7 @@ interface IFollowing {
 // Define a schema for a single follower user
 const FollowingUserSchema: mongoose.Schema<IFollowingUser> = new mongoose.Schema<IFollowingUser>({
     follow_date: { type: Date, required: true }, // A date field indicating when the user started following
-    user: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true }, // A reference to the User document this follower follows
+    user: { type: mongoose.Schema.Types.ObjectId, required: true}, // A reference to the User document this follower follows
     requested: { type: Boolean },   // If not yet accepted & is private accound
 })
 

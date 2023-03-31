@@ -17,7 +17,7 @@ interface IFriends {
 // Define a schema for a single follower user
 const FriendsUserSchema: mongoose.Schema<IFriendsUser> = new mongoose.Schema<IFriendsUser>({
     friend_date: { type: Date, required: true }, // A date field indicating when the user was friended
-    user: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true }, // A reference to the User document of the friend
+    user: { type: mongoose.Schema.Types.ObjectId, required: true }, // A reference to the User document of the friend
     last_session_location: { type: String },
     last_session_date: { type: Date },
     requested: { type: Boolean },

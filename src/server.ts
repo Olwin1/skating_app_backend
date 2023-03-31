@@ -10,6 +10,7 @@ import bodyParser from "body-parser";
 import UserRouter from "./controllers/User"; // Import User Router
 import TodoRouter from "./controllers/Todo"; // Import Todo Router
 import ConnectionsRouter from "./controllers/Connections"; // Import Connections Router
+import PostRouter from "./controllers/Post"; // Import Post Router
 import middleware from "./controllers/middleware";
 import upload from "./db/bucket"; // Import upload utility from bucket.ts
 
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
 app.use("/user", UserRouter); // route all "/user" requests to UserRouter for further processing
 app.use("/todos", TodoRouter); // route all "/todos" requests to TodoRouter for further processing
 app.use("/connections", ConnectionsRouter); // route all "/connections" requests to ConnectionsRouter for further processing
+app.use("/post", PostRouter); // route all "/post" requests to ConnectionsRouter for further processing
 
 // Define route for file uploads using the upload utility
 app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {

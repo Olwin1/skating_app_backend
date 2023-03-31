@@ -29,7 +29,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         let userFollowing;
         if (user.following) {
             // if the user already has a following list, update it by adding the new user they want to follow
-            userFollowing = await Following.updateOne({ "_id": user.following }, { $push: { "users": { follow_date: Date(), user: target._id, requested: target.private ? true : null } } }).session(session); // pass the session to the update query
+            userFollowing = await Following.updateOne({ "_id": user.following }, { $addToSet: { "users": { follow_date: Date(), user: target._id, requested: target.private ? true : null } } }).session(session); // pass the session to the update query
             if (!target.private) {
                 await User.updateOne(
                     { "_id": _id },
@@ -59,7 +59,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
         if (target.followers) {
             // if the user being followed already has a followers list, update it by adding the follower's user ID
-            await Followers.updateOne({ "_id": target.followers }, { $push: { "users": { follow_date: Date(), user: _id, requested: target.private ? true : null } } }).session(session); // pass the session to the update query
+            await Followers.updateOne({ "_id": target.followers }, { $addToSet: { "users": { follow_date: Date(), user: _id, requested: target.private ? true : null } } }).session(session); // pass the session to the update query
             if (!target.private) {
                 await User.updateOne(
                     { "_id": target._id },
@@ -123,7 +123,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
         let userFriends;
         if (user.friends) {
             // if the user already has a friends list, update it by adding the new user they want to friend
-            userFriends = await Friends.updateOne({ "_id": _id }, { $push: { "users": { friend_date: friendDate, user: target._id, requested: true } } }).session(session); // pass the session to the update query
+            userFriends = await Friends.updateOne({ "_id": _id }, { $addToSet: { "users": { friend_date: friendDate, user: target._id, requested: true } } }).session(session); // pass the session to the update query
         } else {
             // if the user doesn't have a friends list yet, create a new one with the new user they want to friend
             [userFriends] = await Friends.create([{users: [{ friend_date: Date(), user: target._id, requested: true }]}], { session: session }); // pass the session to the create query
@@ -132,7 +132,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
         if (target.friends) {
             // if the user being friended already has a friends list, update it by adding the friend's user ID
-            await Friends.updateOne({ "_id": target.followers }, { $push: { "users": { friend_date: friendDate, user: _id, requested: true } } }).session(session); // pass the session to the update query
+            await Friends.updateOne({ "_id": target.followers }, { $addToSet: { "users": { friend_date: friendDate, user: _id, requested: true } } }).session(session); // pass the session to the update query
         } else {
             // if the user being friended doesn't have a friends list yet, create a new one with the friend's user ID
             let [targetFriends] = await Friends.create([{users: [{ friend_date: friendDate, user: _id, requested: true }]}], { session: session }); // pass the session to the create query
