@@ -22,6 +22,7 @@ interface IUser {
     followers: mongoose.Schema.Types.ObjectId;
     friends: mongoose.Schema.Types.ObjectId;
     private: boolean;
+    channels: mongoose.Schema.Types.ObjectId;
 }
 
 // Defining the User schema
@@ -43,6 +44,7 @@ const UserSchema = new mongoose.Schema<IUser>({
     followers: { type: mongoose.Schema.Types.ObjectId},// Reference to followers collection
     friends: { type: mongoose.Schema.Types.ObjectId},// Reference to friends collection
     private: { type: Boolean }, // Do follows need to be requested
+    channels: { type: mongoose.Schema.Types.ObjectId },
 })
 
 // Defining the User model using the User schema

@@ -2,19 +2,23 @@
 import mongoose from "../db/connection"; 
 
 // Defining the interface for the Channel schema
-interface IChannel {
-    messages: Array<mongoose.Schema.Types.ObjectId>;
+interface IMessageChannel {
+    last_message: mongoose.Schema.Types.ObjectId;
+    participants: Array<mongoose.Schema.Types.ObjectId>;
+    last_message_count: Number;
     creation_date: Date;
 }
 
 // Defining the Channel schema using the IChannel interface
-const ChannelSchema: mongoose.Schema<IChannel> = new mongoose.Schema<IChannel>({
-    messages: [{ type: mongoose.Schema.Types.ObjectId }], // An array of ObjectIds referencing Message documents
+const MessageChannelSchema: mongoose.Schema<IMessageChannel> = new mongoose.Schema<IMessageChannel>({
+    last_message: { type: mongoose.Schema.Types.ObjectId, }, // ObjectId of the last message in the conversation
+    last_message_count: { type: Number},
+    participants: [{ type: mongoose.Schema.Types.ObjectId, required: true, }], // Array of ObjectIds of participants in the conversation
     creation_date: { type: Date, required: true }, // The date when the channel was created
 })
 
 // Creating a model for the Channel schema using the ChannelSchema
-const Channel = mongoose.model<IChannel>("Channel", ChannelSchema)
+const MessageChannel = mongoose.model<IMessageChannel>("Channel", MessageChannelSchema)
 
 // Exporting the Channel model for use in other parts of the code
-export default Channel;
+export default MessageChannel;

@@ -3,8 +3,8 @@ import jwt, { Secret } from "jsonwebtoken";
 import User from "../models/User";
 import Todo from "../models/Todo";
 import Post from "../models/Post";
-import MessageChannels from "../models/MessageChannels";
-import MessageChannel from "../models/MessageChannel";
+import Channels from "../models/MessageChannels";
+import Channel from "../models/MessageChannel";
 import Message from "../models/Message";
 import Friends from "../models/Friends";
 import Following from "../models/Following";
@@ -20,8 +20,8 @@ const createContext: RequestHandler = (req, res, next) => {
       User,
       Todo,
       Post,
-      MessageChannels,
-      MessageChannel,
+      Channels,
+      Channel,
       Message,
       Friends,
       Following,

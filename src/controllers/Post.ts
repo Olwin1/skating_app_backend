@@ -469,7 +469,6 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         }
 
         // Find posts that the user has not seen, have not been liked by the user, and were posted by a friend
-        console.table(friendsArray)
         let posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({date: -1});
         // If there are not enough posts from friends, find posts from users that the user is following
         if (posts.length < 20) {
