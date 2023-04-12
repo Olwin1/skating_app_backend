@@ -408,7 +408,7 @@ router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
         // Slice the comments array to get a page of comments
         //const page = post.comments.slice(req.headers.page * 20, req.headers.page * 20 + 20);
         // Find all the comments in the current page
-        let comments = await Comment.find({ '_id': { $in: post.comments } }).limit(20).skip(20 * req.headers.page);
+        let comments = await Comment.find({ '_id': { $in: post.comments } }).limit(20).skip(20 * parseInt(req.headers.page));
         // Add a 'liked' field to each comment object based on whether the current user has already liked the comment
         for (var i = 0; i < comments.length; i++) {
             let liked;
@@ -439,7 +439,7 @@ router.delete("/post", middleware.isLoggedIn, async (req: any, res) => {
         await User.updateOne({ "_id": _id }, { $pull: { "posts": req.body.post } }).session(session); // Remove the post ID from the user's posts array
         await Comment.deleteMany({ "_id": { $in: post.comments } }).session(session); // Delete all comments associated with the post
 
-        Post.updateOne({ "_id": req.body.post }, { $pull: { "comments": req.body.comment } }).session(session); // Remove the comment ID from the post's comments array
+        //Post.updateOne({ "_id": req.body.post }, { $pull: { "comments": req.body.comment } }).session(session); // Remove the comment ID from the post's comments array
         await session.commitTransaction(); // Commit the transaction
         session.endSession(); // End the session
 

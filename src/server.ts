@@ -12,8 +12,9 @@ import TodoRouter from "./controllers/Todo"; // Import Todo Router
 import ConnectionsRouter from "./controllers/Connections"; // Import Connections Router
 import PostRouter from "./controllers/Post"; // Import Post Router
 import MessageRouter from "./controllers/Message"; // Import Post Router
+import ImageRouter from "./controllers/Images";
 import middleware from "./controllers/middleware";
-import upload from "./db/bucket"; // Import upload utility from bucket.ts
+import { upload } from "./db/bucket"; // Import upload utility from bucket.ts
 
 // Destructure environment variables with default values
 const { PORT = 3000 } = process.env;
@@ -41,6 +42,7 @@ app.use("/todos", TodoRouter); // route all "/todos" requests to TodoRouter for 
 app.use("/connections", ConnectionsRouter); // route all "/connections" requests to ConnectionsRouter for further processing
 app.use("/post", PostRouter); // route all "/post" requests to ConnectionsRouter for further processing
 app.use("/message", MessageRouter); // route all "/message" requests to MessageRouter for further processing
+app.use("/image", ImageRouter); // route all "/image" requests to MessageRouter for further processing
 
 // Define route for file uploads using the upload utility
 app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {

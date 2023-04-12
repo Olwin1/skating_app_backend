@@ -1,50 +1,43 @@
-// Import required modules
+// Importing required modules and packages
 import multer from "multer";
-import {GridFsStorage }  from "multer-gridfs-storage/lib/gridfs";
-import Grid from "gridfs-stream"
+import { GridFsStorage } from "multer-gridfs-storage";
 import mongoose from "./connection";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 
-// Mongo URI
-dotenv.config()
+// Loading environment variables from .env file
+dotenv.config();
 const { DATABASE_URL } = process.env;
 
-// Create mongo connection
+// Creating a new Mongoose connection to the database URL
 const conn = mongoose.createConnection(DATABASE_URL!);
 
-// Initialize GridFS
-let gfs;
+// Declaring variables to store references to the 'uploads.files' and 'uploads.chunks' collections
+let files:mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
+let filesChunks:mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
 
-conn.once('open', () => {
-  // Init stream
-  gfs = Grid(conn.db, mongoose.mongo);  
-  // Set the name of the collection to be used for file uploads
-  gfs.collection('uploads');
+// Listening for the 'open' event to ensure the connection is established before accessing collections
+conn.once("open", () => {
+  files = conn.db.collection("uploads.files")
+  filesChunks = conn.db.collection("uploads.chunks")
 });
 
-// Create storage engine
+// Configuring GridFS storage engine for Multer
 const storage = new GridFsStorage({
   url: DATABASE_URL!,
   file: (req, file) => {
-    console.log(453453)
+    // Return a promise that resolves with an object containing the filename and bucketName of the uploaded file
     return new Promise((resolve, reject) => {
-      // Set the filename for the uploaded file
-      console.log(666)
-      const filename = file.originalname;
-      // Create a new file info object with the filename and the name of the GridFS bucket to use
       const fileInfo = {
-        filename: filename,
-        bucketName: 'uploads'
+        filename: file.originalname,
+        bucketName: "uploads"
       };
-      console.table(fileInfo)
-      // Resolve the promise with the file info object
       resolve(fileInfo);
     });
   }
 });
 
-// Create a Multer instance using the GridFS storage engine
-const upload = multer({ storage })
+// Creating a Multer instance with the GridFS storage engine
+const upload = multer({ storage });
 
-// Export the Multer instance
-export default upload;
+// Exporting the Multer instance and references to the collections
+export { upload, files, filesChunks };
