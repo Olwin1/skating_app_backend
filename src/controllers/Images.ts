@@ -15,9 +15,7 @@ const { SECRET = "secret" } = process.env;
 
 
 // Route to create a new channel with the specified participants
-router.get("/:image", middleware.isLoggedIn, async (req: any, res) => {
-  // Get the user ID from the authenticated user object
-  const { _id } = req.user;
+router.get("/:image", async (req: any, res) => {
 
   // Convert the request parameter to a MongoDB ObjectId
   const id = new mongoose.Types.ObjectId(req.params.image);

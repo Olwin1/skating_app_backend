@@ -459,6 +459,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     const { _id } = req.user;
     const { User, Post, Friends, Following } = req.context.models;
     try {
+        let seen = JSON.parse(req.body.seen);
         // Find the user with the provided ID
         let user = await User.findOne({ '_id': _id })
         // Find the friends of the user
@@ -469,7 +470,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         }
 
         // Find posts that the user has not seen, have not been liked by the user, and were posted by a friend
-        let posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({date: -1});
+        let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({date: -1});
         // If there are not enough posts from friends, find posts from users that the user is following
         if (posts.length < 20) {
             let following = await Following.findOne({ '_id': user.following })
@@ -477,7 +478,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             for(let i=0; i < following.users.length;i++) {
                 followingArray.push(following.users[i].user);
             }
-            let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).limit(20 - posts.length).sort({date: -1});
+            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).limit(20 - posts.length).sort({date: -1});
             posts = posts.concat(other_posts)
         }
         // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
@@ -496,6 +497,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         }
         // Remove like_users and comments from each post
         for (var i = 0; i < posts.length; i++) {
+            posts[i].comment_count = posts[i].comments.length
+            
             delete posts[i].like_users;
             delete posts[i].comments;
         }
