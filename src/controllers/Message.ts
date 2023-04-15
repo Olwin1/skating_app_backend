@@ -152,7 +152,7 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
         // Find the channel with the specified ID that the user is a participant in
         let channel = await Channel.findOne({ '_id': req.headers.channel, 'participants': _id }).session(session);
         // Retrieve the last 20 messages from the channel
-        let messages = await Message.find({ 'message_number': { $gte: channel.last_message_count - req.headers.page * 20 - 20, $lt: channel.last_message_count - req.headers.page * 20 }, 'channel': channel._id }).limit(20).session(session);
+        let messages = await Message.find({ 'message_number': { $gte: channel.last_message_count - req.headers.page * 20 - 20, $lte: channel.last_message_count - req.headers.page * 20 }, 'channel': channel._id }).limit(20).sort('-message_number').session(session);
 
         // Commit the transaction to the database and return the messages
         await session.commitTransaction();
@@ -181,7 +181,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
         // Retrieve the list of channels that the user is a member of
         let channels = await Channels.findOne({ '_id': user.channels }).session(session);
         // Retrieve a list of channel objects based on the channel IDs in the user's channels list
-        let channelList = await Channel.find({ '_id': { $in: channels.channels } }).limit(20).skip(req.headers.page * 20).session(session);
+        let channelList = await Channel.find({ '_id': { $in: channels.channels } }).limit(20).skip(parseInt(req.headers.page) * 20).session(session);
 
         // Commit the transaction to the database and return the channel list
         await session.commitTransaction();
