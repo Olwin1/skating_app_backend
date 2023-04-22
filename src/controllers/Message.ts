@@ -2,6 +2,7 @@ require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
+import createMessage from "./MessageCreate";
 
 const router = Router(); // create router to create route bundle
 
@@ -80,43 +81,8 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
 // Route to create a new message
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
     const { _id } = req.user;
-    const { User, Channel, Channels, Message } = req.context.models;
-    const session = await mongoose.startSession(); // start a new MongoDB transaction session
-    session.startTransaction(); // start a transaction within the session
-    try {
-        let userChannel = await Channel.findOne({ '_id': req.body.channel, participants: _id }).session(session); // find the channel the message belongs to and attach the session to it
-        await Message.create([{
-            sender: _id,
-            date_sent: Date(),
-            content: req.body.content,
-            img: req.body.img,
-            message_number: userChannel.last_message_count ? userChannel.last_message_count + 1 : 0,
-            channel: userChannel._id,
-        }], { session: session }); // create a new message with the provided data and attach the session to it
-        await Channel.updateOne(// TODO chang to find and update
-            { "_id": req.body.channel },
-            { $inc: { "last_message_count": 1 } } // set the channel's ID as the other participant's channels array
-        ).session(session);
+    createMessage(_id, req.body.channel, req.body.content, req.body.img)
 
-        if (userChannel.participants.length == 2) { // if the channel has only two participants
-            let participant = await User.findOne({ '_id': userChannel.participants[0] }).session(session); // find the other participant in the User collection and attach the session to it
-            if (!participant.channels) { // if the other participant doesn't have any channels yet
-                let [channels] = await Channels.create([{ channels: [userChannel._id] }], { session: session }); // create a new channel for them and attach the session to it
-                await User.updateOne(
-                    { "_id": participant._id },
-                    { $set: { "channels": channels._id } } // set the channel's ID as the other participant's channels array
-                ).session(session);
-            }
-        }
-
-        await session.commitTransaction(); // commit the transaction to the database
-        res.status(200).json({ success: true }); // send a success response to the client
-    } catch (error) {
-        await session.abortTransaction(); // abort the transaction if an error occurs
-        res.status(500).json({ success: false, error: error }); // send an error response to the client
-    } finally {
-        session.endSession(); // end the session
-    }
 });
 
 
