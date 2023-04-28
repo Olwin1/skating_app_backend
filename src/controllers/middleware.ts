@@ -10,6 +10,7 @@ import Friends from "../models/Friends";
 import Following from "../models/Following";
 import Followers from "../models/Followers";
 import Comment from "../models/Comment";
+import Session from "../models/Session";
 import { RequestHandler } from "express";
 
 // CREATE CONTEXT MIDDLEWARE
@@ -27,6 +28,7 @@ const createContext: RequestHandler = (req, res, next) => {
       Following,
       Followers,
       Comment,
+      Session,
     },
   };
   next();
