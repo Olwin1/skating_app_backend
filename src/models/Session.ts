@@ -10,6 +10,8 @@ share: string;
 start_time: Date;
 end_time: Date;
 distance: number;
+latitude: number;
+longitude: number;
 author: mongoose.Schema.Types.ObjectId;
 
 }
@@ -23,6 +25,8 @@ const SessionSchema: mongoose.Schema<ISession> = new mongoose.Schema<ISession>({
     start_time: { type: Date },
     end_time: { type: Date },
     distance: { type: Number },
+    latitude: { type: Number },
+    longitude: { type: Number },
     author: { type: mongoose.Schema.Types.ObjectId }
 })
 

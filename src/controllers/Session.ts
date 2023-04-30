@@ -28,6 +28,8 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
                 start_time: req.body.start_time,
                 end_time: req.body.end_time,
                 distance: req.body.distance,
+                latitude: req.body.latitude,
+                longitude: req.body.longitude,
                 author: _id
             }],
             { session: session }
