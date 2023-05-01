@@ -87,10 +87,10 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
 
             // If the post has fewer than 1000 likes, add the user's ID to the list of like_users and increment the like_count.
             if (post.like_count) {
-            post = await Post.updateOne({ "_id": post._id }, { $inc: { "like_count": 1 }, $push: { "like_users": _id } }).session(session);
+                post = await Post.updateOne({ "_id": post._id }, { $inc: { "like_count": 1 }, $push: { "like_users": _id } }).session(session);
             }
             else {
-            post = await Post.updateOne({ "_id": post._id }, { $set: { "like_count": 1 }, $push: { "like_users": _id } }).session(session);
+                post = await Post.updateOne({ "_id": post._id }, { $set: { "like_count": 1 }, $push: { "like_users": _id } }).session(session);
             }
         }
         //}
@@ -201,7 +201,7 @@ router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
     session.startTransaction(); // Start a transaction within the session
     try {
         // Create a new comment and associate it with a post and a sender (user)
-        let [comment] = await Comment.create([{ "post": req.body.post, "sender": _id, "content": req.body.content, "date": Date() }], {session: session})
+        let [comment] = await Comment.create([{ "post": req.body.post, "sender": _id, "content": req.body.content, "date": Date() }], { session: session })
         // Add the comment's ID to the post's "comments" array
         await Post.updateOne({ "_id": req.body.post }, { $push: { "comments": comment._id } }).session(session)
         await session.commitTransaction(); // Commit the transaction
@@ -465,40 +465,40 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         // Find the friends of the user
         let friends = await Friends.findOne({ '_id': user.friends })
         let friendsArray = [];
-        for(let i=0; i < friends.users.length;i++) {
+        for (let i = 0; i < friends.users.length; i++) {
             friendsArray.push(friends.users[i].user);
         }
 
         // Find posts that the user has not seen, have not been liked by the user, and were posted by a friend
-        let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({date: -1});
+        let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({ date: -1 });
         // If there are not enough posts from friends, find posts from users that the user is following
         if (posts.length < 20) {
             let following = await Following.findOne({ '_id': user.following })
             let followingArray = [];
-            for(let i=0; i < following.users.length;i++) {
+            for (let i = 0; i < following.users.length; i++) {
                 followingArray.push(following.users[i].user);
             }
-            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).limit(20 - posts.length).sort({date: -1});
+            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).limit(20 - posts.length).sort({ date: -1 });
             posts = posts.concat(other_posts)
         }
         // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
         if (posts.length < 20) {
             let index = Math.floor(Math.random() * friends.users.length);
             let randUser = await User.findOne({ '_id': friends.users[index] })
-            if (randUser?!randUser.private:false) {
+            if (randUser ? !randUser.private : false) {
                 let randFriends = await Friends.findOne({ '_id': randUser.friends })
                 let randFriendsArray = [];
                 for (var i = 0, randFriend = randFriends[i]; i < randFriends.length; i++) {
                     randFriendsArray.push(randFriend.user);
                 }
-                let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $and: [{ $in: randFriendsArray }, { $ne: _id }] } }).limit(20 - posts.length).sort({date: -1});
+                let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $and: [{ $in: randFriendsArray }, { $ne: _id }] } }).limit(20 - posts.length).sort({ date: -1 });
                 posts = posts.concat(other_posts)
             }
         }
         // Remove like_users and comments from each post
         for (var i = 0; i < posts.length; i++) {
             posts[i].comment_count = posts[i].comments.length
-            
+
             delete posts[i].like_users;
             delete posts[i].comments;
         }
@@ -509,5 +509,39 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         res.status(400).json({ error });
     }
 });
+
+
+// This is a route handler for GET requests to "/user_posts"
+router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
+
+    // Extract the user ID from the request object
+    const { _id } = req.user;
+
+    // Get the Post model from the context object
+    const { Post } = req.context.models;
+
+    try {
+        // Query the database for posts authored by the current user, sorted by date in descending order
+        // The "skip" and "limit" options are used for pagination
+        let posts = await Post.find({ 'author': _id, }).sort({ date: -1 }).skip(20 * req.headers.page).limit(20);
+
+        // Loop through each post and add a "comment_count" property to it
+        for (var i = 0; i < posts.length; i++) {
+            posts[i].comment_count = posts[i].comments.length
+
+            // Delete the "like_users" and "comments" properties from each post object
+            // to avoid sending unnecessary data over the network
+            delete posts[i].like_users;
+            delete posts[i].comments;
+        }
+
+        // Send the posts data as a JSON response
+        res.json(posts);
+    } catch (error) {
+        // Send a 400 Bad Request response if there was an error
+        res.status(400).json({ error });
+    }
+});
+
 
 export default router;
