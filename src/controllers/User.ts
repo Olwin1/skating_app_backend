@@ -148,13 +148,14 @@ router.post("/language", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-
+  const { _id } = req.user;
   // Get the User model from the context object
+  
   const { User } = req.context.models;
 
   try {
     // Find the user in the database
-    let t = await User.findOne({ "_id": req.headers.id })
+    let t = await User.findOne({ "_id": req.headers.id!="0"?req.headers.id:_id })
 
     // Return the response from the database update
     res.json(t)
