@@ -76,7 +76,7 @@ app.use(
 );
 app.use(bodyParser.json());
 app.use(middleware.createContext); // create req.context for each request
-
+app.use(upload.any());
 // Define routes
 app.get("/", (req, res) => {
   res.send("This is the test route to make sure server is working");
@@ -91,8 +91,9 @@ app.use("/session", SessionRouter); // route all "/session" requests to SessionR
 
 // Define route for file uploads using the upload utility
 app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {
-  res.json(req.file) // Send back file information
-});
+  res.json({"success": true})
+}
+);
 
 // Start listening for incoming requests
 //app.listen(PORT, () =>

@@ -37,7 +37,7 @@ const storage = new GridFsStorage({
 });
 
 // Creating a Multer instance with the GridFS storage engine
-const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
 // Exporting the Multer instance and references to the collections
 export { upload, files, filesChunks };
