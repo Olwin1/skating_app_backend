@@ -20,6 +20,7 @@ import { createServer } from 'http';
 import Websocket from './websocket';
 import MessagesSocket from "./messages.socket";
 import jwt, { Secret } from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // Destructure environment variables with default values
 const { PORT = 3000 } = process.env;
@@ -76,7 +77,6 @@ app.use(
 );
 app.use(bodyParser.json());
 app.use(middleware.createContext); // create req.context for each request
-app.use(upload.any());
 // Define routes
 app.get("/", (req, res) => {
   res.send("This is the test route to make sure server is working");
@@ -91,7 +91,10 @@ app.use("/session", SessionRouter); // route all "/session" requests to SessionR
 
 // Define route for file uploads using the upload utility
 app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {
-  res.json({"success": true})
+  const fileInfo = req.file as any
+  const id = fileInfo["id"] as mongoose.Schema.Types.ObjectId
+  res.json(id.toString())
+  console.log(id.toString())
 }
 );
 
