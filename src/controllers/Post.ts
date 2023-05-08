@@ -523,7 +523,7 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Query the database for posts authored by the current user, sorted by date in descending order
         // The "skip" and "limit" options are used for pagination
-        let posts = await Post.find({ 'author': _id, }).sort({ date: -1 }).skip(20 * req.headers.page).limit(20);
+        let posts = await Post.find({ 'author': req.headers.user??_id, }).sort({ date: -1 }).skip(20 * req.headers.page).limit(20);
 
         // Loop through each post and add a "comment_count" property to it
         for (var i = 0; i < posts.length; i++) {
