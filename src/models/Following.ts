@@ -1,27 +1,19 @@
 import mongoose from  "../db/connection";
 
 // Define the shape of a single follower user
-interface IFollowingUser {
+interface IFollowing {
     follow_date: Date;
     user: mongoose.Schema.Types.ObjectId;
+    owner: mongoose.Schema.Types.ObjectId;
     requested: boolean;
 }
 
-// Define the shape of the whole Following document
-interface IFollowing {
-    users: IFollowingUser[];
-}
-
 // Define a schema for a single follower user
-const FollowingUserSchema: mongoose.Schema<IFollowingUser> = new mongoose.Schema<IFollowingUser>({
+const FollowingSchema: mongoose.Schema<IFollowing> = new mongoose.Schema<IFollowing>({
     follow_date: { type: Date, required: true }, // A date field indicating when the user started following
     user: { type: mongoose.Schema.Types.ObjectId, required: true}, // A reference to the User document this follower follows
+    owner: { type: mongoose.Schema.Types.ObjectId, required: true},
     requested: { type: Boolean },   // If not yet accepted & is private accound
-})
-
-// Define a schema for the entire Following document
-const FollowingSchema: mongoose.Schema<IFollowing> = new mongoose.Schema<IFollowing>({
-    users: [{ type: FollowingUserSchema }] // An array of follower users
 })
 
 // Create a Mongoose model based on the Following schema

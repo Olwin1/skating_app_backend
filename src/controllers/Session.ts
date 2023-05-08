@@ -67,12 +67,12 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Find the user and their friends
         let user = await User.findOne({ "_id": _id });
-        let friends = await Friends.findOne({ "_id": user.friends });
+        let friends = await Friends.find({ "owner": _id });
         let friendsId = [];
-        for (let i = 0; i < friends["users"].length; i++) {
+        for (let i = 0; i < friends.length; i++) {
             // Get the IDs of the user's friends
-            console.log("runing " + friends["users"][i]["user"])
-            friendsId.push(friends["users"][i]["user"])
+            console.log("runing " + friends[i]["user"])
+            friendsId.push(friends[i]["user"])
         }
         let cutoffDate = new Date(new Date().getTime() - (24 * 60 * 60 * 1000)).toISOString()
         // Find sessions created by the user's friends in the last 24 hours and send them in the response

@@ -463,35 +463,35 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         // Find the user with the provided ID
         let user = await User.findOne({ '_id': _id })
         // Find the friends of the user
-        let friends = await Friends.findOne({ '_id': user.friends })
+        let friends = await Friends.find({ 'owner': _id })
         let friendsArray = [];
-        for (let i = 0; i < friends.users.length; i++) {
-            friendsArray.push(friends.users[i].user);
+        for (let i = 0; i < friends.length; i++) {
+            friendsArray.push(friends[i].user);
         }
 
         // Find posts that the user has not seen, have not been liked by the user, and were posted by a friend
-        let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).limit(20).sort({ date: -1 });
+        let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).sort({ date: -1 }).limit(20);
         // If there are not enough posts from friends, find posts from users that the user is following
         if (posts.length < 20) {
-            let following = await Following.findOne({ '_id': user.following })
+            let following = await Following.find({ 'owner': _id })
             let followingArray = [];
-            for (let i = 0; i < following.users.length; i++) {
-                followingArray.push(following.users[i].user);
+            for (let i = 0; i < following.length; i++) {
+                followingArray.push(following[i].user);
             }
-            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).limit(20 - posts.length).sort({ date: -1 });
+            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).sort({ date: -1 }).limit(20 - posts.length);
             posts = posts.concat(other_posts)
         }
         // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
-        if (posts.length < 20) {
-            let index = Math.floor(Math.random() * friends.users.length);
-            let randUser = await User.findOne({ '_id': friends.users[index] })
+        if (posts.length < 20 && friends.length != 0) {
+            let index = Math.floor(Math.random() * friends.length);
+            let randUser = await User.findOne({ '_id': friends[index].user })
             if (randUser ? !randUser.private : false) {
-                let randFriends = await Friends.findOne({ '_id': randUser.friends })
+                let randFriends = await Friends.find({ 'owner': randUser._id })
                 let randFriendsArray = [];
                 for (var i = 0, randFriend = randFriends[i]; i < randFriends.length; i++) {
                     randFriendsArray.push(randFriend.user);
                 }
-                let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $and: [{ $in: randFriendsArray }, { $ne: _id }] } }).limit(20 - posts.length).sort({ date: -1 });
+                let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $and: [{ $in: randFriendsArray }, { $ne: _id }] } }).sort({ date: -1 }).limit(20 - posts.length);
                 posts = posts.concat(other_posts)
             }
         }

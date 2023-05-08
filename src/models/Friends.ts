@@ -1,31 +1,23 @@
 import mongoose from "../db/connection";
 
 // Define the shape of a single follower user
-interface IFriendsUser {
+interface IFriends {
     friend_date: Date;
     user: mongoose.Schema.Types.ObjectId;
+    owner: mongoose.Schema.Types.ObjectId;
     last_session_location: String;
     last_session_date: Date;
     requested: boolean;
 }
 
-// Define the shape of the whole Friends document
-interface IFriends {
-    users: IFriendsUser[];
-}
-
 // Define a schema for a single follower user
-const FriendsUserSchema: mongoose.Schema<IFriendsUser> = new mongoose.Schema<IFriendsUser>({
+const FriendsSchema: mongoose.Schema<IFriends> = new mongoose.Schema<IFriends>({
     friend_date: { type: Date, required: true }, // A date field indicating when the user was friended
     user: { type: mongoose.Schema.Types.ObjectId, required: true }, // A reference to the User document of the friend
+    owner: { type: mongoose.Schema.Types.ObjectId, required: true},
     last_session_location: { type: String },
     last_session_date: { type: Date },
     requested: { type: Boolean },
-})
-
-// Define a schema for the entire Friends document
-const FriendsSchema: mongoose.Schema<IFriends> = new mongoose.Schema<IFriends>({
-    users: [{ type: FriendsUserSchema }] // An array of follower users
 })
 
 // Create a Mongoose model based on the Friends schema
