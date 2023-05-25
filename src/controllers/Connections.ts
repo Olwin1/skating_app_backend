@@ -28,16 +28,16 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
         let userFollowing;
         //if (user.following) {
-            // if the user already has a following list, update it by adding the new user they want to follow
-            userFollowing = await Following.create([{ owner: _id, follow_date: Date(), user: target._id, requested: target.private ? true : null }], {session}); // pass the session to the update query
-            if (!target.private) {
-                await User.updateOne(
-                    { "_id": _id },
-                    {
-                        $inc: { "following_count": 1 }
-                    }
-                ).session(session);
-            }
+        // if the user already has a following list, update it by adding the new user they want to follow
+        userFollowing = await Following.create([{ owner: _id, follow_date: Date(), user: target._id, requested: target.private ? true : null }], { session }); // pass the session to the update query
+        if (!target.private) {
+            await User.updateOne(
+                { "_id": _id },
+                {
+                    $inc: { "following_count": 1 }
+                }
+            ).session(session);
+        }
         // } else {
         //     // if the user doesn't have a following list yet, create a new one with the new user they want to follow
         //     [userFollowing] = await Following.create([{users: [{ follow_date: Date(), user: target._id, requested: target.private ? true : null }]}], { session: session }); // pass the session to the create query
@@ -58,17 +58,17 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         // }
 
         //if (target.followers) {
-            // if the user being followed already has a followers list, update it by adding the follower's user ID
-            await Followers.create([{ owner: target._id, follow_date: Date(), user: _id, requested: target.private ? true : null }], {session}); // pass the session to the update query
-            if (!target.private) {
-                await User.updateOne(
-                    { "_id": target._id },
-                    {
-                        $inc: { "follower_count": 1 }
-                    }
-                ).session(session);
+        // if the user being followed already has a followers list, update it by adding the follower's user ID
+        await Followers.create([{ owner: target._id, follow_date: Date(), user: _id, requested: target.private ? true : null }], { session }); // pass the session to the update query
+        if (!target.private) {
+            await User.updateOne(
+                { "_id": target._id },
+                {
+                    $inc: { "follower_count": 1 }
+                }
+            ).session(session);
 
-            }
+        }
         // } else {
         //     // if the user being followed doesn't have a followers list yet, create a new one with the follower's user ID
         //     let [targetFollowers] = await Followers.create([{users: [{ follow_date: Date(), user: _id, requested: target.private ? true : null }]}], { session: session }); // pass the session to the create query
@@ -122,8 +122,8 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
         let userFriends;
         //if (user.friends) {
-            // if the user already has a friends list, update it by adding the new user they want to friend
-            userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true }], {session}); // pass the session to the update query
+        // if the user already has a friends list, update it by adding the new user they want to friend
+        userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true }], { session }); // pass the session to the update query
         // } else {
         //     // if the user doesn't have a friends list yet, create a new one with the new user they want to friend
         //     [userFriends] = await Friends.create([{users: [{ friend_date: Date(), user: target._id, requested: true }]}], { session: session }); // pass the session to the create query
@@ -131,8 +131,8 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
         // }
 
         //if (target.friends) {
-            // if the user being friended already has a friends list, update it by adding the friend's user ID
-            await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true }], {session}) // pass the session to the update query
+        // if the user being friended already has a friends list, update it by adding the friend's user ID
+        await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true }], { session }) // pass the session to the update query
         // } else {
         //     // if the user being friended doesn't have a friends list yet, create a new one with the friend's user ID
         //     let [targetFriends] = await Friends.create([{users: [{ friend_date: friendDate, user: _id, requested: true }]}], { session: session }); // pass the session to the create query
@@ -173,10 +173,12 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
         ).session(session);
 
         // Remove the logged in user from the target user's followers list
-        await Followers.deleteOne({ owner: target._id, user: _id }
-        ).session(session);
-        await User.updateOne({ "_id": _id }, { $inc: { "following_count": -1 } }).session(session);
-        await User.updateOne({ "_id": target._id }, { $inc: { "follower_count": -1 } }).session(session);
+        let follow = await Followers.findOneAndDelete({ owner: target._id, user: _id }).session(session);
+        if (!follow["requested"]) {
+            await User.updateOne({ "_id": _id }, { $inc: { "following_count": -1 } }).session(session);
+            await User.updateOne({ "_id": target._id }, { $inc: { "follower_count": -1 } }).session(session);
+
+        }
 
         await session.commitTransaction();
         session.endSession();
@@ -207,10 +209,14 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
         ).session(session);
 
         // Remove the logged in user from the target user's following list
-        await Following.deleteOne({ owner: target._id, user: _id }
+        let following = await Following.findOneAndDelete({ owner: target._id, user: _id }
         ).session(session);
-        await User.updateOne({ "_id": _id }, { $inc: { "follower_count": -1 } }).session(session);
-        await User.updateOne({ "_id": target._id }, { $inc: { "following_count": -1 } }).session(session);
+        if (!following["requested"]) {
+            await User.updateOne({ "_id": _id }, { $inc: { "follower_count": -1 } }).session(session);
+            await User.updateOne({ "_id": target._id }, { $inc: { "following_count": -1 } }).session(session);
+
+        }
+
 
         await session.commitTransaction();
         session.endSession();
@@ -243,9 +249,13 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
         userFriends = await Friends.deleteOne({ owner: _id, user: target._id }).session(session);
 
         // Update the user to unfriend's friends list to remove the logged in user
-        await Friends.deleteOne({ owner: target._id, user: _id }).session(session);
-        await User.updateOne({ "_id": _id }, { $inc: { "friends_count": -1 } }).session(session);
-        await User.updateOne({ "_id": target._id }, { $inc: { "friends_count": -1 } }).session(session);
+        let friend = await Friends.findOneAndDelete({ owner: target._id, user: _id }).session(session);
+        if (!friend["requested"]) {
+            await User.updateOne({ "_id": _id }, { $inc: { "friends_count": -1 } }).session(session);
+            await User.updateOne({ "_id": target._id }, { $inc: { "friends_count": -1 } }).session(session);
+
+        }
+
 
         // Commit the transaction and end the session
         await session.commitTransaction();
@@ -273,7 +283,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Followers.find({ "owner": _id }).sort({"requested": -1}).skip(req.headers.page * 20).limit(20)
+        let t = await Followers.find({ "owner": _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -295,7 +305,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Following.find({ "owner": _id }).sort({"requested": -1}).skip(req.headers.page * 20).limit(20)
+        let t = await Following.find({ "owner": _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -317,7 +327,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Friends.find({ owner: _id }).sort({"requested": -1}).skip(req.headers.page * 20).limit(20)
+        let t = await Friends.find({ owner: _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -348,7 +358,7 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
             // Find the current user in the Followers collection and update the requested flag
             await Followers.updateOne(
                 // Match the current user's document by their _id
-                { "owner": _id, "user": target._id},
+                { "owner": _id, "user": target._id },
                 // Use the $set operator to update the value of the "users" property
                 {
                     $set: {

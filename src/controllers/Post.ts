@@ -7,7 +7,17 @@ const router = Router(); // create router to create route bundle
 
 //DESTRUCTURE ENV VARIABLES WITH DEFAULTS
 const { SECRET = "secret" } = process.env;
+interface IreturnPost {
+    _id: string,
+    description: string,
+    author: string,
+    image: string, 
+    date: string, 
+    like_count: number, 
+    comment_count: number,
+    liked: boolean
 
+}
 
 
 // Define a route to create a new post, with middleware to check if the user is logged in
@@ -472,14 +482,24 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         // Find posts that the user has not seen, have not been liked by the user, and were posted by a friend
         let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).sort({ date: -1 }).limit(20);
         // If there are not enough posts from friends, find posts from users that the user is following
+        let fetchedIds = []
+        for(let i = 0; i < posts.length; i++) {
+fetchedIds.push(posts[i]["_id"])
+
+        }
         if (posts.length < 20) {
             let following = await Following.find({ 'owner': _id })
             let followingArray = [];
             for (let i = 0; i < following.length; i++) {
                 followingArray.push(following[i].user);
             }
-            let other_posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).sort({ date: -1 }).limit(20 - posts.length);
+            let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).sort({ date: -1 }).limit(20 - posts.length);
+            for(let i = 0; i < other_posts.length; i++) {
+                fetchedIds.push(other_posts[i]["_id"])
+                
+                        }
             posts = posts.concat(other_posts)
+
         }
         // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
         if (posts.length < 20 && friends.length != 0) {
@@ -489,21 +509,51 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 let randFriends = await Friends.find({ 'owner': randUser._id })
                 let randFriendsArray = [];
                 for (var i = 0, randFriend = randFriends[i]; i < randFriends.length; i++) {
-                    randFriendsArray.push(randFriend.user);
+                    if (randFriend.user != _id) {
+                        randFriendsArray.push(randFriend.user);
+                    }
                 }
-                let other_posts = await Post.find({ '_id': { $nin: req.body.seen }, 'like_users': { $nin: _id }, 'author': { $and: [{ $in: randFriendsArray }, { $ne: _id }] } }).sort({ date: -1 }).limit(20 - posts.length);
-                posts = posts.concat(other_posts)
+                if (randFriendsArray.length != 0) {
+                    let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'like_users': { $nin: _id }, 'author': { $in: randFriendsArray } }).sort({ date: -1 }).limit(20 - posts.length);
+                    for(let i = 0; i < other_posts.length; i++) {
+                        fetchedIds.push(other_posts[i]["_id"])
+                        
+                                }
+                    posts = posts.concat(other_posts)
+                }
             }
         }
+        if (posts.length < 20) {
+            let following = await Following.find({ 'owner': _id })
+            let followingArray = [];
+            for (let i = 0; i < following.length; i++) {
+                followingArray.push(following[i].user);
+            }
+            let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: [...followingArray, ...friendsArray] } }).sort({ date: -1 }).limit(20 - posts.length);
+            posts = posts.concat(other_posts)
+        }
         // Remove like_users and comments from each post
+        let returnPosts = [] as Array<IreturnPost>
         for (var i = 0; i < posts.length; i++) {
-            posts[i].comment_count = posts[i].comments.length
+            let returnPost = {} as IreturnPost
+            returnPost.comment_count = posts[i].comments.length
+            returnPost.liked = false
 
-            delete posts[i].like_users;
-            delete posts[i].comments;
+            returnPost._id = posts[i]._id
+            returnPost.description = posts[i].description
+            returnPost.author = posts[i].author
+            returnPost.image = posts[i].image
+            returnPost.date = posts[i].date
+            returnPost.like_count = posts[i].like_count
+            
+            if (posts[i].like_users.some((likedUser: any) => likedUser == _id)) {
+                returnPost.liked = true
+  /* vendors contains the element we're looking for */
+}
+returnPosts.push(returnPost)
         }
         // Return the array of posts as a response
-        res.json(posts);
+        res.json(returnPosts);
     } catch (error) {
         // If there's an error, return an error response
         res.status(400).json({ error });
@@ -523,7 +573,7 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Query the database for posts authored by the current user, sorted by date in descending order
         // The "skip" and "limit" options are used for pagination
-        let posts = await Post.find({ 'author': req.headers.user??_id, }).sort({ date: -1 }).skip(20 * req.headers.page).limit(20);
+        let posts = await Post.find({ 'author': req.headers.user ?? _id, }).sort({ date: -1 }).skip(20 * req.headers.page).limit(20);
 
         // Loop through each post and add a "comment_count" property to it
         for (var i = 0; i < posts.length; i++) {

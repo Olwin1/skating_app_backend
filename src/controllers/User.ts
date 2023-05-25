@@ -165,4 +165,47 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
+// GET route for getting the followers of a user
+router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
+  const { _id } = req.user;
+  const { Following } = req.context.models;
+  try {
+    // Finding the Followers document with the specified user ID and owner ID
+    let t = await Following.findOne({ "owner": _id, "user": req.headers.user})
+    // Sending the Followers document as a response
+    if (t == null) {
+    return res.json([false, false]);
+    }
+    return res.json([true, t["requested"] == true ? true : false, false]);
+  } catch (error) {
+    // Sending an error response if there's an error in finding the document
+    res.status(400).json({ error });
+  }
+});
+
+
+// GET route for getting the followers of a user
+router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
+  const { _id } = req.user;
+  const { Friends } = req.context.models;
+  try {
+    // Finding the Followers document with the specified user ID and owner ID
+    let t = await Friends.findOne({ "owner": _id, "user": req.headers.user})
+    // Sending the Followers document as a response
+    if (t == null) {
+    let friend = await Friends.findOne({ "owner": req.headers.user, "user": _id})
+    if(friend["requested"] == true) { 
+      return res.json([false, false, true]);
+
+    }
+    return res.json([false]);
+    }
+    return res.json([true, t["requested"] == true ? true : false, false]);
+  } catch (error) {
+    // Sending an error response if there's an error in finding the document
+    res.status(400).json({ error });
+  }
+});
+
+
 export default router;

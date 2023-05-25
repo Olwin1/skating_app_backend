@@ -147,6 +147,10 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
         // Retrieve the list of channels that the user is a member of
         let channels = await Channels.findOne({ '_id': user.channels }).session(session);
         // Retrieve a list of channel objects based on the channel IDs in the user's channels list
+        if (channels == null) {
+        await session.abortTransaction();
+            return res.json([])
+        }
         let channelList = await Channel.find({ '_id': { $in: channels.channels } }).limit(20).skip(parseInt(req.headers.page) * 20).session(session);
 
         // Commit the transaction to the database and return the channel list
