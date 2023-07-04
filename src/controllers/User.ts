@@ -208,4 +208,26 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
+// GET route for getting the followers of a user
+router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
+  const { _id } = req.user;
+  const { User } = req.context.models;
+  try {
+    // Finding the Followers document with the specified user ID and owner ID
+    let results = await User.find( {username: { $regex: /testuser/i }} )
+    .limit(10)
+    const returns = []
+for(let i = 0; i < results.length; i++) {
+  const ret = {"_id": results[i]["_id"], "username": results[i]["username"], "avatar": results[i]["avatar"]}//, "avatar": results[i]["_id"]}
+  returns.push(ret);
+}
+    // Sending the Followers document as a response
+    return res.json(returns);
+  } catch (error) {
+    // Sending an error response if there's an error in finding the document
+    res.status(400).json({ error });
+  }
+});
+
+
 export default router;

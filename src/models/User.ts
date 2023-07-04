@@ -42,7 +42,7 @@ const UserSchema = new mongoose.Schema<IUser>({
     private: { type: Boolean }, // Do follows need to be requested
     channels: { type: mongoose.Schema.Types.ObjectId },
 })
-
+UserSchema.index({username: "text"})
 // Defining the User model using the User schema
 const User = mongoose.model<IUser>("User", UserSchema)
 
