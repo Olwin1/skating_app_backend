@@ -214,7 +214,7 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
   const { User } = req.context.models;
   try {
     // Finding the Followers document with the specified user ID and owner ID
-    let results = await User.find( {username: { $regex: /testuser/i }} )
+    let results = await User.find( {username: { $regex: req.headers.query, '$options': 'i' }} )
     .limit(10)
     const returns = []
 for(let i = 0; i < results.length; i++) {
