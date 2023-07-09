@@ -81,7 +81,8 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
 // Route to create a new message
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
     const { _id } = req.user;
-    createMessage(_id, req.body.channel, req.body.content, req.body.img)
+    let retval = await createMessage(_id, req.body.channel, req.body.content, req.body.img);
+    res.json(retval);
 
 });
 

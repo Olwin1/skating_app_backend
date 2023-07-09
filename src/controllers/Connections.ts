@@ -123,7 +123,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
         let userFriends;
         //if (user.friends) {
         // if the user already has a friends list, update it by adding the new user they want to friend
-        userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true }], { session }); // pass the session to the update query
+        userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true, requester: true }], { session }); // pass the session to the update query
         // } else {
         //     // if the user doesn't have a friends list yet, create a new one with the new user they want to friend
         //     [userFriends] = await Friends.create([{users: [{ friend_date: Date(), user: target._id, requested: true }]}], { session: session }); // pass the session to the create query
@@ -132,7 +132,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
         //if (target.friends) {
         // if the user being friended already has a friends list, update it by adding the friend's user ID
-        await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true }], { session }) // pass the session to the update query
+        await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true, requester: false }], { session }) // pass the session to the update query
         // } else {
         //     // if the user being friended doesn't have a friends list yet, create a new one with the friend's user ID
         //     let [targetFriends] = await Friends.create([{users: [{ friend_date: friendDate, user: _id, requested: true }]}], { session: session }); // pass the session to the create query
@@ -283,7 +283,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Followers.find({ "owner": _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        let t = await Followers.find({ "owner": req.headers.user??_id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -305,7 +305,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Following.find({ "owner": _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        let t = await Following.find({ "owner": req.headers.user??_id }).sort({ "requested": -1 }).skip(parseInt(req.headers.page) * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -327,7 +327,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
     try {
         //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Friends.find({ owner: _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        let t = await Friends.find({ owner: req.headers.user??_id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)

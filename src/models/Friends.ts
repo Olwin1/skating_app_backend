@@ -8,6 +8,7 @@ interface IFriends {
     last_session_location: String;
     last_session_date: Date;
     requested: boolean;
+    requester: boolean;
 }
 
 // Define a schema for a single follower user
@@ -18,6 +19,7 @@ const FriendsSchema: mongoose.Schema<IFriends> = new mongoose.Schema<IFriends>({
     last_session_location: { type: String },
     last_session_date: { type: Date },
     requested: { type: Boolean },
+    requester: { type: Boolean },
 })
 
 // Create a Mongoose model based on the Friends schema
