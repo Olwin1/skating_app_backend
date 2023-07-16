@@ -4,7 +4,7 @@ require("dotenv").config();
 // Import required modules
 import express from "express";
 import morgan from "morgan";
-import log from "mercedlogger";
+import log from "./logger";
 import cors from "cors";
 import bodyParser from "body-parser";
 import UserRouter from "./controllers/User"; // Import User Router
@@ -14,6 +14,7 @@ import PostRouter from "./controllers/Post"; // Import Post Router
 import MessageRouter from "./controllers/Message"; // Import Post Router
 import SessionRouter from "./controllers/Session"; // Import Session Router
 import ImageRouter from "./controllers/Images";
+import NotificationRouter from "./controllers/notifications";
 import middleware from "./controllers/middleware";
 import { upload } from "./db/bucket"; // Import upload utility from bucket.ts
 import { createServer } from 'http';
@@ -21,6 +22,9 @@ import Websocket from './websocket';
 import MessagesSocket from "./messages.socket";
 import jwt, { Secret } from "jsonwebtoken";
 import mongoose from "mongoose";
+import initFirebase from "./initFirebase";
+import { Request, Response } from "express";
+
 
 // Destructure environment variables with default values
 const { PORT = 3000 } = process.env;
@@ -33,6 +37,7 @@ const server = createServer(app);
 
 // Create a WebSocket instance using the server object
 const io = Websocket.getInstance(server);
+initFirebase()
 
 // When a new WebSocket connection is established, run the following function
 io.on('connection', (socket) => {
@@ -76,9 +81,9 @@ app.use(
   })
 );
 app.use(bodyParser.json());
-app.use(middleware.createContext); // create req.context for each request
+app.use(middleware.createContext); // create (req as CustomRequest).context for each request
 // Define routes
-app.get("/", (req, res) => {
+app.get("/", (req: Request, res: Response) => {
   res.send("This is the test route to make sure server is working");
 });
 app.use("/user", UserRouter); // route all "/user" requests to UserRouter for further processing
@@ -88,9 +93,11 @@ app.use("/post", PostRouter); // route all "/post" requests to ConnectionsRouter
 app.use("/message", MessageRouter); // route all "/message" requests to MessageRouter for further processing
 app.use("/image", ImageRouter); // route all "/image" requests to MessageRouter for further processing
 app.use("/session", SessionRouter); // route all "/session" requests to SessionRouter for further processing
+app.use('/notifications', NotificationRouter);
+
 
 // Define route for file uploads using the upload utility
-app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req, res) => {
+app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req: Request, res: Response) => {
   const fileInfo = req.file as any
   const id = fileInfo["id"] as mongoose.Schema.Types.ObjectId
   res.json(id.toString())

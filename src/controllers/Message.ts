@@ -3,6 +3,7 @@ import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
 import createMessage from "./MessageCreate";
+import CustomRequest from "./CustomRequest";
 
 const router = Router(); // create router to create route bundle
 
@@ -13,8 +14,8 @@ const { SECRET = "secret" } = process.env;
 // Route to create a new channel with the specified participants
 router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the authenticated user object
-    const { _id } = req.user;
-    const { User, Channel, Channels } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Channel, Channels } = (req as CustomRequest).context.models;
     // Start a new MongoDB session
     const session = await mongoose.startSession();
     // Start a transaction within the session
@@ -80,7 +81,7 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route to create a new message
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
     let retval = await createMessage(_id, req.body.channel, req.body.content, req.body.img);
     res.json(retval);
 
@@ -90,7 +91,7 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route to create a get message
 router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
-    const { Message } = req.context.models;
+    const { Message } = (req as CustomRequest).context.models;
     const session = await mongoose.startSession(); // start a new MongoDB transaction session
     session.startTransaction(); // start a transaction within the session
     try {
@@ -109,8 +110,8 @@ router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for retrieving messages from a specific channel
 router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Channel, Message } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Channel, Message } = (req as CustomRequest).context.models;
 
     // Start a session and transaction for the database operations
     const session = await mongoose.startSession();
@@ -136,8 +137,8 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for retrieving a list of channels that the user is a member of
 router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { User, Channels, Channel } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Channels, Channel } = (req as CustomRequest).context.models;
 
     // Start a session and transaction for the database operations
     const session = await mongoose.startSession();
@@ -171,9 +172,9 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
 // This route handles GET requests to '/channel'
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
     // Extract the 'Channel' model from the request context object
-    const { Channel } = req.context.models;
+    const { Channel } = (req as CustomRequest).context.models;
     // Start a new Mongoose session
     const session = await mongoose.startSession();
 

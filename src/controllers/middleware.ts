@@ -11,12 +11,16 @@ import Following from "../models/Following";
 import Followers from "../models/Followers";
 import Comment from "../models/Comment";
 import Session from "../models/Session";
-import { RequestHandler } from "express";
+import express from "express";
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import CustomRequest from "./CustomRequest";
+
+
 
 // CREATE CONTEXT MIDDLEWARE
-const createContext: RequestHandler = (req, res, next) => {
+const createContext: RequestHandler = (req, res: Response, next: NextFunction) => {
   // put any data you want in the object below to be accessible to all routes
-  req.context = {
+  (req as CustomRequest).context = {
     models: {
       User,
       Todo,
@@ -34,6 +38,7 @@ const createContext: RequestHandler = (req, res, next) => {
   next();
 };
 
+
 // MIDDLEWARE FOR AUTHORIZATION (MAKING SURE THEY ARE LOGGED IN)
 const isLoggedIn: RequestHandler = async (req, res, next) => {
   try {
@@ -45,7 +50,7 @@ const isLoggedIn: RequestHandler = async (req, res, next) => {
         const payload = await jwt.verify(token, process.env.SECRET as Secret);
         if (payload) {
           // store user data in request object
-          req.user = payload;
+          (req as CustomRequest).user = payload;
           next();
         } else {
           res.status(400).json({ error: "token verification failed" });

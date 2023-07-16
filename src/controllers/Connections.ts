@@ -2,6 +2,7 @@ require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
+import CustomRequest from "./CustomRequest";
 
 const router = Router(); // create router to create route bundle
 
@@ -13,10 +14,10 @@ const { SECRET = "secret" } = process.env;
 router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the User model and the Following and Followers sub-models from the context object
-    const { User, Following, Followers } = req.context.models;
+    const { User, Following, Followers } = (req as CustomRequest).context.models;
 
     const session = await mongoose.startSession(); // start a MongoDB transaction
     session.startTransaction(); // start a transaction with the session
@@ -106,10 +107,10 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the User model and the Friends sub-models from the context object
-    const { User, Friends } = req.context.models;
+    const { User, Friends } = (req as CustomRequest).context.models;
 
     const session = await mongoose.startSession(); // start a MongoDB transaction
     session.startTransaction(); // start a transaction with the session
@@ -155,8 +156,8 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
-    const { _id } = req.user;
-    const { User, Following, Followers } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Following, Followers } = (req as CustomRequest).context.models;
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -192,8 +193,8 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 
 // Route for unfollowing a user
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
-    const { _id } = req.user;
-    const { User, Following, Followers } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Following, Followers } = (req as CustomRequest).context.models;
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -231,8 +232,8 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 
 
 router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { User, Friends } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Friends } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
     const session = await mongoose.startSession();
@@ -275,10 +276,10 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Followers model from the context object
-    const { Followers } = req.context.models;
+    const { Followers } = (req as CustomRequest).context.models;
 
     try {
         //let user = await User.findOne({"_id": _id})
@@ -297,10 +298,10 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Following model from the context object
-    const { Following } = req.context.models;
+    const { Following } = (req as CustomRequest).context.models;
 
     try {
         //let user = await User.findOne({"_id": _id})
@@ -319,10 +320,10 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Friends model from the context object
-    const { Friends } = req.context.models;
+    const { Friends } = (req as CustomRequest).context.models;
 
     try {
         //let user = await User.findOne({"_id": _id})
@@ -344,10 +345,10 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Get the user ID from the request object
-        const { _id } = req.user;
+        const { _id } = (req as CustomRequest).user;
 
         // Get the Followers and Following models from the context object
-        const { User, Followers, Following } = req.context.models;
+        const { User, Followers, Following } = (req as CustomRequest).context.models;
 
         // Find the user to follow in the Following collection
         let user = await User.findOne({ "_id": _id }).session(session);
@@ -422,10 +423,10 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Get the user ID from the request object
-        const { _id } = req.user;
+        const { _id } = (req as CustomRequest).user;
 
         // Get the Friend model from the context object
-        const { User, Friends } = req.context.models;
+        const { User, Friends } = (req as CustomRequest).context.models;
 
         // Find the user to friend in the Friends collection
         //let user = await User.findOne({ "_id": _id }).session(session);

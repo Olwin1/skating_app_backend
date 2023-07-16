@@ -2,6 +2,7 @@ require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
+import CustomRequest from "./CustomRequest";
 
 const router = Router(); // create router to create route bundle
 
@@ -23,9 +24,9 @@ interface IreturnPost {
 // Define a route to create a new post, with middleware to check if the user is logged in
 router.post("/post", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the authenticated user object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
     // Get the User and Post models from the request context
-    const { User, Post } = req.context.models;
+    const { User, Post } = (req as CustomRequest).context.models;
     // Start a new MongoDB session
     const session = await mongoose.startSession();
     // Start a transaction within the session
@@ -63,7 +64,7 @@ router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
     // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
     // Get the user ID from the authenticated user object
     // Get the Post model from the request context
-    const { Post } = req.context.models;
+    const { Post } = (req as CustomRequest).context.models;
     try {
         // Get post
         let post = await Post.findOne({ "_id": req.headers.post })
@@ -81,10 +82,10 @@ router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
 
     // Extract the user ID from the request object.
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Post model from the request context.
-    const { Post } = req.context.models;
+    const { Post } = (req as CustomRequest).context.models;
 
     // Start a new MongoDB session for this request.
     const session = await mongoose.startSession();
@@ -127,10 +128,10 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
 
     // Extract the user ID from the request object.
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Post model from the request context.
-    const { Post } = req.context.models;
+    const { Post } = (req as CustomRequest).context.models;
 
     // Start a new MongoDB session for this request.
     const session = await mongoose.startSession();
@@ -167,8 +168,8 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for saving a post to a user's saved_posts array
 router.post("/save", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user; // Extract user ID from request object
-    const { User } = req.context.models; // Get User model from request context
+    const { _id } = (req as CustomRequest).user; // Extract user ID from request object
+    const { User } = (req as CustomRequest).context.models; // Get User model from request context
     const session = await mongoose.startSession(); // Start a Mongoose session
     session.startTransaction(); // Start a transaction within the session
     try {
@@ -186,8 +187,8 @@ router.post("/save", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for removing a post from a user's saved_posts array
 router.post("/unsave", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user; // Extract user ID from request object
-    const { User } = req.context.models; // Get User model from request context
+    const { _id } = (req as CustomRequest).user; // Extract user ID from request object
+    const { User } = (req as CustomRequest).context.models; // Get User model from request context
     const session = await mongoose.startSession(); // Start a Mongoose session
     session.startTransaction(); // Start a transaction within the session
     try {
@@ -205,8 +206,8 @@ router.post("/unsave", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for adding a comment to a post
 router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user; // Extract user ID from request object
-    const { Comment, Post } = req.context.models; // Get Comment and Post models from request context
+    const { _id } = (req as CustomRequest).user; // Extract user ID from request object
+    const { Comment, Post } = (req as CustomRequest).context.models; // Get Comment and Post models from request context
     const session = await mongoose.startSession(); // Start a Mongoose session
     session.startTransaction(); // Start a transaction within the session
     try {
@@ -228,8 +229,8 @@ router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for removing a comment from a post
 router.delete("/comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user; // Extract user ID from request object
-    const { Comment, Post } = req.context.models; // Get Comment and Post models from request context
+    const { _id } = (req as CustomRequest).user; // Extract user ID from request object
+    const { Comment, Post } = (req as CustomRequest).context.models; // Get Comment and Post models from request context
     const session = await mongoose.startSession(); // Start a Mongoose session
     session.startTransaction(); // Start a transaction within the session
     try {
@@ -252,8 +253,8 @@ router.delete("/comment", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route is used to like a comment
 router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Comment } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
     const session = await mongoose.startSession();
@@ -285,8 +286,8 @@ router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route is used to unlike a comment
 router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Comment } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
     const session = await mongoose.startSession();
@@ -318,8 +319,8 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route is used to dislike a comment
 router.post("/dislike_comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Comment } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
     const session = await mongoose.startSession();
@@ -351,8 +352,8 @@ router.post("/dislike_comment", middleware.isLoggedIn, async (req: any, res) => 
 
 // This route is used to undislike a comment
 router.post("/undislike_comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Comment } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
     const session = await mongoose.startSession();
@@ -384,8 +385,8 @@ router.post("/undislike_comment", middleware.isLoggedIn, async (req: any, res) =
 
 // This route is used to retrieve a single comment by its ID
 router.get("/comment", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Comment } = (req as CustomRequest).context.models;
     try {
         // Find the comment with the provided ID from the request header
         let comment = await Comment.findOne({ "_id": req.headers.comment })
@@ -410,8 +411,8 @@ router.get("/comment", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route is used to retrieve a page of comments for a single post
 router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Post, Comment } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Post, Comment } = (req as CustomRequest).context.models;
     try {
         // Find the post with the provided ID from the request header
         let post = await Post.findOne({ "_id": req.headers.post });
@@ -440,8 +441,8 @@ router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
 });
 // Route for removing a post
 router.delete("/post", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user; // Get the user ID from the request object
-    const { User, Comment, Post } = req.context.models; // Get the User, Comment, and Post models from the request context object
+    const { _id } = (req as CustomRequest).user; // Get the user ID from the request object
+    const { User, Comment, Post } = (req as CustomRequest).context.models; // Get the User, Comment, and Post models from the request context object
     const session = await mongoose.startSession(); // Start a new Mongoose session
     session.startTransaction(); // Start a transaction for the session
     try {
@@ -466,8 +467,8 @@ router.delete("/post", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route is used to retrieve a page of posts
 router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { User, Post, Friends, Following } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Post, Friends, Following } = (req as CustomRequest).context.models;
     try {
         let seen = JSON.parse(req.body.seen);
         // Find the user with the provided ID
@@ -565,10 +566,10 @@ returnPosts.push(returnPost)
 router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
 
     // Extract the user ID from the request object
-    const { _id } = req.user;
+    const { _id } = (req as CustomRequest).user;
 
     // Get the Post model from the context object
-    const { Post } = req.context.models;
+    const { Post } = (req as CustomRequest).context.models;
 
     try {
         // Query the database for posts authored by the current user, sorted by date in descending order

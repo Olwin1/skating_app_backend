@@ -3,6 +3,7 @@ import { Router } from "express" // import router from express
 import bcrypt from "bcryptjs" // import bcrypt to hash passwords
 import jwt from "jsonwebtoken" // import jwt to sign tokens
 import middleware from "./middleware";
+import CustomRequest from "./CustomRequest";
 
 const router = Router(); // create router to create route bundle
 
@@ -15,7 +16,7 @@ const { SECRET = "secret" } = process.env;
 ////////////////////////////////////////////
 // Signup route to create a new user
 router.post("/signup", async (req: any, res) => {
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
   try {
     // hash the password
     req.body.password = await bcrypt.hash(req.body.password, 10);
@@ -30,7 +31,7 @@ router.post("/signup", async (req: any, res) => {
 
 // Login route to verify a user and get a token
 router.post("/login", async (req: any, res) => {
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
   try {
     // check if the user exists
     const user = await User.findOne({ username: req.body.username });
@@ -62,10 +63,10 @@ router.post("/login", async (req: any, res) => {
 router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-  const { _id } = req.user;
+  const { _id } = (req as CustomRequest).user;
 
   // Get the User model from the context object
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's description in the database
@@ -84,10 +85,10 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-  const { _id } = req.user;
+  const { _id } = (req as CustomRequest).user;
 
   // Get the User model from the context object
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's avatar in the database
@@ -106,10 +107,10 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-  const { _id } = req.user;
+  const { _id } = (req as CustomRequest).user;
 
   // Get the User model from the context object
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's email in the database
@@ -127,10 +128,10 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/language", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-  const { _id } = req.user;
+  const { _id } = (req as CustomRequest).user;
 
   // Get the User model from the context object
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's language in the database
@@ -148,10 +149,10 @@ router.post("/language", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
   // Get the user ID from the request object
-  const { _id } = req.user;
+  const { _id } = (req as CustomRequest).user;
   // Get the User model from the context object
   
-  const { User } = req.context.models;
+  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Find the user in the database
@@ -167,8 +168,8 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for getting the followers of a user
 router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = req.user;
-  const { Following } = req.context.models;
+  const { _id } = (req as CustomRequest).user;
+  const { Following } = (req as CustomRequest).context.models;
   try {
     // Finding the Followers document with the specified user ID and owner ID
     let t = await Following.findOne({ "owner": _id, "user": req.headers.user})
@@ -186,8 +187,8 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for getting the followers of a user
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = req.user;
-  const { Friends } = req.context.models;
+  const { _id } = (req as CustomRequest).user;
+  const { Friends } = (req as CustomRequest).context.models;
   try {
     // Finding the Followers document with the specified user ID and owner ID
     let t = await Friends.findOne({ "owner": _id, "user": req.headers.user})
@@ -214,8 +215,8 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for getting the followers of a user
 router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = req.user;
-  const { User } = req.context.models;
+  const { _id } = (req as CustomRequest).user;
+  const { User } = (req as CustomRequest).context.models;
   try {
     // Finding the Followers document with the specified user ID and owner ID
     let results = await User.find( {username: { $regex: req.headers.query, '$options': 'i' }} )

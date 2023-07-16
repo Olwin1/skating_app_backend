@@ -21,6 +21,7 @@ interface IUser {
     friends: mongoose.Schema.Types.ObjectId;
     private: boolean;
     channels: mongoose.Schema.Types.ObjectId;
+    fcm_token: Array<string>;
 }
 
 // Defining the User schema
@@ -41,10 +42,13 @@ const UserSchema = new mongoose.Schema<IUser>({
     friends: { type: mongoose.Schema.Types.ObjectId},// Reference to friends collection
     private: { type: Boolean }, // Do follows need to be requested
     channels: { type: mongoose.Schema.Types.ObjectId },
+    fcm_token: [{type: String}]
 })
 UserSchema.index({username: "text"})
 // Defining the User model using the User schema
 const User = mongoose.model<IUser>("User", UserSchema)
+
+
 
 // Exporting the User model
 export default User;

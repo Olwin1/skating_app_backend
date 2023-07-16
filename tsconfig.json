@@ -1,12 +1,18 @@
 {
     "compilerOptions": {
       "module": "commonjs",
+      "baseUrl": "./",
       "outDir": "./built",
       "allowJs": true,
       "target": "ES2022",
       "sourceMap": true,
       "esModuleInterop": true,
-      "strict": true
+      "resolveJsonModule": true,
+      "strict": true,
+      "typeRoots": ["./src/typings", "./**/*.d.ts", "./node_modules/@types"],
+      "paths": {
+        "*" : ["src/typings/*"]
+      }
     },
     "include": ["./src/**/*"]
   }

@@ -3,7 +3,8 @@ import User from "../models/User";
 import Channel from "../models/MessageChannel";
 import Channels from "../models/MessageChannels";
 import Message from "../models/Message";
-
+import firebase from "firebase-admin"
+const getMessaging = firebase.messaging
 const createMessage = async (_id: String, channel: String, content: String, img: String) => {
 
 const session = await mongoose.startSession(); // start a new MongoDB transaction session
@@ -22,9 +23,9 @@ try {
         { "_id": channel },
         { $inc: { "last_message_count": 1 } } // set the channel's ID as the other participant's channels array
     ).session(session);
+    let participant = await User.findOne({ '_id': userChannel!.participants[0] }).session(session); // find the other participant in the User collection and attach the session to it
 
     if (userChannel!.participants.length == 2) { // if the channel has only two participants
-        let participant = await User.findOne({ '_id': userChannel!.participants[0] }).session(session); // find the other participant in the User collection and attach the session to it
         if (!participant!.channels) { // if the other participant doesn't have any channels yet
             let [channels] = await Channels.create([{ channels: [userChannel!._id] }], { session: session }); // create a new channel for them and attach the session to it
             await User.updateOne(
@@ -34,6 +35,26 @@ try {
         }
     }
 
+if(participant != null){
+    for(let i = 0; i< participant["fcm_token"].length; i++) {
+const message = {
+  data: {
+    score: '850',
+    time: '2:45'
+  },
+  token: participant!["fcm_token"][i]
+};
+// Send a message to the device corresponding to the provided
+// registration token.
+getMessaging().send(message)
+  .then((response) => {
+    // Response is a message ID string.
+    console.log('Successfully sent message:', response);
+  })
+  .catch((error) => {
+    console.log('Error sending message:', error);
+  });
+}}
     await session.commitTransaction(); // commit the transaction to the database
     return { success: true } // send a success response to the client
 } catch (error) {

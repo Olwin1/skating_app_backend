@@ -1,7 +1,7 @@
 // Import necessary libraries
 import * as dotenv from "dotenv"; // dotenv library to load environment variables from .env file
 import mongoose from "mongoose"; // Mongoose library to interact with MongoDB
-import log from "mercedlogger"; // mercedlogger library to log messages
+import log from "../logger"; // logger library to log messages
 
 // Load environment variables from .env file
 dotenv.config();

@@ -3,14 +3,15 @@ require("dotenv").config();
 import { Router } from "express"
 import mongoose from "../db/connection";
 import middleware from "./middleware";
+import CustomRequest from "./CustomRequest";
 
 // Create a new router instance
 const router = Router();
 
 // Define a route for creating a new session
 router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { Session } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { Session } = (req as CustomRequest).context.models;
     
     // Start a new transaction for creating the session
     const session = await mongoose.startSession();
@@ -49,7 +50,7 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for getting a specific session
 router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
-    const { Session } = req.context.models;
+    const { Session } = (req as CustomRequest).context.models;
     try {
         // Find the session with the specified ID and send it in the response
         let session = await Session.findOne({ "_id": req.headers.session })
@@ -62,8 +63,8 @@ router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for getting sessions created by friends in the last 24 hours
 router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = req.user;
-    const { User, Friends, Session } = req.context.models;
+    const { _id } = (req as CustomRequest).user;
+    const { User, Friends, Session } = (req as CustomRequest).context.models;
     try {
         // Find the user and their friends
         let user = await User.findOne({ "_id": _id });
