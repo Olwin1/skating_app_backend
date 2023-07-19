@@ -150,7 +150,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
         let channels = await Channels.findOne({ '_id': user.channels }).session(session);
         // Retrieve a list of channel objects based on the channel IDs in the user's channels list
         if (channels == null) {
-        await session.abortTransaction();
+            await session.abortTransaction();
             return res.json([])
         }
         let channelList = await Channel.find({ '_id': { $in: channels.channels } }).limit(20).skip(parseInt(req.headers.page) * 20).session(session);
@@ -173,7 +173,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the user ID from the request object
     const { _id } = (req as CustomRequest).user;
-    // Extract the 'Channel' model from the request context object
+    // Extract the 'Channel' model from the request contextf object
     const { Channel } = (req as CustomRequest).context.models;
     // Start a new Mongoose session
     const session = await mongoose.startSession();

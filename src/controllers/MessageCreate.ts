@@ -4,6 +4,7 @@ import Channel from "../models/MessageChannel";
 import Channels from "../models/MessageChannels";
 import Message from "../models/Message";
 import firebase from "firebase-admin"
+import { TokenMessage } from "firebase-admin/lib/messaging/messaging-api";
 const getMessaging = firebase.messaging
 const createMessage = async (_id: String, channel: String, content: String, img: String) => {
   console.log("Creating message")
@@ -44,15 +45,22 @@ try {
     }
 
 if(participant != null){
+  let currentToken = "";
   console.log(2)
     for(let i = 0; i< participant["fcm_token"].length; i++) {
+      currentToken = participant["fcm_token"][i]
 const message = {
-  data: {
-    score: '850',
-    time: '2:45'
+  notification: {
+    title: participant["username"],
+    body: content,
+  },
+  android: {
+    notification: {
+      //icon: participant["avatar"]?"http://10.0.2.2:4000/image/thumbnail/"+participant["avatar"]:null
+    }
   },
   token: participant!["fcm_token"][i]
-};
+} as TokenMessage;
 // Send a message to the device corresponding to the provided
 // registration token.
 console.log("SENDING MESSAGE!" + message.toString())
@@ -61,8 +69,15 @@ getMessaging().send(message)
     // Response is a message ID string.
     console.log('Successfully sent message:', response);
   })
-  .catch((error) => {
+  .catch(async (error: any) => {4
+    //TODO FIX THIS BIT - DELETE TOKEN IF FAILED TO SEND
     console.log('Error sending message:', error);
+    if(error["code"] == "messaging/registration-token-not-registered" && participant) {
+      await User.updateOne(
+        { "_id": participant!["_id"] },
+        { $pull: { "fcm_token": currentToken } }
+      )
+    }
   });
 }}
     await session.commitTransaction(); // commit the transaction to the database
