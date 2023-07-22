@@ -17,23 +17,34 @@ import ImageRouter from "./controllers/Images";
 import NotificationRouter from "./controllers/notifications";
 import middleware from "./controllers/middleware";
 import { upload } from "./db/bucket"; // Import upload utility from bucket.ts
-import { createServer } from 'http';
+import { createServer as createServerHTTP } from 'http';
+import { createServer as createServerHTTPS, ServerOptions } from 'https';
+
 import Websocket from './websocket';
 import MessagesSocket from "./messages.socket";
 import jwt, { Secret } from "jsonwebtoken";
 import mongoose from "mongoose";
 import initFirebase from "./initFirebase";
 import { Request, Response } from "express";
+import fs from "fs";
 
 
 // Destructure environment variables with default values
-const { PORT = 3000 } = process.env;
+const { PORT = 3000, HTTPS = false, SSL_KEY, SSL_CERT } = process.env;
+
+
+// This line is from the Node.js HTTPS documentation.
+const options: ServerOptions | null = HTTPS?{
+  key: fs.readFileSync(SSL_KEY!),
+  cert: fs.readFileSync(SSL_CERT!)
+}:null;
 
 // Create application object
 const app = express();
 
 // Create server object using the application object
-const server = createServer(app);
+
+const server = HTTPS?createServerHTTPS(options!, app):createServerHTTP(app);
 
 // Create a WebSocket instance using the server object
 const io = Websocket.getInstance(server);
