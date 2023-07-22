@@ -202,6 +202,66 @@ router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
+router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user ID from the request
+    const { _id } = (req as CustomRequest).user;
+
+    // Extract the required models from the request context
+    const { Channel, Friends, Following } = (req as CustomRequest).context.models;
+
+    // Start a new session with MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        // Find channels where the user is a participant and requested is not true, with pagination
+        let channels = await Channel.find({ participants: _id, requested: { $ne: true } }).skip(req.headers.page * 20);
+
+        // Create an array to store the user IDs from previous conversations
+        let previousUsers = [];
+        for (let x = 0; x < channels.length; x++) {
+            let participantId;
+            // Loop through participants in each channel and find the user's ID in the conversation
+            for (let i = 0; i < channels[x].participants.length; i++) {
+                if (channels[x].participants[i].toString() != _id) {
+                    participantId = channels[x].participants[i];
+                    break;
+                }
+            }
+            previousUsers.push(participantId);
+        }
+
+        // Create an array to store the final results
+        let results = [];
+
+        // Find friends of the user that are not in previous conversations, with pagination
+        results = await Friends.find({ $and: [{ owner: { $nin: previousUsers } }, { owner: _id }], requested: { $ne: true } }).skip(req.headers.page * 20).limit(20);
+
+        // If there are less than 20 results, find following users who are not in previous conversations, with pagination
+        if (results.length < 20) {
+            let followingMessageChannels = await Following.find({ $and: [{ owner: { $nin: previousUsers } }, { owner: _id }], requested: { $ne: true } }).skip(req.headers.page * 20).limit(20);
+            results = results.concat(followingMessageChannels);
+        }
+
+        // Extract the "user" property from each result and store it in the retval array
+        let retval = [];
+        for (let i = 0; i < results.length; i++) {
+            retval.push(results[i]["user"]);
+        }
+
+        // Commit the MongoDB transaction and send the response with the retrieved user IDs
+        await session.commitTransaction();
+        res.status(200).json(retval);
+    } catch (error) {
+        // If there is an error, abort the transaction and send an error response
+        await session.abortTransaction();
+        res.status(500).json({ success: false, error: error });
+    } finally {
+        // End the MongoDB session
+        session.endSession();
+    }
+});
+
+
 
 
 export default router;
