@@ -30,7 +30,8 @@ import fs from "fs";
 
 
 // Destructure environment variables with default values
-const { PORT = 3000, HTTPS = false, SSL_KEY, SSL_CERT } = process.env;
+const { PORT = 3000, sHTTPS = false, SSL_KEY, SSL_CERT } = process.env;
+const HTTPS = Boolean(sHTTPS);
 
 
 // This line is from the Node.js HTTPS documentation.
