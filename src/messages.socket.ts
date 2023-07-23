@@ -47,11 +47,13 @@ function sendEvent(socket: Socket, id: String) {
         console.log(e)
         console.log(e)
         try {
+            if(e) {
         // Parse the typing data from the incoming event
-        var channels = e.slice(1).slice(0, e.length - 1).split(",")
+        let channels = e.slice(1).slice(0, e.length - 1).split(",")
         // Join the socket to the channel associated with the typing indicator
         console.log(channels);
         socket.join(channels)
+            }
         }
         catch (e: any) {
             console.log(e)

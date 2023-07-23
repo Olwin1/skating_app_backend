@@ -24,7 +24,7 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
         // Find the user who initiated the channel creation
         let user = await User.findOne({ '_id': _id }).session(session);
         // Combine the user ID with the IDs of the participants to create a list of all participants
-        let participants = req.body.participants.concat([_id])
+        let participants = JSON.parse(req.body.participants).concat([_id])
         // Create a new channel with the specified participants and the current date, using the session
         let [channel] = await Channel.create([{ participants: participants, creation_date: Date(), last_message_count: 0, }], { session: session })
         // If the user already has a "Channels" document in the database, add the new channel ID to the list of channels
@@ -61,12 +61,14 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
                         { "_id": participantUsers[i]._id },
                         { $set: { "channels": channels._id } }
                     ).session(session);
+
                 }
             }
         }
         // If all transactions succeed, commit the session
         await session.commitTransaction();
-        res.status(200).json({ success: true });
+        
+        return res.status(200).json(channel);
     } catch (error) {
         // If any transaction fails, abort the session and return an error response
         await session.abortTransaction();
