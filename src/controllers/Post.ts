@@ -3,7 +3,7 @@ import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
-
+import * as fs from 'fs';
 const router = Router(); // create router to create route bundle
 
 //DESTRUCTURE ENV VARIABLES WITH DEFAULTS
@@ -12,15 +12,28 @@ interface IreturnPost {
     _id: string,
     description: string,
     author: string,
-    image: string, 
-    date: string, 
-    like_count: number, 
+    image: string,
+    date: string,
+    like_count: number,
     comment_count: number,
-    liked: boolean
+    liked: boolean,
+    influencer: boolean,
+    initial_influencer: boolean
 
 }
-
-
+let influencers: string[] = [];
+let timeSinceLastInfluencerUpdate = 0;
+const getInfluencers = () => {
+    try {
+        if (timeSinceLastInfluencerUpdate + 2.16e+7 < Date.now()) {
+            const jsonString = fs.readFileSync('./influencers.json', 'utf-8');
+            influencers = JSON.parse(jsonString);
+            timeSinceLastInfluencerUpdate = Date.now();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
 // Define a route to create a new post, with middleware to check if the user is logged in
 router.post("/post", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the authenticated user object
@@ -484,8 +497,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         let posts = await Post.find({ '_id': { $nin: seen }, 'like_users': { $nin: _id }, 'author': { $in: friendsArray } }).sort({ date: -1 }).limit(20);
         // If there are not enough posts from friends, find posts from users that the user is following
         let fetchedIds = []
-        for(let i = 0; i < posts.length; i++) {
-fetchedIds.push(posts[i]["_id"])
+        for (let i = 0; i < posts.length; i++) {
+            fetchedIds.push(posts[i]["_id"])
 
         }
         if (posts.length < 20) {
@@ -495,10 +508,10 @@ fetchedIds.push(posts[i]["_id"])
                 followingArray.push(following[i].user);
             }
             let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'like_users': { $nin: _id }, 'author': { $in: followingArray } }).sort({ date: -1 }).limit(20 - posts.length);
-            for(let i = 0; i < other_posts.length; i++) {
+            for (let i = 0; i < other_posts.length; i++) {
                 fetchedIds.push(other_posts[i]["_id"])
-                
-                        }
+
+            }
             posts = posts.concat(other_posts)
 
         }
@@ -516,10 +529,10 @@ fetchedIds.push(posts[i]["_id"])
                 }
                 if (randFriendsArray.length != 0) {
                     let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'like_users': { $nin: _id }, 'author': { $in: randFriendsArray } }).sort({ date: -1 }).limit(20 - posts.length);
-                    for(let i = 0; i < other_posts.length; i++) {
+                    for (let i = 0; i < other_posts.length; i++) {
                         fetchedIds.push(other_posts[i]["_id"])
-                        
-                                }
+
+                    }
                     posts = posts.concat(other_posts)
                 }
             }
@@ -531,11 +544,33 @@ fetchedIds.push(posts[i]["_id"])
                 followingArray.push(following[i].user);
             }
             let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: [...followingArray, ...friendsArray] } }).sort({ date: -1 }).limit(20 - posts.length);
+            for (let i = 0; i < other_posts.length; i++) {
+                fetchedIds.push(other_posts[i]["_id"])
+
+            }
+            posts = posts.concat(other_posts)
+        }
+        let influencerResults;
+        if (posts.length < 20) {
+            getInfluencers()
+            let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: influencers, $ne: _id } }).sort({ date: -1 }).limit(20 - posts.length);
+            influencerResults = other_posts.length;
             posts = posts.concat(other_posts)
         }
         // Remove like_users and comments from each post
         let returnPosts = [] as Array<IreturnPost>
+        let index = posts.length - influencerResults;
         for (var i = 0; i < posts.length; i++) {
+            let influencer = false;
+            let initial_influencer = false;
+            if(index == i && seen.length == 0) {
+                initial_influencer = true;
+            }
+            if (i >= index) {
+                influencer = true;
+
+            }
+
             let returnPost = {} as IreturnPost
             returnPost.comment_count = posts[i].comments.length
             returnPost.liked = false
@@ -546,12 +581,14 @@ fetchedIds.push(posts[i]["_id"])
             returnPost.image = posts[i].image
             returnPost.date = posts[i].date
             returnPost.like_count = posts[i].like_count
-            
+            returnPost.influencer = influencer
+            returnPost.initial_influencer = initial_influencer
+
             if (posts[i].like_users.some((likedUser: any) => likedUser == _id)) {
                 returnPost.liked = true
-  /* vendors contains the element we're looking for */
-}
-returnPosts.push(returnPost)
+                /* vendors contains the element we're looking for */
+            }
+            returnPosts.push(returnPost)
         }
         // Return the array of posts as a response
         res.json(returnPosts);
