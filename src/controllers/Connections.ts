@@ -6,10 +6,6 @@ import CustomRequest from "./CustomRequest";
 
 const router = Router(); // create router to create route bundle
 
-//DESTRUCTURE ENV VARIABLES WITH DEFAULTS
-const { SECRET = "secret" } = process.env;
-
-
 // Define a route handler to handle a POST request to "/follow"
 router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
@@ -24,11 +20,10 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Update the user's following list in the database
-        //let user = await User.findOne({ "_id": _id }).session(session); // pass the session to the find query
         let target = await User.findOne({ "_id": req.body.user }).session(session); // pass the session to the find query
 
         let userFollowing;
-        //if (user.following) {
+
         // if the user already has a following list, update it by adding the new user they want to follow
         userFollowing = await Following.create([{ owner: _id, follow_date: Date(), user: target._id, requested: target.private ? true : null }], { session }); // pass the session to the update query
         if (!target.private) {
@@ -39,26 +34,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                 }
             ).session(session);
         }
-        // } else {
-        //     // if the user doesn't have a following list yet, create a new one with the new user they want to follow
-        //     [userFollowing] = await Following.create([{users: [{ follow_date: Date(), user: target._id, requested: target.private ? true : null }]}], { session: session }); // pass the session to the create query
-        //     if (target.private) {
-        //         await User.updateOne({ "_id": _id }, { $set: { "following": userFollowing._id } }).session(session); // pass the session to the update query
-        //     }
-        //     else {
-        //         console.log("2334")
-        //         await User.updateOne(
-        //             { "_id": _id },
-        //             {
-        //                 $set: { "following": userFollowing._id },
-        //                 $inc: { "following_count": 1 }
-        //             }
-        //         ).session(session);
 
-        //     }
-        // }
-
-        //if (target.followers) {
         // if the user being followed already has a followers list, update it by adding the follower's user ID
         await Followers.create([{ owner: target._id, follow_date: Date(), user: _id, requested: target.private ? true : null }], { session }); // pass the session to the update query
         if (!target.private) {
@@ -70,23 +46,6 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
             ).session(session);
 
         }
-        // } else {
-        //     // if the user being followed doesn't have a followers list yet, create a new one with the follower's user ID
-        //     let [targetFollowers] = await Followers.create([{users: [{ follow_date: Date(), user: _id, requested: target.private ? true : null }]}], { session: session }); // pass the session to the create query
-        //     if (target.private) {
-        //         await User.updateOne({ "_id": target._id }, { "followers": targetFollowers._id }).session(session); // pass the session to the update query
-        //     }
-        //     else {
-        //         await User.updateOne(
-        //             { "_id": target._id },
-        //             {
-        //                 $set: { "followers": targetFollowers._id },
-        //                 $inc: { "follower_count": 1 }
-        //             }
-        //         ).session(session);
-
-        //     }
-        // }
 
         await session.commitTransaction(); // commit the transaction
         session.endSession(); // end the session
@@ -100,7 +59,6 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         res.status(400).json({ error });
     }
 });
-
 
 
 // Define a route handler to handle a POST request to "/friend"
@@ -117,28 +75,16 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Update the user's following list in the database
-        //let user = await User.findOne({ "_id": _id }).session(session); // pass the session to the find query
         let target = await User.findOne({ "_id": req.body.user }).session(session); // pass the session to the find query
         let friendDate = Date()
 
         let userFriends;
-        //if (user.friends) {
         // if the user already has a friends list, update it by adding the new user they want to friend
         userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true, requester: true }], { session }); // pass the session to the update query
-        // } else {
-        //     // if the user doesn't have a friends list yet, create a new one with the new user they want to friend
-        //     [userFriends] = await Friends.create([{users: [{ friend_date: Date(), user: target._id, requested: true }]}], { session: session }); // pass the session to the create query
-        //     await User.updateOne({ "_id": _id }, { "friends": userFriends._id }).session(session); // pass the session to the update query
-        // }
 
-        //if (target.friends) {
         // if the user being friended already has a friends list, update it by adding the friend's user ID
         await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true, requester: false }], { session }) // pass the session to the update query
-        // } else {
-        //     // if the user being friended doesn't have a friends list yet, create a new one with the friend's user ID
-        //     let [targetFriends] = await Friends.create([{users: [{ friend_date: friendDate, user: _id, requested: true }]}], { session: session }); // pass the session to the create query
-        //     await User.updateOne({ "_id": target._id }, { "friends": targetFriends._id }).session(session); // pass the session to the update query
-        // }
+
 
         await session.commitTransaction(); // commit the transaction
         session.endSession(); // end the session
@@ -161,9 +107,6 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        // Find the logged in user
-        //let user = await User.findOne({ "_id": _id }).session(session);
-
         // Find the user being unfollowed
         let target = await User.findOne({ "_id": req.body.user }).session(session);
 
@@ -180,7 +123,6 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
             await User.updateOne({ "_id": target._id }, { $inc: { "follower_count": -1 } }).session(session);
 
         }
-
         await session.commitTransaction();
         session.endSession();
         res.json(userFollowing);
@@ -199,8 +141,6 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
     session.startTransaction();
 
     try {
-        // Find the logged in user
-        //let user = await User.findOne({ "_id": _id }).session(session);
         // Find the user being unfollowed
         let target = await User.findOne({ "_id": req.body.user }).session(session);
         let userFollowers;
@@ -217,7 +157,6 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
             await User.updateOne({ "_id": target._id }, { $inc: { "following_count": -1 } }).session(session);
 
         }
-
 
         await session.commitTransaction();
         session.endSession();
@@ -241,7 +180,6 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Find the logged in user and the user to unfriend
-        //let user = await User.findOne({ "_id": _id }).session(session);
         let target = await User.findOne({ "_id": req.body.user }).session(session);
         //TODO CHANGE TO FINDANDUPDATE TO REDUCE REQUESTS
 
@@ -282,9 +220,8 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     const { Followers } = (req as CustomRequest).context.models;
 
     try {
-        //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Followers.find({ "owner": req.headers.user??_id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        let t = await Followers.find({ "owner": req.headers.user ?? _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -304,9 +241,8 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     const { Following } = (req as CustomRequest).context.models;
 
     try {
-        //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Following.find({ "owner": req.headers.user??_id }).sort({ "requested": -1 }).skip(parseInt(req.headers.page) * 20).limit(20)
+        let t = await Following.find({ "owner": req.headers.user ?? _id }).sort({ "requested": -1 }).skip(parseInt(req.headers.page) * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -326,9 +262,8 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
     const { Friends } = (req as CustomRequest).context.models;
 
     try {
-        //let user = await User.findOne({"_id": _id})
         // Find the user in the database
-        let t = await Friends.find({ owner: req.headers.user??_id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        let t = await Friends.find({ owner: req.headers.user ?? _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
 
         // Return the response from the database update
         res.json(t)
@@ -351,7 +286,6 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
         const { User, Followers, Following } = (req as CustomRequest).context.models;
 
         // Find the user to follow in the Following collection
-        let user = await User.findOne({ "_id": _id }).session(session);
         let targetUser = await User.findOne({ "_id": req.body.user }).session(session);
         let target = await Following.findOne({ "_id": targetUser.following }).session(session);
         let accepted;
@@ -368,7 +302,6 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
                     }
                 },
                 // Use the arrayFilters option to pass the value of target._id to the array filter
-                //{ arrayFilters: [{ "elem.user": target._id }] },
             ).session(session);
 
             await Following.updateOne(
@@ -382,7 +315,6 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
                     }
                 },
                 // Use the arrayFilters option to pass the value of _id to the array filter
-                //{ arrayFilters: [{ "elem.user": _id }] },
             ).session(session);
             await User.updateOne({ "_id": _id }, { $inc: { "follower_count": 1 } }).session(session);
             await User.updateOne({ "_id": targetUser._id }, { $inc: { "following_count": 1 } }).session(session);
@@ -429,9 +361,7 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
         const { User, Friends } = (req as CustomRequest).context.models;
 
         // Find the user to friend in the Friends collection
-        //let user = await User.findOne({ "_id": _id }).session(session);
         let targetUser = await User.findOne({ "_id": req.body.user }).session(session);
-        //let target = await Friends.findOne({ "_id": targetUser.friends }).session(session);
         let accepted;
         if (req.body.accepted) {
             // Find the current user in the Friends collection and update the requested flag
@@ -444,7 +374,6 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                     }
                 },
                 // Use the arrayFilters option to pass the value of target._id to the array filter
-                //{ arrayFilters: [{ "elem.user": target._id }] },
             ).session(session);
 
             await Friends.updateOne(
@@ -458,7 +387,6 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                     }
                 },
                 // Use the arrayFilters option to pass the value of _id to the array filter
-                //{ arrayFilters: [{ "elem.user": _id }] },
             ).session(session);
             await User.updateOne({ "_id": _id }, { $inc: { "friends_count": 1 } }).session(session);
             await User.updateOne({ "_id": targetUser._id }, { $inc: { "friends_count": 1 } }).session(session);
@@ -472,14 +400,12 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                 // Match the current user's document by their _id
                 { "owner": _id, "user": targetUser._id },
                 // Use the $pull operator to remove the value of the "users" property
-                //{ $pull: { "users": { user: target._id } } },
             ).session(session);
 
             await Friends.deleteOne(
                 // Match the target user's document by their _id
                 { "owner": targetUser._id, "user": _id },
                 // Use the $pull operator to remove the value of the "users" property
-                //{ $pull: { "users": { user: _id } } },
             ).session(session);
             accepted = false
 
