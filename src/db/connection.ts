@@ -11,8 +11,8 @@ const { DATABASE_URL } = process.env;
 
 // Connect to MongoDB using Mongoose
 mongoose.connect(DATABASE_URL!, { useNewUrlParser: true, useUnifiedTopology: true } as mongoose.ConnectOptions)
-    .then(() => log.log.green("DATABASE STATE", "Connection Open"))
-    .catch((error) => log.log.red("DATABASE STATE", error));
+    .then(() => log.log.green("DATABASE STATE", "Mongo Connection Open"))
+    .catch((error) => log.log.red("MONGO DATABASE STATE", error));
 
 // Listen for connection events
 mongoose.connection
