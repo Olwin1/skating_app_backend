@@ -1,49 +1,78 @@
-require("dotenv").config(); // load .env variables
-import { Router } from "express" // import router from express
-import bcrypt from "bcryptjs" // import bcrypt to hash passwords
-import jwt from "jsonwebtoken" // import jwt to sign tokens
-import middleware from "./middleware";
-import CustomRequest from "./CustomRequest";
+require("dotenv").config(); // Load .env variables
+import { Router } from "express" // Import router from express
+import bcrypt from "bcryptjs" // Import bcrypt to hash passwords
+import jwt from "jsonwebtoken" // Import jwt to sign tokens
+import middleware from "./middleware"; // Import custom middleware
+import CustomRequest from "./CustomRequest"; // Import a custom request type
+import prisma from "../db/postgres"; // Import Prisma ORM for database operations
+import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
 
-const router = Router(); // create router to create route bundle
+const router = Router(); // Create a router to create a route bundle
 
-//DESTRUCTURE ENV VARIABLES WITH DEFAULTS
+// Destructure environment variables with defaults
 const { SECRET = "secret" } = process.env;
-////////////////////////////////////////////
-//?USER AUTH ENDPOINTS                    //
-//These endpoints are used to authorise a //
-//user & allow access                     //
-////////////////////////////////////////////
+
+// Create a unique ID generator instance
+const generator = new Worker(0, 1, {
+  workerIdBits: 5,
+  datacenterIdBits: 5,
+  sequenceBits: 12,
+});
+
+// User Authentication Endpoints
+// These endpoints are used to authorize and authenticate users
+
 // Signup route to create a new user
 router.post("/signup", async (req: any, res) => {
-  const { User } = (req as CustomRequest).context.models;
   try {
-    // hash the password
-    req.body.password = await bcrypt.hash(req.body.password, 10);
-    // create a new user
-    const user = await User.create(req.body);
-    // send new user as response
-    res.json(user);
+    // Hash the user's password
+    let passwordHash = await bcrypt.hash(req.body.password, 10);
+    // Generate a unique user ID
+    let userId = generator.nextId();
+
+    // Create a new user using Prisma ORM
+    const data = await prisma.users.create({
+      data: {
+        user_id: userId,
+        username: req.body.username,
+        password_hash: passwordHash,
+        email: req.body.email,
+        email_verifications: {
+          create: {
+            verification_id: generator.nextId(),
+            verification_code: "1111",
+            is_verified: false,
+            expiry_timestamp: new Date(Date.now() + 8.64e+7), // Expires in a day
+          }
+        }
+      },
+    });
+
+    // Log a success message
+    console.log('User and email verification created successfully.');
+
+    // Send the newly created user as a response
+    res.json(data);
   } catch (error) {
+    // If an error occurs, send a 400 Bad Request response with the error
     res.status(400).json({ error });
   }
 });
 
-// Login route to verify a user and get a token
+// Login route to verify a user and issue a token
 router.post("/login", async (req: any, res) => {
-  const { User } = (req as CustomRequest).context.models;
   try {
-    // check if the user exists
-    const user = await User.findOne({ username: req.body.username });
+    // Check if the user exists
+    const user = await prisma.users.findFirst({ where: { username: req.body.username } })
     if (user) {
-      //check if password matches
-      const result = await bcrypt.compare(req.body.password, user.password);
+      // Check if the password matches
+      const result = await bcrypt.compare(req.body.password, user.password_hash!);
       if (result) {
-        // sign token and send it in response
-        const token = await jwt.sign({ username: user.username, _id: user._id }, SECRET);
+        // Sign a token and send it in the response
+        const token = await jwt.sign({ username: user.username, _id: user.user_id }, SECRET);
         res.json({ token });
       } else {
-        res.status(400).json({ error: "password doesn't match" });
+        res.status(400).json({ error: "Password doesn't match" });
       }
     } else {
       res.status(400).json({ error: "User doesn't exist" });
@@ -52,25 +81,19 @@ router.post("/login", async (req: any, res) => {
     res.status(400).json({ error });
   }
 });
-///////////////////////////////////////////////////
-//?END OF USER AUTH ENDPOINTS                    //
-//These endpoints are used to authorise a        //
-//user & allow access                            //
-///////////////////////////////////////////////////
 
+// End of User Authentication Endpoints
 
-// Define a route handler to handle a POST request to "/description"
+// Define route handlers for various user-related operations
+
+// Route handler to update user's description
 router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
-
   // Get the user ID from the request object
   const { _id } = (req as CustomRequest).user;
-
-  // Get the User model from the context object
-  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's description in the database
-    let t = await User.updateOne({ "_id": _id }, { $set: { "description": req.body.description } })
+    let t = await prisma.users.update({ where: { user_id: _id }, data: { description: req.body.description } })
 
     // Return the response from the database update
     res.json(t)
@@ -80,19 +103,14 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
-
-// Define a route handler to handle a POST request to "/avatar"
+// Route handler to update user's avatar
 router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
-
   // Get the user ID from the request object
   const { _id } = (req as CustomRequest).user;
-
-  // Get the User model from the context object
-  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Update the user's avatar in the database
-    let t = await User.updateOne({ "_id": _id }, { $set: { "avatar": req.body.avatar } })
+    let t = await prisma.users.update({ where: { user_id: _id }, data: { avatar_id: req.body.avatar } })
 
     // Return the response from the database update
     res.json(t)
@@ -102,19 +120,14 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
-
-// Define a route handler to handle a POST request to "/email"
+// Route handler to update user's email
 router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
-
   // Get the user ID from the request object
   const { _id } = (req as CustomRequest).user;
 
-  // Get the User model from the context object
-  const { User } = (req as CustomRequest).context.models;
-
   try {
-    // Update the user's email in the database
-    let t = await User.updateOne({ "_id": _id }, { $set: { "email": req.body.email } })
+    // Update the user's email in the database (TODO: Redo Email Verification)
+    let t = await prisma.users.update({ where: { user_id: _id }, data: { email: req.body.description } })
 
     // Return the response from the database update
     res.json(t)
@@ -124,42 +137,17 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
-// Define a route handler to handle a POST request to "/language"
-router.post("/language", middleware.isLoggedIn, async (req: any, res) => {
-
-  // Get the user ID from the request object
-  const { _id } = (req as CustomRequest).user;
-
-  // Get the User model from the context object
-  const { User } = (req as CustomRequest).context.models;
-
-  try {
-    // Update the user's language in the database
-    let t = await User.updateOne({ "_id": _id }, { $set: { "language": req.body.language } })
-
-    // Return the response from the database update
-    res.json(t)
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
-
-// Define a route handler to handle a Get request to "/"
+// Route handler to get user information
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
-
   // Get the user ID from the request object
   const { _id } = (req as CustomRequest).user;
-  // Get the User model from the context object
-  
-  const { User } = (req as CustomRequest).context.models;
 
   try {
     // Find the user in the database
-    let t = await User.findOne({ "_id": req.headers.id!="0"?req.headers.id:_id })
+    const user = await prisma.users.findFirst({ where: { user_id: req.headers.id != "0" ? req.headers.id : _id } })
 
-    // Return the response from the database update
-    res.json(t)
+    // Return the response from the database query
+    res.json(user)
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
@@ -169,15 +157,22 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 // GET route for getting the followers of a user
 router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
   const { _id } = (req as CustomRequest).user;
-  const { Following } = (req as CustomRequest).context.models;
   try {
     // Finding the Followers document with the specified user ID and owner ID
-    let t = await Following.findOne({ "owner": _id, "user": req.headers.user})
-    // Sending the Followers document as a response
-    if (t == null) {
-    return res.json([false, false]);
+    const following = await prisma.following.findFirst({ where: { user_id: _id, following_user_id: req.headers.user } });
+    if (following) {
+      return res.json({ "following": true });
     }
-    return res.json([true, t["requested"] == true ? true : false, false]);
+    else {
+      // Check if there is a follow request pending
+      const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: _id, requestee_id: req.headers.user } });
+      if (followingRequest) {
+        return res.json({ "following": false, "requested": true });
+      }
+      else {
+        return res.json({ "following": false });
+      }
+    }
   } catch (error) {
     // Sending an error response if there's an error in finding the document
     res.status(400).json({ error });
@@ -185,27 +180,32 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
-// GET route for getting the followers of a user
+// GET route for getting the friends of a user
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
   const { _id } = (req as CustomRequest).user;
-  const { Friends } = (req as CustomRequest).context.models;
   try {
-    // Finding the Followers document with the specified user ID and owner ID
-    let t = await Friends.findOne({ "owner": _id, "user": req.headers.user})
-    // Sending the Followers document as a response
-    if (t == null) {
-    // let friend = await Friends.findOne({ "owner": req.headers.user, "user": _id})
-    // if(friend == null && t == null) {
-    //   return res.json([false])
-    // }
-
-    // if(friend["requested"] == true) { 
-    //   return res.json([false, false, true]);
-
-    // }
-    return res.json([false]);
+    // Finding the Friends document with the specified user IDs
+    const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: _id, user2_id: req.headers.user }, { user1_id: req.headers.user, user2_id: _id }] } });
+    if (friends) {
+      return res.json({ "friends": true });
     }
-    return res.json([true, t["requested"], t["requester"]]);
+    else {
+      // Check if there is an outgoing friend request
+      const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: _id, requestee_id: req.headers.user } });
+      if (friendsRequestOutgoing) {
+        return res.json({ "friends": false, "requestedOutgoing": true });
+      }
+      else {
+        // Check if there is an incoming friend request
+        const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: req.headers.user, requestee_id: _id } });
+        if (friendsRequestIncoming) {
+          return res.json({ "friends": false, "requestedIncoming": true });
+        }
+        else {
+          return res.json({ "friends": false });
+        }
+      }
+    }
   } catch (error) {
     // Sending an error response if there's an error in finding the document
     res.status(400).json({ error });
@@ -213,26 +213,33 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
-// GET route for getting the followers of a user
+// GET route for searching for users
 router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
   const { _id } = (req as CustomRequest).user;
-  const { User } = (req as CustomRequest).context.models;
   try {
-    // Finding the Followers document with the specified user ID and owner ID
-    let results = await User.find( {username: { $regex: req.headers.query, '$options': 'i' }} )
-    .limit(10)
+    // Finding users whose username contains the specified query
+    const results = await prisma.users.findMany({
+      where: {
+        username: {
+          contains: req.headers.query,
+        },
+      },
+      take: 10, // Limit the number of results to 10
+    });
+
     const returns = []
-for(let i = 0; i < results.length; i++) {
-  const ret = {"_id": results[i]["_id"], "username": results[i]["username"], "avatar": results[i]["avatar"]}//, "avatar": results[i]["_id"]}
-  returns.push(ret);
-}
-    // Sending the Followers document as a response
+    for (let i = 0; i < results.length; i++) {
+      const ret = { "_id": results[i].user_id, "username": results[i].username, "avatar": results[i].avatar_id };
+      returns.push(ret);
+    }
+    // Sending the search results as a response
     return res.json(returns);
   } catch (error) {
     // Sending an error response if there's an error in finding the document
     res.status(400).json({ error });
   }
 });
+
 
 
 export default router;
