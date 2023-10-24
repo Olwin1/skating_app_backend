@@ -58,6 +58,7 @@ model comments {
   comment_id    BigInt          @id
   post_id       BigInt?
   sender_id     BigInt?
+  content       String?
   date_sent     String?
   timestamp     DateTime?       @db.Timestamp(6)
   like_count    Int?
@@ -330,7 +331,6 @@ model users {
   analytics_enabled                                                      Boolean?
   background                                                             Int?                        @db.SmallInt
   country                                                                String?                     @db.VarChar
-  fcm_token                                                              String?
   password_hash                                                          String?                     @db.VarChar
   username                                                               String                      @unique @db.VarChar
   display_name                                                           String?                     @db.VarChar
@@ -342,6 +342,7 @@ model users {
   comment_likes                                                          comment_likes[]
   comments                                                               comments[]
   email_verifications                                                    email_verifications[]
+  fcm_tokens                                                             fcm_tokens[]
   follow_requests_follow_requests_requestee_idTousers                    follow_requests[]           @relation("follow_requests_requestee_idTousers")
   follow_requests_follow_requests_requester_idTousers                    follow_requests[]           @relation("follow_requests_requester_idTousers")
   followers_followers_follower_user_idTousers                            followers[]                 @relation("followers_follower_user_idTousers")
@@ -373,6 +374,14 @@ model users {
 
 model ADDSAVEDPOSTS {
   verification_id BigInt @id
+}
+
+model fcm_tokens {
+  token_id   BigInt    @id
+  user_id    BigInt?
+  token      String?
+  created_at DateTime? @db.Timestamp(6)
+  users      users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum account_activity {
