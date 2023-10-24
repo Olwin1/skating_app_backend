@@ -14,7 +14,7 @@ const { SECRET = "secret" } = process.env;
 // Route to create a new channel with the specified participants
 router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the authenticated user object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Channel, Channels } = (req as CustomRequest).context.models;
     // Start a new MongoDB session
     const session = await mongoose.startSession();
@@ -67,7 +67,7 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
         }
         // If all transactions succeed, commit the session
         await session.commitTransaction();
-        
+
         return res.status(200).json(channel);
     } catch (error) {
         // If any transaction fails, abort the session and return an error response
@@ -83,7 +83,7 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route to create a new message
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     let retval = await createMessage(_id, req.body.channel, req.body.content, req.body.img);
     res.json(retval);
 
@@ -112,7 +112,7 @@ router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for retrieving messages from a specific channel
 router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { Channel, Message } = (req as CustomRequest).context.models;
 
     // Start a session and transaction for the database operations
@@ -139,7 +139,7 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for retrieving a list of channels that the user is a member of
 router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Channels, Channel } = (req as CustomRequest).context.models;
 
     // Start a session and transaction for the database operations
@@ -174,7 +174,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
 // This route handles GET requests to '/channel'
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     // Extract the 'Channel' model from the request contextf object
     const { Channel } = (req as CustomRequest).context.models;
     // Start a new Mongoose session
@@ -206,7 +206,7 @@ router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
 
 router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the user ID from the request
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Extract the required models from the request context
     const { Channel, Friends, Following } = (req as CustomRequest).context.models;

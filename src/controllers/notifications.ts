@@ -7,7 +7,7 @@ const router = Router();
 
 // Endpoint for handling POST requests to '/token'
 router.post('/token', middleware.isLoggedIn, async (req: Request, res: Response) => {
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
 
   const { User } = (req as CustomRequest).context.models;
 

@@ -24,39 +24,39 @@ const generator = new Worker(0, 1, {
 
 // Signup route to create a new user
 router.post("/signup", async (req: any, res) => {
-  try {
-    // Hash the user's password
-    let passwordHash = await bcrypt.hash(req.body.password, 10);
-    // Generate a unique user ID
-    let userId = generator.nextId();
+  //  try {
+  // Hash the user's password
+  let passwordHash = await bcrypt.hash(req.body.password, 10);
+  // Generate a unique user ID
+  let userId = generator.nextId();
 
-    // Create a new user using Prisma ORM
-    const data = await prisma.users.create({
-      data: {
-        user_id: userId,
-        username: req.body.username,
-        password_hash: passwordHash,
-        email: req.body.email,
-        email_verifications: {
-          create: {
-            verification_id: generator.nextId(),
-            verification_code: "1111",
-            is_verified: false,
-            expiry_timestamp: new Date(Date.now() + 8.64e+7), // Expires in a day
-          }
+  // Create a new user using Prisma ORM
+  const data = await prisma.users.create({
+    data: {
+      user_id: userId,
+      username: req.body.username,
+      password_hash: passwordHash,
+      email: req.body.email,
+      email_verifications: {
+        create: {
+          verification_id: generator.nextId(),
+          verification_code: "1111",
+          is_verified: false,
+          expiry_timestamp: new Date(Date.now() + 8.64e+7), // Expires in a day
         }
-      },
-    });
+      }
+    },
+  });
 
-    // Log a success message
-    console.log('User and email verification created successfully.');
+  // Log a success message
+  console.log('User and email verification created successfully.');
 
-    // Send the newly created user as a response
-    res.json(data);
-  } catch (error) {
-    // If an error occurs, send a 400 Bad Request response with the error
-    res.status(400).json({ error });
-  }
+  // Send the newly created user as a response
+  res.json(data);
+  // } catch (error) {
+  //   // If an error occurs, send a 400 Bad Request response with the error
+  //   res.status(400).json({ error });
+  // }
 });
 
 // Login route to verify a user and issue a token
@@ -89,7 +89,7 @@ router.post("/login", async (req: any, res) => {
 // Route handler to update user's description
 router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
   // Get the user ID from the request object
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
 
   try {
     // Update the user's description in the database
@@ -106,7 +106,7 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
 // Route handler to update user's avatar
 router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
   // Get the user ID from the request object
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
 
   try {
     // Update the user's avatar in the database
@@ -123,7 +123,7 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
 // Route handler to update user's email
 router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
   // Get the user ID from the request object
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
 
   try {
     // Update the user's email in the database (TODO: Redo Email Verification)
@@ -140,11 +140,11 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
 // Route handler to get user information
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
   // Get the user ID from the request object
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
 
   try {
     // Find the user in the database
-    const user = await prisma.users.findFirst({ where: { user_id: req.headers.id != "0" ? req.headers.id : _id } })
+    const user = await prisma.users.findFirst({ where: { user_id: req.headers.id != "0" ? BigInt(req.headers.id) : _id } })
 
     // Return the response from the database query
     res.json(user)
@@ -156,16 +156,16 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for getting the followers of a user
 router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
   try {
     // Finding the Followers document with the specified user ID and owner ID
-    const following = await prisma.following.findFirst({ where: { user_id: _id, following_user_id: req.headers.user } });
+    const following = await prisma.following.findFirst({ where: { user_id: _id, following_user_id: BigInt(req.headers.user) } });
     if (following) {
       return res.json({ "following": true });
     }
     else {
       // Check if there is a follow request pending
-      const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: _id, requestee_id: req.headers.user } });
+      const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: _id, requestee_id: BigInt(req.headers.user) } });
       if (followingRequest) {
         return res.json({ "following": false, "requested": true });
       }
@@ -182,22 +182,22 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for getting the friends of a user
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
   try {
     // Finding the Friends document with the specified user IDs
-    const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: _id, user2_id: req.headers.user }, { user1_id: req.headers.user, user2_id: _id }] } });
+    const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: _id, user2_id: BigInt(req.headers.user) }, { user1_id: BigInt(req.headers.user), user2_id: _id }] } });
     if (friends) {
       return res.json({ "friends": true });
     }
     else {
       // Check if there is an outgoing friend request
-      const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: _id, requestee_id: req.headers.user } });
+      const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: _id, requestee_id: BigInt(req.headers.user) } });
       if (friendsRequestOutgoing) {
         return res.json({ "friends": false, "requestedOutgoing": true });
       }
       else {
         // Check if there is an incoming friend request
-        const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: req.headers.user, requestee_id: _id } });
+        const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: BigInt(req.headers.user), requestee_id: _id } });
         if (friendsRequestIncoming) {
           return res.json({ "friends": false, "requestedIncoming": true });
         }
@@ -215,7 +215,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET route for searching for users
 router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
-  const { _id } = (req as CustomRequest).user;
+  const _id = BigInt((req as CustomRequest).user._id);
   try {
     // Finding users whose username contains the specified query
     const results = await prisma.users.findMany({

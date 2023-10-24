@@ -10,9 +10,9 @@ const router = Router();
 
 // Define a route for creating a new session
 router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { Session } = (req as CustomRequest).context.models;
-    
+
     // Start a new transaction for creating the session
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -63,7 +63,7 @@ router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for getting sessions created by friends in the last 24 hours
 router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Friends, Session } = (req as CustomRequest).context.models;
     try {
         // Find the user and their friends

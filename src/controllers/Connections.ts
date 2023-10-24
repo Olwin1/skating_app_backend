@@ -10,7 +10,7 @@ const router = Router(); // create router to create route bundle
 router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Get the User model and the Following and Followers sub-models from the context object
     const { User, Following, Followers } = (req as CustomRequest).context.models;
@@ -65,7 +65,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Get the User model and the Friends sub-models from the context object
     const { User, Friends } = (req as CustomRequest).context.models;
@@ -102,7 +102,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Following, Followers } = (req as CustomRequest).context.models;
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -135,7 +135,7 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 
 // Route for unfollowing a user
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Following, Followers } = (req as CustomRequest).context.models;
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -171,7 +171,7 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 
 
 router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
     const { User, Friends } = (req as CustomRequest).context.models;
 
     // Start a new session and transaction
@@ -214,7 +214,7 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Get the Followers model from the context object
     const { Followers } = (req as CustomRequest).context.models;
@@ -235,7 +235,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Get the Following model from the context object
     const { Following } = (req as CustomRequest).context.models;
@@ -256,7 +256,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
     // Get the user ID from the request object
-    const { _id } = (req as CustomRequest).user;
+    const _id = BigInt((req as CustomRequest).user._id);
 
     // Get the Friends model from the context object
     const { Friends } = (req as CustomRequest).context.models;
@@ -280,7 +280,7 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Get the user ID from the request object
-        const { _id } = (req as CustomRequest).user;
+        const _id = BigInt((req as CustomRequest).user._id);
 
         // Get the Followers and Following models from the context object
         const { User, Followers, Following } = (req as CustomRequest).context.models;
@@ -355,7 +355,7 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
     try {
         // Get the user ID from the request object
-        const { _id } = (req as CustomRequest).user;
+        const _id = BigInt((req as CustomRequest).user._id);
 
         // Get the Friend model from the context object
         const { User, Friends } = (req as CustomRequest).context.models;
