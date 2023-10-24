@@ -1,10 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("POSTGRES_DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model account_activity_logs {
@@ -328,12 +328,11 @@ model users {
   public_profile                                                         Boolean?
   hide_location                                                          Boolean?
   analytics_enabled                                                      Boolean?
-  background                                                             Int                         @default(autoincrement()) @db.SmallInt
+  background                                                             Int?                        @db.SmallInt
   country                                                                String?                     @db.VarChar
   fcm_token                                                              String?
-  password_salt                                                          String?
   password_hash                                                          String?                     @db.VarChar
-  username                                                               String?                     @db.VarChar
+  username                                                               String                      @unique @db.VarChar
   display_name                                                           String?                     @db.VarChar
   user_role                                                              user_role?
   account_activity_logs                                                  account_activity_logs[]
@@ -366,8 +365,14 @@ model users {
   user_activity_logs                                                     user_activity_logs[]
   user_feedback_and_support_user_feedback_and_support_assigned_toTousers user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
   user_feedback_and_support_user_feedback_and_support_user_idTousers     user_feedback_and_support[] @relation("user_feedback_and_support_user_idTousers")
-  backgrounds                                                            backgrounds                 @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
+  backgrounds                                                            backgrounds?                @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
   countries                                                              countries?                  @relation(fields: [country], references: [country_code], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([username])
+}
+
+model ADDSAVEDPOSTS {
+  verification_id BigInt @id
 }
 
 enum account_activity {
