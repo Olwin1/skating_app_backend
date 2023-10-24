@@ -9,19 +9,19 @@ datasource db {
 
 model account_activity_logs {
   log_id        BigInt            @id
-  user_id       BigInt?
+  user_id       BigInt
   activity_type account_activity?
   description   String?
-  users         users?            @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users         users             @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model analytics_data {
   analytics_id BigInt    @id
-  user_id      BigInt?
+  user_id      BigInt
   event_name   String?   @db.VarChar
   event_data   String?
   timestamp    DateTime? @db.Timestamp(6)
-  users        users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users        users     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model backgrounds {
@@ -34,37 +34,36 @@ model backgrounds {
 }
 
 model blocked_users {
-  blocked_id                                  BigInt  @id
-  blocking_user_id                            BigInt?
-  blocked_user_id                             BigInt?
-  users_blocked_users_blocked_user_idTousers  users?  @relation("blocked_users_blocked_user_idTousers", fields: [blocked_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_blocked_users_blocking_user_idTousers users?  @relation("blocked_users_blocking_user_idTousers", fields: [blocking_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  blocked_id                                  BigInt @id
+  blocking_user_id                            BigInt
+  blocked_user_id                             BigInt
+  users_blocked_users_blocked_user_idTousers  users  @relation("blocked_users_blocked_user_idTousers", fields: [blocked_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_blocked_users_blocking_user_idTousers users  @relation("blocked_users_blocking_user_idTousers", fields: [blocking_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([blocked_user_id])
   @@index([blocking_user_id])
 }
 
 model comment_likes {
-  like_id    BigInt    @id
-  user_id    BigInt?
-  comment_id BigInt?
-  comments   comments? @relation(fields: [comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
-  users      users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  like_id    BigInt   @id
+  user_id    BigInt
+  comment_id BigInt
+  comments   comments @relation(fields: [comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
+  users      users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([comment_id])
 }
 
 model comments {
   comment_id    BigInt          @id
-  post_id       BigInt?
-  sender_id     BigInt?
-  content       String?
-  date_sent     String?
+  post_id       BigInt
+  sender_id     BigInt
+  content       String
   timestamp     DateTime?       @db.Timestamp(6)
   like_count    Int?
   comment_likes comment_likes[]
-  posts         posts?          @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
-  users         users?          @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  posts         posts           @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  users         users           @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([post_id])
   @@index([sender_id])
@@ -72,55 +71,55 @@ model comments {
 
 model content_categories {
   category_id             BigInt                    @id
-  category_name           String?                   @db.VarChar
+  category_name           String                    @unique @db.VarChar
   description             String?
   post_content_categories post_content_categories[]
 }
 
 model countries {
   country_code String  @id @db.VarChar
-  country_name String? @db.VarChar
+  country_name String  @unique @db.VarChar
   users        users[]
 }
 
 model email_verifications {
   verification_id   BigInt    @id
-  user_id           BigInt?
-  verification_code String?   @db.VarChar
+  user_id           BigInt
+  verification_code String    @db.VarChar
   is_verified       Boolean?
   expiry_timestamp  DateTime? @db.Timestamp(6)
-  users             users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users             users     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model follow_requests {
   request_id                                BigInt          @id
-  requester_id                              BigInt?
-  requestee_id                              BigInt?
+  requester_id                              BigInt
+  requestee_id                              BigInt
   status                                    request_status?
-  users_follow_requests_requestee_idTousers users?          @relation("follow_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_follow_requests_requester_idTousers users?          @relation("follow_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_follow_requests_requestee_idTousers users           @relation("follow_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_follow_requests_requester_idTousers users           @relation("follow_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([requestee_id])
   @@index([requester_id])
 }
 
 model followers {
-  follower_id                             BigInt  @id
-  user_id                                 BigInt?
-  follower_user_id                        BigInt?
-  users_followers_follower_user_idTousers users?  @relation("followers_follower_user_idTousers", fields: [follower_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_followers_user_idTousers          users?  @relation("followers_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  follower_id                             BigInt @id
+  user_id                                 BigInt
+  follower_user_id                        BigInt
+  users_followers_follower_user_idTousers users  @relation("followers_follower_user_idTousers", fields: [follower_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_followers_user_idTousers          users  @relation("followers_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([follower_user_id])
   @@index([user_id])
 }
 
 model following {
-  following_id                             BigInt  @id
-  user_id                                  BigInt?
-  following_user_id                        BigInt?
-  users_following_following_user_idTousers users?  @relation("following_following_user_idTousers", fields: [following_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_following_user_idTousers           users?  @relation("following_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  following_id                             BigInt @id
+  user_id                                  BigInt
+  following_user_id                        BigInt
+  users_following_following_user_idTousers users  @relation("following_following_user_idTousers", fields: [following_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_following_user_idTousers           users  @relation("following_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([following_user_id])
   @@index([user_id])
@@ -128,22 +127,22 @@ model following {
 
 model friend_requests {
   request_id                                BigInt          @id
-  requester_id                              BigInt?
-  requestee_id                              BigInt?
+  requester_id                              BigInt
+  requestee_id                              BigInt
   status                                    request_status?
-  users_friend_requests_requestee_idTousers users?          @relation("friend_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_friend_requests_requester_idTousers users?          @relation("friend_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_friend_requests_requestee_idTousers users           @relation("friend_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_friend_requests_requester_idTousers users           @relation("friend_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([requestee_id])
   @@index([requester_id])
 }
 
 model friends {
-  friendship_id                 BigInt  @id
-  user1_id                      BigInt?
-  user2_id                      BigInt?
-  users_friends_user1_idTousers users?  @relation("friends_user1_idTousers", fields: [user1_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_friends_user2_idTousers users?  @relation("friends_user2_idTousers", fields: [user2_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  friendship_id                 BigInt @id
+  user1_id                      BigInt
+  user2_id                      BigInt
+  users_friends_user1_idTousers users  @relation("friends_user1_idTousers", fields: [user1_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_friends_user2_idTousers users  @relation("friends_user2_idTousers", fields: [user2_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user1_id])
   @@index([user2_id])
@@ -151,59 +150,59 @@ model friends {
 
 model location_data {
   location_id BigInt                   @id
-  user_id     BigInt?
+  user_id     BigInt
   location    Unsupported("geometry")?
-  users       users?                   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users       users                    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model message_channels {
   channel_id         BigInt         @id
-  last_message_count Int?
+  last_message_count Int
   creation_date      DateTime?      @db.Timestamp(6)
   messages           messages[]
   participants       participants[]
 }
 
 model message_readers {
-  message_reader_id BigInt    @id
-  message_id        BigInt?
-  user_id           BigInt?
-  messages          messages? @relation(fields: [message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
-  users             users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  message_reader_id BigInt   @id
+  message_id        BigInt
+  user_id           BigInt
+  messages          messages @relation(fields: [message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
+  users             users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([message_id])
 }
 
 model messages {
   message_id       BigInt            @id
-  sender_id        BigInt?
+  sender_id        BigInt
   date_sent        DateTime?         @db.Timestamp(6)
   content          String?
-  message_number   Int?
-  channel_id       BigInt?
+  message_number   Int
+  channel_id       BigInt
   message_readers  message_readers[]
-  message_channels message_channels? @relation(fields: [channel_id], references: [channel_id], onDelete: NoAction, onUpdate: NoAction)
-  users            users?            @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  message_channels message_channels  @relation(fields: [channel_id], references: [channel_id], onDelete: NoAction, onUpdate: NoAction)
+  users            users             @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([channel_id])
   @@index([message_number])
 }
 
 model participants {
-  participant_id   BigInt            @id
-  user_id          BigInt?
-  channel_id       BigInt?
-  message_channels message_channels? @relation(fields: [channel_id], references: [channel_id], onDelete: NoAction, onUpdate: NoAction)
-  users            users?            @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  participant_id   BigInt           @id
+  user_id          BigInt
+  channel_id       BigInt
+  message_channels message_channels @relation(fields: [channel_id], references: [channel_id], onDelete: NoAction, onUpdate: NoAction)
+  users            users            @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model payment_history {
   payment_id          BigInt          @id
-  user_id             BigInt?
-  payment_amount      Decimal?        @db.Decimal(10, 2)
+  user_id             BigInt
+  payment_amount      Decimal         @db.Decimal(10, 2)
   payment_date        DateTime?       @db.Timestamp(6)
   payment_method      String?         @db.VarChar
-  transaction_id      String?         @db.VarChar
+  transaction_id      String          @db.VarChar
   status              payment_status?
   description         String?
   platform            platform?
@@ -211,62 +210,63 @@ model payment_history {
   product_id          String?         @db.VarChar
   purchase_token      String?         @db.VarChar
   subscription_expiry DateTime?       @db.Timestamp(6)
-  users               users?          @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users               users           @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user_id])
 }
 
 model post_content_categories {
-  post_content_category_id BigInt              @id
-  post_id                  BigInt?
-  category_id              BigInt?
-  content_categories       content_categories? @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
-  posts                    posts?              @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  post_content_category_id BigInt             @id
+  post_id                  BigInt
+  category_id              BigInt
+  content_categories       content_categories @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
+  posts                    posts              @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model post_likes {
-  like_id BigInt  @id
-  user_id BigInt?
-  post_id BigInt?
-  posts   posts?  @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
-  users   users?  @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  like_id BigInt @id
+  user_id BigInt
+  post_id BigInt
+  posts   posts  @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  users   users  @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([post_id])
 }
 
 model posts {
   post_id                 BigInt                    @id
-  author_id               BigInt?
+  author_id               BigInt
   description             String?
   image                   String?                   @db.Char(24)
-  like_count              Int?
+  like_count              Int
   friends_only            Boolean?
   location                Unsupported("geometry")?
   comments                comments[]
   post_content_categories post_content_categories[]
   post_likes              post_likes[]
-  users                   users?                    @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users                   users                     @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  saved_posts             saved_posts[]
 
   @@index([author_id])
 }
 
 model reports {
   report_id                             BigInt            @id
-  reporter_id                           BigInt?
-  reported_user_id                      BigInt?
+  reporter_id                           BigInt
+  reported_user_id                      BigInt
   reported_content                      reported_content?
   report_type                           String?           @db.VarChar
   description                           String?
   status                                report_status?
-  users_reports_reported_user_idTousers users?            @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_reports_reporter_idTousers      users?            @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_reports_reported_user_idTousers users             @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_reports_reporter_idTousers      users             @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model session_images {
-  image_id   BigInt    @id
-  session_id BigInt?
-  image_hash String?   @db.VarChar
-  sessions   sessions? @relation(fields: [session_id], references: [session_id], onDelete: NoAction, onUpdate: NoAction)
+  image_id   BigInt   @id
+  session_id BigInt
+  image_hash String   @db.VarChar
+  sessions   sessions @relation(fields: [session_id], references: [session_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model sessions {
@@ -279,9 +279,9 @@ model sessions {
   end_timestamp   DateTime?                @db.Timestamp(6)
   distance        Float?
   route           Unsupported("geometry")?
-  author_id       BigInt?
+  author_id       BigInt
   session_images  session_images[]
-  users           users?                   @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users           users                    @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([author_id])
 }
@@ -297,23 +297,23 @@ model spatial_ref_sys {
 
 model user_activity_logs {
   activity_id BigInt         @id
-  user_id     BigInt?
+  user_id     BigInt
   activity    user_activity?
   timestamp   DateTime?      @db.Timestamp(6)
   description String?
-  users       users?         @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users       users          @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model user_feedback_and_support {
   feedback_id                                        BigInt           @id
-  user_id                                            BigInt?
+  user_id                                            BigInt
   type                                               feedback_type?
   subject                                            String?          @db.VarChar
   content                                            String?
   status                                             feedback_status?
   assigned_to                                        BigInt?
   users_user_feedback_and_support_assigned_toTousers users?           @relation("user_feedback_and_support_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_user_feedback_and_support_user_idTousers     users?           @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_feedback_and_support_user_idTousers     users            @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([type])
   @@index([user_id])
@@ -331,7 +331,7 @@ model users {
   analytics_enabled                                                      Boolean?
   background                                                             Int?                        @db.SmallInt
   country                                                                String?                     @db.VarChar
-  password_hash                                                          String?                     @db.VarChar
+  password_hash                                                          String                      @unique @db.VarChar
   username                                                               String                      @unique @db.VarChar
   display_name                                                           String?                     @db.VarChar
   user_role                                                              user_role?
@@ -362,6 +362,7 @@ model users {
   posts                                                                  posts[]
   reports_reports_reported_user_idTousers                                reports[]                   @relation("reports_reported_user_idTousers")
   reports_reports_reporter_idTousers                                     reports[]                   @relation("reports_reporter_idTousers")
+  saved_posts                                                            saved_posts[]
   sessions                                                               sessions[]
   user_activity_logs                                                     user_activity_logs[]
   user_feedback_and_support_user_feedback_and_support_assigned_toTousers user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
@@ -372,16 +373,24 @@ model users {
   @@index([username])
 }
 
-model ADDSAVEDPOSTS {
-  verification_id BigInt @id
-}
-
 model fcm_tokens {
   token_id   BigInt    @id
-  user_id    BigInt?
-  token      String?
+  user_id    BigInt
+  token      String    @unique
   created_at DateTime? @db.Timestamp(6)
-  users      users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id])
+}
+
+model saved_posts {
+  saved_post_id BigInt @id
+  post_id       BigInt
+  user_id       BigInt
+  posts         posts  @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  users         users  @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id])
 }
 
 enum account_activity {
