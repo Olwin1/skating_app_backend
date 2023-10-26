@@ -1,18 +1,15 @@
 require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
-import mongoose from "../db/connection";
 import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
 import * as fs from 'fs';
 import prisma from "../db/postgres";
 import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
 import { Prisma, users } from "@prisma/client";
+import { ErrorCode } from "../ErrorCodes";
 
+const ec = "error_code";
 const router = Router(); // create router to create route bundle
-
-//DESTRUCTURE ENV VARIABLES WITH DEFAULTS
-const { SECRET = "secret" } = process.env;
-
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -109,7 +106,7 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
                             // Provide the data for the new record in TableB
                         },
                     });
-                    return res.json({ "post": post, "like": postLikeNew })
+                    return res.status(200).json({ "success": true })
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
@@ -151,7 +148,7 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
                             // Provide the data for the new record in TableB
                         },
                     });
-                    return res.json({ "post": post, "like": postLikeNew })
+                    return res.status(200).json({ "success": true })
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
@@ -241,7 +238,7 @@ router.delete("/comment", middleware.isLoggedIn, async (req: any, res) => {
         })
 
         // Send a JSON response with the result of the comment deletion
-        res.json(comment);
+        res.status(200).json({ "success": true });
     } catch (error) {
         // Send a 400 response with the error message
         res.status(400).json({ error });
@@ -278,7 +275,7 @@ router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
                             // Provide the data for the new record in TableB
                         },
                     });
-                    return res.json({ "comment": comment, "like": commentLikeNew })
+                    return res.status(200).json({ "success": true })
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
@@ -320,7 +317,7 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
                             // Provide the data for the new record in TableB
                         },
                     });
-                    return res.json({ "comment": comment, "like": commentLikeNew })
+                    return res.status(200).json({ "success": true })
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
@@ -424,9 +421,13 @@ router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Find the post with the provided ID from the request header
         const comments = await prisma.posts.findFirst({ where: { post_id: BigInt(req.headers.post) }, include: { comments: { take: 20, skip: 20 * req.headers.page, include: { comment_likes: { where: { user_id: _id } } } } } });
-
-        // Return the array of comments as a response
-        return res.json(comments);
+        if (comments) {
+            // Return the array of comments as a response
+            return res.status(200).json(comments.comments);
+        }
+        else {
+            return res.status(400).json({ ec: ErrorCode.RecordNotFound })
+        }
     } catch (error) {
         // If there's an error, return an error response
         res.status(400).json({ error });
@@ -444,7 +445,7 @@ router.delete("/post", middleware.isLoggedIn, async (req: any, res) => {
             }
         })
 
-        res.json(post); // Send a JSON response to the client indicating success
+        res.status(200).json({ "success": true }); // Send a JSON response to the client indicating success
     } catch (error) {
         // Send a 400 response with the error message
         res.status(400).json({ error });
