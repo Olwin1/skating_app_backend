@@ -59,8 +59,8 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
     let retval = await createMessage(_id, BigInt(req.body.channel), req.body.content, req.body.img);
-    res.json(retval);
-
+    res.status(200).json({ "success": true });
+    //TODO add error handling
 });
 
 

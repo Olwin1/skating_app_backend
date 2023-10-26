@@ -47,7 +47,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                 });
 
                 console.log('Follow request created successfully.');
-                return res.json(newFollowRequest)
+                return res.status(200).json({ "success": true, "requested": true })
             }
             else {
                 const followingData = {
@@ -66,7 +66,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                     prisma.following.create({ data: followingData }),
                     prisma.followers.create({ data: followerData })
                 ]);
-                return res.json(result);
+                return res.status(200).json({ "success": true, "requested": false })
             }
         }
     } catch (error) {
@@ -92,7 +92,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
                 status: 'pending',  // You can set the initial status as 'pending'
             },
         });
-        return res.json(friendRequest)
+        return res.status(200).json({ "success": true })
 
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
@@ -116,13 +116,13 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
         if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
             // If a request already exists, you can handle it as desired (e.g., update the request status).
             const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
-            return res.json(followRequest);
+            return res.status(200).json({ "success": true, "requested": true });
         } else {
             const result = await prisma.$transaction([
                 prisma.following.deleteMany({ where: { following_user_id: target, user_id: _id } }),
                 prisma.followers.deleteMany({ where: { follower_user_id: _id, user_id: target } })
             ]);
-            return res.json(result);
+            return res.status(200).json({ "success": true, "requested": false });
 
         }
     } catch (error) {
@@ -145,13 +145,13 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
         if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
             // If a request already exists, you can handle it as desired (e.g., update the request status).
             const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
-            return res.json(followRequest);
+            return res.status(200).json({ "success": true, "request": true });
         } else {
             const result = await prisma.$transaction([
                 prisma.following.deleteMany({ where: { following_user_id: _id, user_id: target } }),
                 prisma.followers.deleteMany({ where: { follower_user_id: target, user_id: _id } })
             ]);
-            return res.json(result);
+            return res.status(200).json({ "success": true, "request": false });
 
         }
     } catch (error) {
@@ -175,11 +175,11 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
         });
         if (!friendInfo?.friend_requests_friend_requests_requestee_idTousers.length) {
             const retval = await prisma.friend_requests.delete({ where: { request_id: friendInfo?.friend_requests_friend_requests_requestee_idTousers[0].request_id } })
-            res.json(retval);
+            res.status(200).json({ "success": true, "request": true });
         }
         else {
             const retval = await prisma.friends.delete({ where: { friendship_id: friendInfo.friends_friends_user1_idTousers[0].friendship_id } })
-            return res.json(retval)
+            return res.status(200).json({ "success": true, "request": false });
         }
     } catch (error) {
         res.status(400).json({ error });
@@ -200,7 +200,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
             take: 20,
             skip: (req.headers.page) * 20,
         });
-        return res.json(followerUsers);
+        return res.status(200).json(followerUsers);
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
@@ -221,7 +221,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
             take: 20,
             skip: (req.headers.page) * 20,
         });
-        return res.json(followedUsers);
+        return res.status(200).json(followedUsers);
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
@@ -290,9 +290,9 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
                     user_id: target
                 }
             })//TODO verify target and id right way round
-            return res.json([deletionFollowRequest, following, followers])
+            return res.status(200).json({ "success": true, "accepted": true })
         }
-        return res.json(deletionFollowRequest)
+        return res.status(200).json({ "success": true, "accepted": false })
 
 
     } catch (error) {
@@ -320,11 +320,11 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                     user2_id: target
                 }
             });
-            return res.json(friendObject);
+            return res.status(200).json({ "success": true, "accepted": true })
 
         }
         else {
-            return res.json({ "declined": true });
+            return res.status(200).json({ "success": true, "accepted": false })
         }
 
     } catch (error) {

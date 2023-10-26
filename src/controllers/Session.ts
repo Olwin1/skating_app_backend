@@ -42,7 +42,7 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
             }
         })
         // Send the created session in the response
-        res.json(session);
+        res.json({ "success": true });
     } catch (error) {
         res.status(400).json({ error });
     }
@@ -63,7 +63,6 @@ router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
 // Define a route for getting sessions created by friends in the last 24 hours
 router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
-    const { User, Friends, Session } = (req as CustomRequest).context.models;
     try {
         // Find the user and their friends
         // let user = await User.findOne({ "_id": _id });
