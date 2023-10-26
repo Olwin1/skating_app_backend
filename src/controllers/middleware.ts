@@ -1,40 +1,12 @@
 require("dotenv").config(); // loading env variables
 import jwt, { Secret } from "jsonwebtoken";
-import User from "../models/User";
-import Todo from "../models/Todo";
-import Post from "../models/Post";
-import Channels from "../models/MessageChannels";
-import Channel from "../models/MessageChannel";
-import Message from "../models/Message";
-import Friends from "../models/Friends";
-import Following from "../models/Following";
-import Followers from "../models/Followers";
-import Comment from "../models/Comment";
-import Session from "../models/Session";
-import express from "express";
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { Response, NextFunction, RequestHandler } from 'express';
 import CustomRequest from "./CustomRequest";
 
 
 
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (req, res: Response, next: NextFunction) => {
-  // put any data you want in the object below to be accessible to all routes
-  (req as CustomRequest).context = {
-    models: {
-      User,
-      Todo,
-      Post,
-      Channels,
-      Channel,
-      Message,
-      Friends,
-      Following,
-      Followers,
-      Comment,
-      Session,
-    },
-  };
   next();
 };
 

@@ -1,6 +1,5 @@
 require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
-import mongoose from "../db/connection";
 import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";

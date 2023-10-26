@@ -1,13 +1,10 @@
 require("dotenv").config(); // load .env variables
 import { Router } from "express" // import router from express
-import mongoose from "../db/connection";
 import middleware from "./middleware";
 import createMessage from "./MessageCreate";
 import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
-import { Prisma } from "@prisma/client";
-
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -16,10 +13,6 @@ const generator = new Worker(0, 1, {
     sequenceBits: 12,
 });
 const router = Router(); // create router to create route bundle
-
-//DESTRUCTURE ENV VARIABLES WITH DEFAULTS
-const { SECRET = "secret" } = process.env;
-
 
 
 // Route to create a new channel with the specified participants
