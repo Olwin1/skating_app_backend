@@ -10,7 +10,7 @@ const handleConnection = (socket: Socket, payload: any) => {
 }
 
 // Define a function to send a new event over the socket
-function sendEvent(socket: Socket, id: String) {
+function sendEvent(socket: Socket, id: string) {
     // Listen for a 'message' event over the socket
     socket.on('message', (e) => {
         // Parse the message data from the incoming event
@@ -20,7 +20,7 @@ function sendEvent(socket: Socket, id: String) {
         // Join the socket to the channel associated with the message
         socket.join(data.channel)
         // Call the createMessage function to save the message in the database
-        createMessage(id, data.channel, data.content, data.img)
+        createMessage(BigInt(id), data.channel, data.content, data.img)
         // Emit a 'newMessage' event to all sockets in the channel except the sender
         socket.to(data.channel).emit('newMessage', { ...data, "sender": id });
     })
@@ -47,12 +47,12 @@ function sendEvent(socket: Socket, id: String) {
         console.log(e)
         console.log(e)
         try {
-            if(e) {
-        // Parse the typing data from the incoming event
-        let channels = e.slice(1).slice(0, e.length - 1).split(",")
-        // Join the socket to the channel associated with the typing indicator
-        console.log(channels);
-        socket.join(channels)
+            if (e) {
+                // Parse the typing data from the incoming event
+                let channels = e.slice(1).slice(0, e.length - 1).split(",")
+                // Join the socket to the channel associated with the typing indicator
+                console.log(channels);
+                socket.join(channels)
             }
         }
         catch (e: any) {
