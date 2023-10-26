@@ -7,6 +7,7 @@ import CustomRequest from "./CustomRequest"; // Import a custom request type
 import prisma from "../db/postgres"; // Import Prisma ORM for database operations
 import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
 import validator from 'validator';
+import { ErrorCode, ErrorMessage } from "../ErrorCodes";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -30,13 +31,13 @@ router.post("/signup", async (req: any, res) => {
   const isValidPassword = validator.isLength(req.body.password, { min: 8, max: 100 })
   const isValidUsername = validator.isLength(req.body.username, { min: 4, max: 24 })
   if (!isEmail) {
-    return res.status(400).json({ ec: 0x001 })
+    return res.status(400).json({ ec: ErrorCode.InvalidEmail })
   }
   else if (!isValidPassword) {
-    return res.status(400).json({ ec: 0x002 })
+    return res.status(400).json({ ec: ErrorCode.InvalidPassword })
   }
   else if (!isValidUsername) {
-    return res.status(400).json({ ec: 0x003 })
+    return res.status(400).json({ ec: ErrorCode.InvalidUsername })
   }
 
 
@@ -76,10 +77,10 @@ router.post("/login", async (req: any, res) => {
     const isValidPassword = validator.isLength(req.body.password, { min: 8, max: 100 })
     const isValidUsername = validator.isLength(req.body.username, { min: 4, max: 24 })
     if (!isValidPassword) {
-      return res.status(400).json({ ec: 0x004 })
+      return res.status(400).json({ ec: ErrorCode.InvalidPassword })
     }
     else if (!isValidUsername) {
-      return res.status(400).json({ ec: 0x005 })
+      return res.status(400).json({ ec: ErrorCode.InvalidUsername })
     }
 
 
@@ -93,10 +94,10 @@ router.post("/login", async (req: any, res) => {
         const token = await jwt.sign({ username: user.username, _id: user.user_id }, SECRET);
         return res.status(200).json({ token });
       } else {
-        res.status(400).json({ ec: 0x007 });
+        res.status(400).json({ ec: ErrorCode.IncorrectPassword });
       }
     } else {
-      res.status(400).json({ ec: 0x006 });
+      res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
   } catch (error) {
     res.status(400).json({ error });
@@ -201,7 +202,7 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
       }
       return res.status(200).json(returnUser);
     } else {
-      res.status(400).json({ ec: 0x006 });
+      res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
 
   } catch (error) {
