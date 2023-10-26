@@ -216,7 +216,7 @@ router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
                 comment_id: generator.nextId(),
                 post_id: BigInt(req.body.post),
                 sender_id: _id,
-                //TODO you forgot to put comment text you dimwit lol (req.body.content)
+                content: req.body.content,
                 timestamp: new Date(),
                 like_count: 0
 
