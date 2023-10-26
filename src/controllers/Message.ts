@@ -67,18 +67,11 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route to create a get message
 router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
-    const session = await mongoose.startSession(); // start a new MongoDB transaction session
-    session.startTransaction(); // start a transaction within the session
     try {
         const message = await prisma.messages.findUnique({ where: { message_id: BigInt(req.headers.message) } })
-
-        await session.commitTransaction(); // commit the transaction to the database
-        res.status(200).json(message); // send a success response to the client
+        return res.status(200).json(message); // send a success response to the client
     } catch (error) {
-        await session.abortTransaction(); // abort the transaction if an error occurs
         res.status(500).json({ success: false, error: error }); // send an error response to the client
-    } finally {
-        session.endSession(); // end the session
     }
 });
 
@@ -139,11 +132,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
-    // Start a new Mongoose session
-    const session = await mongoose.startSession();
 
-    // Start a transaction within the session
-    session.startTransaction();
     try {
         // Find a channel with the given ID that the user is a participant of
         const channel = prisma.message_channels.findUnique({ where: { channel_id: BigInt(req.headers.channel) } })
@@ -152,12 +141,8 @@ router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
         // Send a response with the found channel
         res.status(200).json(channel);
     } catch (error) {
-
         // Send a response with an error message
         res.status(500).json({ success: false, error: error });
-    } finally {
-        // End the session
-        session.endSession();
     }
 });
 
