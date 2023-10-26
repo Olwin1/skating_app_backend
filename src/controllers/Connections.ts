@@ -3,8 +3,18 @@ import { Router } from "express" // import router from express
 import mongoose from "../db/connection";
 import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
+import prisma from "../db/postgres";
+import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
+
 
 const router = Router(); // create router to create route bundle
+
+// Create a unique ID generator instance
+const generator = new Worker(0, 1, {
+    workerIdBits: 5,
+    datacenterIdBits: 5,
+    sequenceBits: 12,
+});
 
 // Define a route handler to handle a POST request to "/follow"
 router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
@@ -12,49 +22,55 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Get the User model and the Following and Followers sub-models from the context object
-    const { User, Following, Followers } = (req as CustomRequest).context.models;
-
-    const session = await mongoose.startSession(); // start a MongoDB transaction
-    session.startTransaction(); // start a transaction with the session
-
     try {
-        // Update the user's following list in the database
-        let target = await User.findOne({ "_id": req.body.user }).session(session); // pass the session to the find query
+        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
 
-        let userFollowing;
 
-        // if the user already has a following list, update it by adding the new user they want to follow
-        userFollowing = await Following.create([{ owner: _id, follow_date: Date(), user: target._id, requested: target.private ? true : null }], { session }); // pass the session to the update query
-        if (!target.private) {
-            await User.updateOne(
-                { "_id": _id },
-                {
-                    $inc: { "following_count": 1 }
-                }
-            ).session(session);
+        // Check if the follow request already exists
+        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: _id, requestee_id: target } } } })
+
+
+        if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
+            // If a request already exists, you can handle it as desired (e.g., update the request status).
+            console.log('Follow request already exists.');
+        } else {
+            if (targetUser.public_profile == false) {
+
+                // Create a new follow request
+                const newFollowRequest = await prisma.follow_requests.create({
+                    data: {
+                        request_id: generator.nextId(),
+                        requester_id: _id,
+                        requestee_id: target,
+                        status: 'pending', // You can set the initial status as needed (e.g., 'pending').
+                    },
+                });
+
+                console.log('Follow request created successfully.');
+                return res.json(newFollowRequest)
+            }
+            else {
+                const followingData = {
+                    following_id: generator.nextId(),
+                    following_user_id: target,
+                    user_id: _id
+                };
+
+                const followerData = {
+                    follower_id: generator.nextId(),
+                    follower_user_id: _id,
+                    user_id: target
+                };
+
+                const result = await prisma.$transaction([
+                    prisma.following.create({ data: followingData }),
+                    prisma.followers.create({ data: followerData })
+                ]);
+                return res.json(result);
+            }
         }
-
-        // if the user being followed already has a followers list, update it by adding the follower's user ID
-        await Followers.create([{ owner: target._id, follow_date: Date(), user: _id, requested: target.private ? true : null }], { session }); // pass the session to the update query
-        if (!target.private) {
-            await User.updateOne(
-                { "_id": target._id },
-                {
-                    $inc: { "follower_count": 1 }
-                }
-            ).session(session);
-
-        }
-
-        await session.commitTransaction(); // commit the transaction
-        session.endSession(); // end the session
-
-        // Return the response from the database update
-        res.json(userFollowing);
     } catch (error) {
-        await session.abortTransaction(); // abort the transaction if an error occurred
-        session.endSession(); // end the session
+
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
     }
@@ -67,33 +83,18 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Get the User model and the Friends sub-models from the context object
-    const { User, Friends } = (req as CustomRequest).context.models;
-
-    const session = await mongoose.startSession(); // start a MongoDB transaction
-    session.startTransaction(); // start a transaction with the session
-
     try {
-        // Update the user's following list in the database
-        let target = await User.findOne({ "_id": req.body.user }).session(session); // pass the session to the find query
-        let friendDate = Date()
+        const friendRequest = await prisma.friend_requests.create({
+            data: {
+                request_id: generator.nextId(),
+                requester_id: _id,  // The ID of the user sending the request
+                requestee_id: BigInt(req.body.user),  // The ID of the target user
+                status: 'pending',  // You can set the initial status as 'pending'
+            },
+        });
+        return res.json(friendRequest)
 
-        let userFriends;
-        // if the user already has a friends list, update it by adding the new user they want to friend
-        userFriends = await Friends.create([{ owner: _id, friend_date: friendDate, user: target._id, requested: true, requester: true }], { session }); // pass the session to the update query
-
-        // if the user being friended already has a friends list, update it by adding the friend's user ID
-        await Friends.create([{ owner: target._id, friend_date: friendDate, user: _id, requested: true, requester: false }], { session }) // pass the session to the update query
-
-
-        await session.commitTransaction(); // commit the transaction
-        session.endSession(); // end the session
-
-        // Return the response from the database update
-        res.json(userFriends);
     } catch (error) {
-        await session.abortTransaction(); // abort the transaction if an error occurred
-        session.endSession(); // end the session
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
     }
@@ -103,32 +104,28 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 // Route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
-    const { User, Following, Followers } = (req as CustomRequest).context.models;
-    const session = await mongoose.startSession();
-    session.startTransaction();
+
     try {
-        // Find the user being unfollowed
-        let target = await User.findOne({ "_id": req.body.user }).session(session);
+        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
 
-        let userFollowing;
 
-        // Remove the target user from the logged in user's following list
-        userFollowing = await Following.deleteOne({ owner: _id, user: target._id }
-        ).session(session);
+        // Check if the follow request already exists
+        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: _id, requestee_id: target } } } })
 
-        // Remove the logged in user from the target user's followers list
-        let follow = await Followers.findOneAndDelete({ owner: target._id, user: _id }).session(session);
-        if (!follow["requested"]) {
-            await User.updateOne({ "_id": _id }, { $inc: { "following_count": -1 } }).session(session);
-            await User.updateOne({ "_id": target._id }, { $inc: { "follower_count": -1 } }).session(session);
+
+        if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
+            // If a request already exists, you can handle it as desired (e.g., update the request status).
+            const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
+            return res.json(followRequest);
+        } else {
+            const result = await prisma.$transaction([
+                prisma.following.deleteMany({ where: { following_user_id: target, user_id: _id } }),
+                prisma.followers.deleteMany({ where: { follower_user_id: _id, user_id: target } })
+            ]);
+            return res.json(result);
 
         }
-        await session.commitTransaction();
-        session.endSession();
-        res.json(userFollowing);
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
         res.status(400).json({ error });
     }
 });
@@ -136,34 +133,28 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 // Route for unfollowing a user
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
-    const { User, Following, Followers } = (req as CustomRequest).context.models;
-    const session = await mongoose.startSession();
-    session.startTransaction();
 
     try {
-        // Find the user being unfollowed
-        let target = await User.findOne({ "_id": req.body.user }).session(session);
-        let userFollowers;
+        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
 
-        // Remove the target user from the logged in user's followers list
-        userFollowers = await Followers.deleteOne({ owner: _id, user: target._id }
-        ).session(session);
 
-        // Remove the logged in user from the target user's following list
-        let following = await Following.findOneAndDelete({ owner: target._id, user: _id }
-        ).session(session);
-        if (!following["requested"]) {
-            await User.updateOne({ "_id": _id }, { $inc: { "follower_count": -1 } }).session(session);
-            await User.updateOne({ "_id": target._id }, { $inc: { "following_count": -1 } }).session(session);
+        // Check if the follow request already exists
+        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: target, requestee_id: _id } } } })
+
+
+        if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
+            // If a request already exists, you can handle it as desired (e.g., update the request status).
+            const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
+            return res.json(followRequest);
+        } else {
+            const result = await prisma.$transaction([
+                prisma.following.deleteMany({ where: { following_user_id: _id, user_id: target } }),
+                prisma.followers.deleteMany({ where: { follower_user_id: target, user_id: _id } })
+            ]);
+            return res.json(result);
 
         }
-
-        await session.commitTransaction();
-        session.endSession();
-        res.json(userFollowers);
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
         res.status(400).json({ error });
     }
 });
@@ -172,40 +163,25 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 
 router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
-    const { User, Friends } = (req as CustomRequest).context.models;
-
-    // Start a new session and transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
 
     try {
-        // Find the logged in user and the user to unfriend
-        let target = await User.findOne({ "_id": req.body.user }).session(session);
-        //TODO CHANGE TO FINDANDUPDATE TO REDUCE REQUESTS
-
-        let userFriends;
-        // Update the logged in user's friends list to remove the user to unfriend
-        userFriends = await Friends.deleteOne({ owner: _id, user: target._id }).session(session);
-
-        // Update the user to unfriend's friends list to remove the logged in user
-        let friend = await Friends.findOneAndDelete({ owner: target._id, user: _id }).session(session);
-        if (!friend["requested"]) {
-            await User.updateOne({ "_id": _id }, { $inc: { "friends_count": -1 } }).session(session);
-            await User.updateOne({ "_id": target._id }, { $inc: { "friends_count": -1 } }).session(session);
-
+        const target = BigInt(req.body.user);
+        const friendInfo = await prisma.users.findUnique({
+            where: { user_id: target }, include: {
+                friend_requests_friend_requests_requestee_idTousers: { where: { requester_id: _id, requestee_id: target } }, friends_friends_user1_idTousers: {
+                    where: { OR: [{ user1_id: _id, user2_id: target }, { user1_id: target, user2_id: _id }] }
+                }
+            }
+        });
+        if (!friendInfo?.friend_requests_friend_requests_requestee_idTousers.length) {
+            const retval = await prisma.friend_requests.delete({ where: { request_id: friendInfo?.friend_requests_friend_requests_requestee_idTousers[0].request_id } })
+            res.json(retval);
         }
-
-
-        // Commit the transaction and end the session
-        await session.commitTransaction();
-        session.endSession();
-
-        // Return the updated userFriends object
-        res.json(userFriends);
+        else {
+            const retval = await prisma.friends.delete({ where: { friendship_id: friendInfo.friends_friends_user1_idTousers[0].friendship_id } })
+            return res.json(retval)
+        }
     } catch (error) {
-        // If there was an error, abort the transaction and end the session, then send an error response
-        await session.abortTransaction();
-        session.endSession();
         res.status(400).json({ error });
     }
 });
@@ -216,15 +192,15 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Get the Followers model from the context object
-    const { Followers } = (req as CustomRequest).context.models;
-
     try {
-        // Find the user in the database
-        let t = await Followers.find({ "owner": req.headers.user ?? _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
-
-        // Return the response from the database update
-        res.json(t)
+        const target = BigInt(req.headers.user ?? _id)
+        const followerUsers = await prisma.users.findUnique({
+            where: { user_id: target },
+        }).followers_followers_user_idTousers({
+            take: 20,
+            skip: (req.headers.page) * 20,
+        });
+        return res.json(followerUsers);
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
@@ -237,15 +213,15 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Get the Following model from the context object
-    const { Following } = (req as CustomRequest).context.models;
-
     try {
-        // Find the user in the database
-        let t = await Following.find({ "owner": req.headers.user ?? _id }).sort({ "requested": -1 }).skip(parseInt(req.headers.page) * 20).limit(20)
-
-        // Return the response from the database update
-        res.json(t)
+        const target = BigInt(req.headers.user ?? _id)
+        const followedUsers = await prisma.users.findUnique({
+            where: { user_id: target },
+        }).following_following_user_idTousers({
+            take: 20,
+            skip: (req.headers.page) * 20,
+        });
+        return res.json(followedUsers);
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
@@ -258,15 +234,28 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Get the Friends model from the context object
-    const { Friends } = (req as CustomRequest).context.models;
-
     try {
-        // Find the user in the database
-        let t = await Friends.find({ owner: req.headers.user ?? _id }).sort({ "requested": -1 }).skip(req.headers.page * 20).limit(20)
+        const target = BigInt(req.headers.user ?? _id);
+        const pageSize = 20;
 
-        // Return the response from the database update
-        res.json(t)
+
+        prisma.$transaction(async (tx) => {
+            const user1Friends = await tx.users.findUnique({
+                where: { user_id: target }
+            }).friends_friends_user1_idTousers({
+                take: pageSize,
+                skip: (req.headers.page) * pageSize
+            });
+            const len = user1Friends == null ? 0 : user1Friends!.length
+            const user2Friends = await tx.users.findUnique({
+                where: { user_id: target }
+            }).friends_friends_user2_idTousers({
+                take: pageSize - len,
+                skip: Math.max(0, (req.headers.page) * pageSize - len)
+            });
+
+            return [...user1Friends ?? [], ...user2Friends ?? []];
+        });
     } catch (error) {
         // If there is an error, return a 400 status code and the error message
         res.status(400).json({ error });
@@ -275,154 +264,71 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 
 router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
         // Get the user ID from the request object
         const _id = BigInt((req as CustomRequest).user._id);
+        const target = BigInt(req.body.user);
+        const accepted = req.body.accepted
 
-        // Get the Followers and Following models from the context object
-        const { User, Followers, Following } = (req as CustomRequest).context.models;
-
-        // Find the user to follow in the Following collection
-        let targetUser = await User.findOne({ "_id": req.body.user }).session(session);
-        let target = await Following.findOne({ "_id": targetUser.following }).session(session);
-        let accepted;
-        if (req.body.accepted) {
-            // Find the current user in the Followers collection and update the requested flag
-            await Followers.updateOne(
-                // Match the current user's document by their _id
-                { "owner": _id, "user": target._id },
-                // Use the $set operator to update the value of the "users" property
-                {
-                    $set: {
-                        // Use the $[elem] array filter to match the object in the "users" array where the "user" property matches the target user's _id
-                        "requested": false
-                    }
-                },
-                // Use the arrayFilters option to pass the value of target._id to the array filter
-            ).session(session);
-
-            await Following.updateOne(
-                // Match the target user's document by their _id
-                { "owner": target._id, "user": target._id },
-                // Use the $set operator to update the value of the "users" property
-                {
-                    $set: {
-                        // Use the $[elem] array filter to match the object in the "users" array where the "user" property matches the user's _id
-                        "requested": false
-                    }
-                },
-                // Use the arrayFilters option to pass the value of _id to the array filter
-            ).session(session);
-            await User.updateOne({ "_id": _id }, { $inc: { "follower_count": 1 } }).session(session);
-            await User.updateOne({ "_id": targetUser._id }, { $inc: { "following_count": 1 } }).session(session);
-            accepted = true
-
+        const followRequest = await prisma.follow_requests.findFirst({ where: { requester_id: target, requestee_id: _id } });
+        if (!followRequest) {
+            throw ("No follow request made");
         }
-        else {
-
-            // Find the current user in the Followers collection and update the requested flag
-            await Followers.deleteOne({ owner: _id, user: target._id },
-            ).session(session);
-
-            await Following.updateOne({ owner: target._id, user: _id },
-            ).session(session);
-            accepted = false
-
+        const deletionFollowRequest = await prisma.follow_requests.delete({ where: { request_id: followRequest?.request_id } });
+        if (accepted) {
+            const following = await prisma.following.create({
+                data: {
+                    following_id: generator.nextId(),
+                    following_user_id: target,
+                    user_id: _id
+                }
+            })
+            const followers = await prisma.followers.create({
+                data: {
+                    follower_id: generator.nextId(),
+                    follower_user_id: _id,
+                    user_id: target
+                }
+            })//TODO verify target and id right way round
+            return res.json([deletionFollowRequest, following, followers])
         }
-        // TODO: ADD RETURN STUFF
+        return res.json(deletionFollowRequest)
 
-        // If the update is successful, commit the transaction and send a success response with the updated user document
-        await session.commitTransaction();
-        res.status(200).json({ accepted });
 
     } catch (error) {
-        // If there is an error, abort the transaction and return a 400 status code and the error message
-        await session.abortTransaction();
         res.status(400).json({ error });
-    } finally {
-        // End the session after the transaction
-        session.endSession();
     }
 });
 
 
 router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
         // Get the user ID from the request object
         const _id = BigInt((req as CustomRequest).user._id);
 
-        // Get the Friend model from the context object
-        const { User, Friends } = (req as CustomRequest).context.models;
-
         // Find the user to friend in the Friends collection
-        let targetUser = await User.findOne({ "_id": req.body.user }).session(session);
-        let accepted;
+        const target = BigInt(req.body.user);
+        const request = await prisma.friend_requests.deleteMany({ where: { requestee_id: _id, requester_id: target } });
+        if (request.count == 0) {
+            return res.json({ "error": "No existing request" })
+        }
         if (req.body.accepted) {
-            // Find the current user in the Friends collection and update the requested flag
-            await Friends.updateOne({ owner: _id, user: targetUser._id },
-                // Use the $set operator to update the value of the "users" property
-                {
-                    $set: {
-                        // Use the $[elem] array filter to match the object in the "users" array where the "user" property matches the target user's _id
-                        "requested": false
-                    }
-                },
-                // Use the arrayFilters option to pass the value of target._id to the array filter
-            ).session(session);
-
-            await Friends.updateOne(
-                // Match the target user's document by their _id
-                { owner: targetUser._id, user: _id },
-                // Use the $set operator to update the value of the "users" property
-                {
-                    $set: {
-                        // Use the $[elem] array filter to match the object in the "users" array where the "user" property matches the user's _id
-                        "requested": false
-                    }
-                },
-                // Use the arrayFilters option to pass the value of _id to the array filter
-            ).session(session);
-            await User.updateOne({ "_id": _id }, { $inc: { "friends_count": 1 } }).session(session);
-            await User.updateOne({ "_id": targetUser._id }, { $inc: { "friends_count": 1 } }).session(session);
-            accepted = true
+            const friendObject = await prisma.friends.create({
+                data: {
+                    friendship_id: generator.nextId(),
+                    user1_id: _id,
+                    user2_id: target
+                }
+            });
+            return res.json(friendObject);
 
         }
         else {
-
-            // Find the current user in the Friends collection and update the requested flag
-            await Friends.deleteOne(
-                // Match the current user's document by their _id
-                { "owner": _id, "user": targetUser._id },
-                // Use the $pull operator to remove the value of the "users" property
-            ).session(session);
-
-            await Friends.deleteOne(
-                // Match the target user's document by their _id
-                { "owner": targetUser._id, "user": _id },
-                // Use the $pull operator to remove the value of the "users" property
-            ).session(session);
-            accepted = false
-
+            return res.json({ "declined": true });
         }
-        // TODO: ADD RETURN STUFF
-
-        // If the update is successful, commit the transaction and send a success response with the updated user document
-        await session.commitTransaction();
-        res.status(200).json({ accepted });
 
     } catch (error) {
-        // If there is an error, abort the transaction and return a 400 status code and the error message
-        await session.abortTransaction();
         res.status(400).json({ error });
-    } finally {
-        // End the session after the transaction
-        session.endSession();
     }
 });
 
