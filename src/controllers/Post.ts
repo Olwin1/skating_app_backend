@@ -5,7 +5,7 @@ import CustomRequest from "./CustomRequest";
 import * as fs from 'fs';
 import prisma from "../db/postgres";
 import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
-import { Prisma, users } from "@prisma/client";
+import { Prisma, posts } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
 
 const ec = "error_code";
@@ -17,6 +17,7 @@ const generator = new Worker(0, 1, {
     datacenterIdBits: 5,
     sequenceBits: 12,
 });
+type postsE = Omit<posts, 'location'> & { location: String, liked: boolean };
 
 // Initialize an empty array to store influencer data.
 let influencers: bigint[] = [];
@@ -120,9 +121,11 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
                 console.error('Error in transaction:', error);
             }
         }
+        else {
 
-        // If the user has already liked the post, return an error
-        res.json({ "error": "Post already liked" });
+            // If the user has already liked the post, return an error
+            return res.status(400).json({ "error": "Post already liked" });
+        }
     } catch (error) {
         // Handle any other errors with a 400 status code
         res.status(400).json({ error });
@@ -162,8 +165,11 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
             }
         }
 
-        // If the user hasn't liked the post, return an error
-        res.json({ "error": "Post isn't liked" });
+        else {
+
+            // If the user hasn't liked the post, return an error
+            return res.status(400).json({ "error": "Post isn't liked" });
+        }
     } catch (error) {
         // Handle any other errors with a 400 status code
         res.status(400).json({ error });
@@ -293,9 +299,11 @@ router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
                 console.error('Error in transaction:', error);
             }
         }
+        else {
 
-        // Send an error message if the comment is already liked
-        res.json({ "error": "Comment isn't liked" });
+            // Send an error message if the comment is already liked
+            return res.json({ "error": "Comment already liked" });
+        }
     } catch (error) {
         // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
@@ -335,9 +343,10 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
                 console.error('Error in transaction:', error);
             }
         }
-
-        // Send an error message if the comment is not liked
-        res.json({ "error": "Comment isn't liked" });
+        else {
+            // Send an error message if the comment is not liked
+            return res.json({ "error": "Comment isn't liked" });
+        }
     } catch (error) {
         // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
@@ -471,48 +480,77 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     //! NEEDS TESTING
     const _id = BigInt((req as CustomRequest).user._id);
 
-    try {
-        let seen = JSON.parse(req.body.seen);
-        const take = 20
-        const skip = 20 * req.body.page
-        // Find the user with the provided ID
-        const posts = await prisma.$queryRaw`
-        SELECT *
-        FROM posts
-        WHERE (author_id IN (
-          SELECT following_user_id
-          FROM following
-          WHERE user_id = ${_id}
-        )
-        OR author_id IN (
-          SELECT user_id
-          FROM followers
-          WHERE follower_user_id = ${_id}
-        ) OR author_id IN (
-            SELECT 
-                CASE
-                    WHEN user1_id = ${_id} THEN user2_id
-                    ELSE user1_id
-                END AS friend_id
-            FROM friends
-            WHERE user1_id = ${_id} OR user2_id = ${_id}
-
-        )
-        ) AND
-        author_id NOT IN (
-            SELECT user_id
-            FROM post_likes
-            WHERE user_id = ${_id} AND post_id = post_id
+    //try {
+    //let seen = JSON.parse(req.body.seen);
+    const take = 20
+    const skip = 20 * parseInt(req.body.page)
+    let finalPosts: postsE[] = []
+    // Find the user with the provided ID
+    finalPosts = await prisma.$queryRaw`
+        SELECT 
+            p.post_id, 
+            p.author_id, 
+            p.description, 
+            p.image, 
+            p.like_count, 
+            p.friends_only, 
+            p."location"::text,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM post_likes pl 
+                    WHERE pl.user_id = ${_id} AND pl.post_id = p.post_id
+                ) THEN 1
+                ELSE 0
+            END AS liked
+        FROM posts p
+        WHERE (
+            p.author_id IN (
+                SELECT following_user_id
+                FROM following
+                WHERE user_id = ${_id}
+            )
+            OR p.author_id IN (
+                SELECT user_id
+                FROM followers
+                WHERE follower_user_id = ${_id}
+            )
+            OR p.author_id IN (
+                SELECT 
+                    CASE
+                        WHEN user1_id = ${_id} THEN user2_id
+                        ELSE user1_id
+                    END AS friend_id
+                FROM friends
+                WHERE user1_id = ${_id} OR user2_id = ${_id}
+            )
+        ) 
+        AND NOT EXISTS (
+            SELECT 1
+            FROM post_likes pl
+            WHERE pl.user_id = ${_id} AND pl.post_id = p.post_id
         )
         LIMIT ${take}
-        OFFSET ${skip}
-      ` as users[];
+        OFFSET ${skip};
+      ` as postsE[];
 
-        // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
-        if (posts.length < 20) {
-            //TODO fix offset
-            const extraPosts = await prisma.$queryRaw`
-            SELECT p.*
+    // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
+    if (finalPosts.length < 20) {
+        //TODO fix offset
+        const extraPosts = await prisma.$queryRaw`
+            SELECT 
+                p.post_id, 
+                p.author_id, 
+                p.description, 
+                p.image, 
+                p.like_count, 
+                p.friends_only, 
+                p."location"::text,
+                EXISTS (
+                    SELECT 1 
+                    FROM post_likes pl 
+                    WHERE pl.post_id = p.post_id AND pl.user_id = ${_id}
+                ) AS liked
             FROM posts p
             WHERE author_id IN (
                 SELECT DISTINCT friend_id
@@ -529,55 +567,99 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             )
             LIMIT ${take}
             OFFSET ${skip}
-          ` as any;
-        }
-        if (posts.length < 20) {
-            getInfluencers()
-            const influencerPosts = prisma.posts.findMany({ where: { author_id: { in: influencers } } })
-            //let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: influencers, $ne: _id } }).sort({ date: -1 }).limit(20 - posts.length);
-            //influencerResults = other_posts.length;
-            // posts = posts.concat(other_posts)
-        }
-        return res.json(posts);
-        // // Remove like_users and comments from each post
-        // let returnPosts = [] as Array<IreturnPost>
-        // let index = posts.length - influencerResults;
-        // for (var i = 0; i < posts.length; i++) {
-        //     let influencer = false;
-        //     let initial_influencer = false;
-        //     if (index == i && seen.length == 0) {
-        //         initial_influencer = true;
-        //     }
-        //     if (i >= index) {
-        //         influencer = true;
-
-        //     }
-
-        // let returnPost = {} as IreturnPost
-        // returnPost.comment_count = posts[i].comments.length
-        // returnPost.liked = false
-
-        // returnPost._id = posts[i]._id
-        // returnPost.description = posts[i].description
-        // returnPost.author = posts[i].author
-        // returnPost.image = posts[i].image
-        // returnPost.date = posts[i].date
-        // returnPost.like_count = posts[i].like_count
-        // returnPost.influencer = influencer
-        // returnPost.initial_influencer = initial_influencer
-
-        // if (posts[i].like_users.some((likedUser: any) => likedUser == _id)) {
-        //     returnPost.liked = true
-        //     /* vendors contains the element we're looking for */
-        // }
-        // returnPosts.push(returnPost)
-        //}
-        // Return the array of posts as a response
-        //res.json(returnPosts);
-    } catch (error) {
-        // If there's an error, return an error response
-        res.status(400).json({ error });
+          ` as postsE[];
+        finalPosts = [...finalPosts, ...extraPosts]
     }
+    if (finalPosts.length < 20) {
+        //TODO NEEDS FURTHER TESTING
+        getInfluencers()
+        const userId = _id; // Replace with the user's ID
+        const influencerPosts = await prisma.posts.findMany({
+            where: { author_id: { in: influencers } },
+            select: {
+                post_id: true,
+                author_id: true,
+                description: true,
+                image: true,
+                like_count: true,
+                friends_only: true,
+                // Add a custom field to check if the user has liked the post
+                post_likes: {
+                    select: {
+                        user_id: true,
+                    },
+                    where: {
+                        user_id: _id,
+                    },
+                },
+            },
+        });
+        let influencerPostsFormatted: postsE[] = []
+
+        for (const post of influencerPosts) {
+            influencerPostsFormatted.push({
+                post_id: post.post_id,
+                author_id: post.author_id,
+                description: post.description,
+                image: post.image,
+                like_count: post.like_count,
+                friends_only: post.friends_only,
+                location: "",
+                liked: (post.post_likes.length > 0)
+            })
+        }
+
+        //let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: influencers, $ne: _id } }).sort({ date: -1 }).limit(20 - posts.length);
+        //influencerResults = other_posts.length;
+        // posts = posts.concat(other_posts)
+        finalPosts = [...finalPosts, ...influencerPostsFormatted]
+    }
+    let returnPosts: postsE[] = []
+    for (const post of finalPosts) {
+        let e = post
+        e.liked = Boolean(post.liked)
+        returnPosts.push(e);
+    }
+    return res.json(returnPosts);
+    // // Remove like_users and comments from each post
+    // let returnPosts = [] as Array<IreturnPost>
+    // let index = posts.length - influencerResults;
+    // for (var i = 0; i < posts.length; i++) {
+    //     let influencer = false;
+    //     let initial_influencer = false;
+    //     if (index == i && seen.length == 0) {
+    //         initial_influencer = true;
+    //     }
+    //     if (i >= index) {
+    //         influencer = true;
+
+    //     }
+
+    // let returnPost = {} as IreturnPost
+    // returnPost.comment_count = posts[i].comments.length
+    // returnPost.liked = false
+
+    // returnPost._id = posts[i]._id
+    // returnPost.description = posts[i].description
+    // returnPost.author = posts[i].author
+    // returnPost.image = posts[i].image
+    // returnPost.date = posts[i].date
+    // returnPost.like_count = posts[i].like_count
+    // returnPost.influencer = influencer
+    // returnPost.initial_influencer = initial_influencer
+
+    // if (posts[i].like_users.some((likedUser: any) => likedUser == _id)) {
+    //     returnPost.liked = true
+    //     /* vendors contains the element we're looking for */
+    // }
+    // returnPosts.push(returnPost)
+    //}
+    // Return the array of posts as a response
+    //res.json(returnPosts);
+    // } catch (error) {
+    //     // If there's an error, return an error response
+    //     res.status(400).json({ error });
+    // }
 });
 
 
@@ -588,17 +670,17 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
 
-    try {
-        // Query the database for posts authored by the current user, sorted by date in descending order
-        // The "skip" and "limit" options are used for pagination
-        const posts = await prisma.posts.findMany({ where: { author_id: BigInt(req.headers.user) }, orderBy: { post_id: Prisma.SortOrder.asc }, skip: (20 * req.headers.page), take: 20 })
+    //try {
+    // Query the database for posts authored by the current user, sorted by date in descending order
+    // The "skip" and "limit" options are used for pagination
+    const posts = await prisma.posts.findMany({ where: { author_id: BigInt(req.headers.user) }, orderBy: { post_id: Prisma.SortOrder.asc }, skip: (20 * req.headers.page), take: 20 })
 
-        // Send the posts data as a JSON response
-        res.json(posts);
-    } catch (error) {
-        // Send a 400 Bad Request response if there was an error
-        res.status(400).json({ error });
-    }
+    // Send the posts data as a JSON response
+    res.json(posts);
+    // } catch (error) {
+    //     // Send a 400 Bad Request response if there was an error
+    //     res.status(400).json({ error });
+    // }
 });
 
 
