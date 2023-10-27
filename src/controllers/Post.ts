@@ -484,6 +484,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     //let seen = JSON.parse(req.body.seen);
     const take = 20
     const skip = 20 * parseInt(req.body.page)
+    let remaining = 20
     let finalPosts: postsE[] = []
     // Find the user with the provided ID
     finalPosts = await prisma.$queryRaw`
@@ -530,12 +531,13 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             FROM post_likes pl
             WHERE pl.user_id = ${_id} AND pl.post_id = p.post_id
         )
-        LIMIT ${take}
+        LIMIT ${remaining}
         OFFSET ${skip};
       ` as postsE[];
 
     // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
     if (finalPosts.length < 20) {
+        remaining = remaining - finalPosts.length
         //TODO fix offset
         const extraPosts = await prisma.$queryRaw`
             SELECT 
@@ -565,15 +567,15 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 ) AS subq
                 WHERE subq.friend_id <> ${_id} -- Exclude the user themselves
             )
-            LIMIT ${take}
+            LIMIT ${remaining}
             OFFSET ${skip}
           ` as postsE[];
         finalPosts = [...finalPosts, ...extraPosts]
+        remaining -= extraPosts.length;
     }
     if (finalPosts.length < 20) {
         //TODO NEEDS FURTHER TESTING
         getInfluencers()
-        const userId = _id; // Replace with the user's ID
         const influencerPosts = await prisma.posts.findMany({
             where: { author_id: { in: influencers } },
             select: {
@@ -593,6 +595,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     },
                 },
             },
+            take: remaining,
+            skip: skip
         });
         let influencerPostsFormatted: postsE[] = []
 
@@ -606,6 +610,43 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 friends_only: post.friends_only,
                 location: "",
                 liked: (post.post_likes.length > 0)
+            })
+        }
+
+        //let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: influencers, $ne: _id } }).sort({ date: -1 }).limit(20 - posts.length);
+        //influencerResults = other_posts.length;
+        // posts = posts.concat(other_posts)
+        finalPosts = [...finalPosts, ...influencerPostsFormatted]
+        remaining -= influencerPostsFormatted.length;
+    }
+    if (finalPosts.length < 20) {
+        //TODO NEEDS FURTHER TESTING
+
+        const userLikedPosts = await prisma.post_likes.findMany({
+            where: {
+                user_id: _id, // Replace 'userId' with the actual user's ID
+            },
+            include: {
+                posts: true,
+            },
+            skip: skip, // Calculate how many records to skip
+            take: remaining, // Set the number of records to retrieve
+        });
+
+        console.log(userLikedPosts);
+
+        let influencerPostsFormatted: postsE[] = []
+
+        for (const post of userLikedPosts) {
+            influencerPostsFormatted.push({
+                post_id: post.posts.post_id,
+                author_id: post.posts.author_id,
+                description: post.posts.description,
+                image: post.posts.image,
+                like_count: post.posts.like_count,
+                friends_only: post.posts.friends_only,
+                location: "",
+                liked: true
             })
         }
 
