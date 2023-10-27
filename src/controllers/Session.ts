@@ -19,14 +19,16 @@ const generator = new Worker(0, 1, {
 // Create a new router instance
 const router = Router();
 
-// Define a route for creating a new session
+
+// POST endpoint for creating a new session
 router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
+    // Convert user ID to a BigInt
     const _id = BigInt((req as CustomRequest).user._id);
     try {
-        //let images = JSON.parse(req.body.images);
-        // Create a new session
+        // Create a new session in the database
         const session = await prisma.sessions.create({
             data: {
+                // Generate a session ID using the "generator.nextId()" function
                 session_id: generator.nextId(),
                 name: req.body.name,
                 description: req.body.description,
@@ -38,44 +40,39 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
                 distance: req.body.distance,
                 //latitude: req.body.latitude,
                 //longitude: req.body.longitude,
-                author_id: _id
+                author_id: _id // Set the author ID to the user's ID
             }
-        })
-        // Send the created session in the response
+        });
+        // Respond with a success message
         res.json({ "success": true });
     } catch (error) {
+        // Handle any errors and respond with a 400 status code and an error message
         res.status(400).json({ error });
     }
 });
 
-// Define a route for getting a specific session
+// GET endpoint for retrieving a specific session
 router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
     try {
-        // Find the session with the specified ID and send it in the response
-        const session = await prisma.sessions.findUnique({ where: { session_id: BigInt(req.headers.session) } })
+        // Retrieve a session from the database using the session ID from the request headers
+        const session = await prisma.sessions.findUnique({ where: { session_id: BigInt(req.headers.session) } });
+        // Respond with the retrieved session
         res.json(session);
     } catch (error) {
-        // Send the error message in the response
+        // Handle any errors and respond with a 400 status code and an error message
         res.status(400).json({ error });
     }
 });
 
-// Define a route for getting sessions created by friends in the last 24 hours
+// GET endpoint for retrieving a list of sessions for the user's friends
 router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
+    // Convert user ID to a BigInt
     const _id = BigInt((req as CustomRequest).user._id);
     try {
-        // Find the user and their friends
-        // let user = await User.findOne({ "_id": _id });
-        // let friends = await Friends.find({ "owner": _id });
-        // let friendsId = [];
-        // for (let i = 0; i < friends.length; i++) {
-        //     // Get the IDs of the user's friends
-        //     console.log("runing " + friends[i]["user"])
-        //     friendsId.push(friends[i]["user"])
-        // }
-        let cutoffDate = new Date(new Date().getTime() - (24 * 60 * 60 * 1000)).toISOString()
-        // Find sessions created by the user's friends in the last 24 hours and send them in the response
-        //let session = await Session.find({ "author": { $in: friendsId }, "end_time": { $gte: cutoffDate } })
+        // Calculate a cutoff date (24 hours ago)
+        let cutoffDate = new Date(new Date().getTime() - (24 * 60 * 60 * 1000)).toISOString();
+
+        // Retrieve sessions from the database where the author ID is a friend of the user
         const sessions = await prisma.$queryRaw`
         SELECT * FROM "sessions"
         WHERE "author_id" IN (
@@ -85,12 +82,14 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
         ) AND "end_timestamp" < ${cutoffDate}
       `;
 
+        // Respond with the retrieved sessions
         res.json(sessions);
     } catch (error) {
-        // Send the error message in the response
+        // Handle any errors and respond with a 400 status code and an error message
         res.status(400).json({ error });
     }
 });
+
 
 // Export the router for use in other files
 export default router;

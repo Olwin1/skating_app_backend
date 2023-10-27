@@ -18,92 +18,100 @@ const generator = new Worker(0, 1, {
     sequenceBits: 12,
 });
 
+// Initialize an empty array to store influencer data.
 let influencers: bigint[] = [];
+// Initialize a variable to keep track of the time since the last influencer data update.
 let timeSinceLastInfluencerUpdate = 0;
+
+// Create a function to fetch and update influencer data from a JSON file.
 const getInfluencers = () => {
     try {
+        // Check if it's been more than 2.16e+7 milliseconds (6 hours) since the last update.
         if (timeSinceLastInfluencerUpdate + 2.16e+7 < Date.now()) {
+            // Read the influencer data from a JSON file.
             const jsonString = fs.readFileSync('./influencers.json', 'utf-8');
+            // Parse the JSON data and update the 'influencers' array.
             influencers = JSON.parse(jsonString);
+            // Update the time of the last influencer data update.
             timeSinceLastInfluencerUpdate = Date.now();
         }
     } catch (err) {
         console.error(err);
     }
 }
-// Define a route to create a new post, with middleware to check if the user is logged in
+
+// Create an API endpoint for handling a POST request related to creating a new post.
 router.post("/post", middleware.isLoggedIn, async (req: any, res) => {
-    // Get the user ID from the authenticated user object
+    // Extract the user ID from the request.
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        // Create a new post, including the author ID, description, image, and date
+        // Create a new post using the Prisma ORM.
         const post = await prisma.posts.create({
             data: {
-                post_id: generator.nextId(),
-                author_id: BigInt(_id),
-                description: req.body.description,
-                image: req.body.image,
-                like_count: 0
-
-
+                post_id: generator.nextId(), // Generate a unique post ID.
+                author_id: BigInt(_id), // Set the author's ID.
+                description: req.body.description, // Extract post description from the request.
+                image: req.body.image, // Extract post image hash from the request.
+                like_count: 0 // Initialize the like count to 0.
             }
         });
-        // Return the new post as a JSON response
+
+        // Respond with the newly created post.
         res.json(post);
     } catch (error) {
-        // Return an error response
+        // Handle errors by sending a 400 (Bad Request) response with the error message.
         res.status(400).json({ error });
     }
 });
 
 
-// Define a route to return a post from a given id, with middleware to check if the user is logged in
+
+// Define a route that listens for HTTP GET requests at the "/post" endpoint.
 router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
     // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
-    // Get the user ID from the authenticated user object
+
     try {
-        // Get post
+
+        // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
         const post = await prisma.posts.findUnique({ where: { post_id: BigInt(req.headers.post) } })
-        // Return the post as a JSON response
+
+        // Send a JSON response containing the retrieved post to the client.
         res.json(post);
     } catch (error) {
-        // Return an error response
+        // Set the response status code to 400 (Bad Request) to indicate an error.
         res.status(400).json({ error });
     }
 });
 
 
 
-// Define a route to the '/like' endpoint.
-router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
 
-    // Extract the user ID from the request object.
+router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
+    // Get the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
-
     try {
-        // Find the post that the user is trying to like, using the ID from the request body.
+        // Check if the user has already liked the post
         const postLike = await prisma.post_likes.findFirst({ where: { post_id: BigInt(req.body.post), user_id: _id } })
         if (!postLike) {
             try {
+                // Begin a database transaction
                 await prisma.$transaction(async (tx) => {
+                    // Increment the like count of the post and create a new like record
                     const post = await tx.posts.update({
-                        where: { post_id: BigInt(req.body.post) }, data: {
-                            like_count: { increment: 1 }, post_likes: {
-
-                            }
+                        where: { post_id: BigInt(req.body.post) },
+                        data: {
+                            like_count: { increment: 1 },
+                            post_likes: {}
                         }
                     })
 
-                    // Create a new record in TableB within the transaction
                     const postLikeNew = await tx.post_likes.create({
                         data: {
                             like_id: generator.nextId(),
                             post_id: post.post_id,
                             user_id: _id
-
-                            // Provide the data for the new record in TableB
                         },
                     });
                     return res.status(200).json({ "success": true })
@@ -113,39 +121,38 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
             }
         }
 
-        // Send the updated post back to the client.
+        // If the user has already liked the post, return an error
         res.json({ "error": "Post already liked" });
     } catch (error) {
+        // Handle any other errors with a 400 status code
         res.status(400).json({ error });
     }
 });
 
-// Define a route to the '/unlike' endpoint.
+// Define a route for unliking a post
 router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
-
-    // Extract the user ID from the request object.
+    // Get the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        // Find the post that the user is trying to like, using the ID from the request body.
+        // Check if the user has already liked the post
         const postLike = await prisma.post_likes.findFirst({ where: { post_id: BigInt(req.body.post), user_id: _id } })
         if (postLike) {
             try {
+                // Begin a database transaction
                 await prisma.$transaction(async (tx) => {
+                    // Decrement the like count of the post and delete the like record
                     const post = await tx.posts.update({
-                        where: { post_id: BigInt(req.body.post) }, data: {
-                            like_count: { decrement: 1 }, post_likes: {
-
-                            }
+                        where: { post_id: BigInt(req.body.post) },
+                        data: {
+                            like_count: { decrement: 1 },
+                            post_likes: {}
                         }
                     })
 
-                    // Create a new record in TableB within the transaction
                     const postLikeNew = await tx.post_likes.delete({
                         where: {
                             like_id: postLike.like_id
-
-                            // Provide the data for the new record in TableB
                         },
                     });
                     return res.status(200).json({ "success": true })
@@ -155,13 +162,14 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
             }
         }
 
-        // Send the updated post back to the client.
+        // If the user hasn't liked the post, return an error
         res.json({ "error": "Post isn't liked" });
     } catch (error) {
-
+        // Handle any other errors with a 400 status code
         res.status(400).json({ error });
     }
 });
+
 
 //TODO ADD SAVED POSTS (MISSING IN DB)
 // // Route for saving a post to a user's saved_posts array
@@ -203,135 +211,139 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
 //     }
 // });
 
-// Route for adding a comment to a post
+// Define a route to create a new comment
 router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
+    // Extract the user ID from the request
+    const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Create a new comment using Prisma
         const comment = await prisma.comments.create({
             data: {
-                comment_id: generator.nextId(),
-                post_id: BigInt(req.body.post),
-                sender_id: _id,
-                content: req.body.content,
-                timestamp: new Date(),
-                like_count: 0
-
+                comment_id: generator.nextId(), // Generate a unique comment ID
+                post_id: BigInt(req.body.post), // Extract the post ID from the request
+                sender_id: _id, // Set the sender's user ID
+                content: req.body.content, // Extract the comment content from the request
+                timestamp: new Date(), // Set the current timestamp
+                like_count: 0 // Initialize the like count to 0
             }
-        })
-        // Send a JSON response with the newly created comment
+        });
+
+        // Send the created comment as a JSON response
         res.json(comment);
     } catch (error) {
-        // Send a 400 response with the error message
+        // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
     }
 });
 
-// Route for removing a comment from a post
+// Define a route to delete a comment
 router.delete("/comment", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
+    // Extract the user ID from the request
+    const _id = BigInt((req as CustomRequest).user._id);
+
     try {
+        // Delete a comment by its comment_id
         const comment = await prisma.comments.delete({
             where: {
-                comment_id: BigInt(req.body.comment)
+                comment_id: BigInt(req.body.comment) // Extract the comment ID from the request
             }
-        })
+        });
 
-        // Send a JSON response with the result of the comment deletion
+        // Send a success message as a JSON response
         res.status(200).json({ "success": true });
     } catch (error) {
-        // Send a 400 response with the error message
+        // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
     }
 });
 
-
-// This route is used to like a comment
+// Define a route to like a comment
 router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
-
     try {
-        // Find the post that the user is trying to like, using the ID from the request body.
-        const commentLike = await prisma.comment_likes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } })
+        // Check if the user has already liked the comment
+        const commentLike = await prisma.comment_likes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } });
+
         if (!commentLike) {
             try {
+                // Use a transaction to update the comment's like count and create a new comment_like entry
                 await prisma.$transaction(async (tx) => {
                     const comment = await tx.comments.update({
-                        where: { comment_id: BigInt(req.body.comment) }, data: {
-                            like_count: { increment: 1 }, comment_likes: {
-
-                            }
+                        where: { comment_id: BigInt(req.body.comment) },
+                        data: {
+                            like_count: { increment: 1 } // Increment the like count by 1
                         }
-                    })
+                    });
 
-                    // Create a new record in Comment likes within the transaction
                     const commentLikeNew = await tx.comment_likes.create({
                         data: {
-                            like_id: generator.nextId(),
-                            comment_id: comment.post_id,
-                            user_id: _id
-
-                            // Provide the data for the new record in TableB
+                            like_id: generator.nextId(), // Generate a unique like ID
+                            comment_id: comment.post_id, // Set the comment ID
+                            user_id: _id // Set the user ID
                         },
                     });
-                    return res.status(200).json({ "success": true })
+
+                    // Send a success message as a JSON response
+                    return res.status(200).json({ "success": true });
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
             }
         }
 
-        // Send the updated post back to the client.
+        // Send an error message if the comment is already liked
         res.json({ "error": "Comment isn't liked" });
     } catch (error) {
-
-        // Return an error response
+        // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
     }
 });
 
-// This route is used to unlike a comment
+// Define a route to unlike a comment
 router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        // Find the post that the user is trying to like, using the ID from the request body.
-        const commentLike = await prisma.comment_likes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } })
+        // Check if the user has already liked the comment
+        const commentLike = await prisma.comment_likes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } });
+
         if (commentLike) {
             try {
+                // Use a transaction to update the comment's like count and delete the comment_like entry
                 await prisma.$transaction(async (tx) => {
                     const comment = await tx.comments.update({
-                        where: { comment_id: BigInt(req.body.comment) }, data: {
-                            like_count: { decrement: 1 }, comment_likes: {
-
-                            }
+                        where: { comment_id: BigInt(req.body.comment) },
+                        data: {
+                            like_count: { decrement: 1 } // Decrement the like count by 1
                         }
-                    })
+                    });
 
-                    // Create a new record in Comment likes within the transaction
                     const commentLikeNew = await tx.comment_likes.delete({
                         where: {
-                            like_id: commentLike.like_id
-
-                            // Provide the data for the new record in TableB
+                            like_id: commentLike.like_id // Delete the comment_like entry using its ID
                         },
                     });
-                    return res.status(200).json({ "success": true })
+
+                    // Send a success message as a JSON response
+                    return res.status(200).json({ "success": true });
                 });
             } catch (error) {
                 console.error('Error in transaction:', error);
             }
         }
 
-        // Send the updated post back to the client.
+        // Send an error message if the comment is not liked
         res.json({ "error": "Comment isn't liked" });
     } catch (error) {
-
-        // Return an error response
+        // Handle errors by sending a 400 status and an error message
         res.status(400).json({ error });
     }
 });
+
 
 //TODO Add dislike comment
 // // This route is used to dislike a comment

@@ -10,11 +10,16 @@ const generator = new Worker(0, 1, {
   datacenterIdBits: 5,
   sequenceBits: 12,
 });
-const getMessaging = firebase.messaging
+const getMessaging = firebase.messaging; // Initialize Firebase Messaging
+
+// Create an asynchronous function to send a message
 const createMessage = async (_id: bigint, channel: bigint, content: String, img: String) => {
-  console.log("Creating message")
+  console.log("Creating message");
+
   try {
-    console.log(1)
+    console.log(1);
+
+    // Update the last_message_count for a message channel in the database
     const userChannel = await prisma.message_channels.update({
       where: {
         channel_id: channel,
@@ -25,11 +30,13 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
             participant_id: _id,
           },
         },
-      }, data: {
-        last_message_count: { increment: 1 }
+      },
+      data: {
+        last_message_count: { increment: 1 },
       }
     });
 
+    // Create a new message in the database
     await prisma.messages.create({
       data: {
         message_id: generator.nextId(),
@@ -53,18 +60,27 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
     //         ).session(session);
     //     }
     // }
+
+    // Create an array to store participant IDs (excluding the sender's ID)
     let participants = [] as bigint[];
     for (let i = 0; i < userChannel.participants.length; i++) {
       if (userChannel.participants[i].user_id != _id) {
         participants.push(userChannel.participants[i].user_id!);
       }
     }
-    const fcmTokens = await prisma.fcm_tokens.findMany({ where: { user_id: { in: participants } } })
-    const user = await prisma.users.findUnique({ where: { user_id: _id } })
+
+    // Retrieve FCM tokens for the participants
+    const fcmTokens = await prisma.fcm_tokens.findMany({ where: { user_id: { in: participants } } });
+    const user = await prisma.users.findUnique({ where: { user_id: _id } });
+
     if (userChannel != null) {
-      console.log(2)
+      console.log(2);
+
+      // Iterate through FCM tokens and send messages
       for (let i = 0; i < fcmTokens.length; i++) {
-        const currentToken = fcmTokens[i].token
+        const currentToken = fcmTokens[i].token;
+
+        // Prepare the message to be sent via FCM
         const message = {
           notification: {
             title: user?.username,
@@ -77,30 +93,36 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
           },
           token: currentToken
         } as TokenMessage;
-        // Send a message to the device corresponding to the provided
-        // registration token.
-        console.log("SENDING MESSAGE!" + message.toString())
+
+        console.log("SENDING MESSAGE!" + message.toString());
+
+        // Send the FCM message
         getMessaging().send(message)
           .then((response) => {
-            // Response is a message ID string.
             console.log('Successfully sent message:', response);
           })
           .catch(async (error: any) => {
             4
             //TODO FIX THIS BIT - DELETE TOKEN IF FAILED TO SEND NOT SURE IF S|TILL NEEDS FIX
             console.log('Error sending message:', error);
+
+            // If the error is due to an unregistered token, delete it from the database
             if (error["code"] == "messaging/registration-token-not-registered" && participants[i]) {
-              await prisma.fcm_tokens.delete({ where: { token_id: fcmTokens[i].token_id } })
+              await prisma.fcm_tokens.delete({ where: { token_id: fcmTokens[i].token_id } });
             }
           });
       }
     }
-    return { success: true } // send a success response to the client
+
+    // Return a success response
+    return { success: true };
   } catch (error) {
-    console.log("ERRROR")
-    console.log(error)
-    return { success: false, error: error } // send an error response to the client
+    // Handle errors and return a failure response
+    console.log("ERROR");
+    console.log(error);
+    return { success: false, error: error };
   }
 };
+
 
 export default createMessage;

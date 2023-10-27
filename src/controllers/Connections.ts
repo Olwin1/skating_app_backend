@@ -15,184 +15,214 @@ const generator = new Worker(0, 1, {
     sequenceBits: 12,
 });
 
-// Define a route handler to handle a POST request to "/follow"
-router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
-    // Get the user ID from the request object
+// Define a route that allows a user to follow another user
+router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
+        // Extract the target user's ID from the request
+        const target = BigInt(req.body.user);
 
+        // Retrieve information about the target user, including follow requests
+        const targetUser = await prisma.users.findUnique({
+            where: { user_id: target },
+            include: {
+                follow_requests_follow_requests_requester_idTousers: {
+                    where: { requester_id: _id, requestee_id: target }
+                }
+            }
+        });
 
-        // Check if the follow request already exists
-        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: _id, requestee_id: target } } } })
-
-
+        // Check if a follow request already exists
         if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
-            // If a request already exists, you can handle it as desired (e.g., update the request status).
             console.log('Follow request already exists.');
         } else {
+            // If no follow request exists, check if the target user's profile is public
             if (targetUser.public_profile == false) {
-
                 // Create a new follow request
                 const newFollowRequest = await prisma.follow_requests.create({
                     data: {
                         request_id: generator.nextId(),
                         requester_id: _id,
                         requestee_id: target,
-                        status: 'pending', // You can set the initial status as needed (e.g., 'pending').
+                        status: 'pending',
                     },
                 });
-
                 console.log('Follow request created successfully.');
-                return res.status(200).json({ "success": true, "requested": true })
-            }
-            else {
+                return res.status(200).json({ "success": true, "requested": true });
+            } else {
+                // If the target user's profile is public, establish a follower-following relationship
                 const followingData = {
                     following_id: generator.nextId(),
                     following_user_id: target,
                     user_id: _id
                 };
-
                 const followerData = {
                     follower_id: generator.nextId(),
                     follower_user_id: _id,
                     user_id: target
                 };
-
                 const result = await prisma.$transaction([
                     prisma.following.create({ data: followingData }),
                     prisma.followers.create({ data: followerData })
                 ]);
-                return res.status(200).json({ "success": true, "requested": false })
+                return res.status(200).json({ "success": true, "requested": false });
             }
         }
     } catch (error) {
-
-        // If there is an error, return a 400 status code and the error message
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-
-// Define a route handler to handle a POST request to "/friend"
+// Define a route for sending a friend request
 router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
-
-    // Get the user ID from the request object
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Create a friend request
         const friendRequest = await prisma.friend_requests.create({
             data: {
                 request_id: generator.nextId(),
-                requester_id: _id,  // The ID of the user sending the request
-                requestee_id: BigInt(req.body.user),  // The ID of the target user
-                status: 'pending',  // You can set the initial status as 'pending'
+                requester_id: _id,
+                requestee_id: BigInt(req.body.user),
+                status: 'pending',
             },
         });
-        return res.status(200).json({ "success": true })
-
+        return res.status(200).json({ "success": true });
     } catch (error) {
-        // If there is an error, return a 400 status code and the error message
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-
-// Route for unfollowing a user
+// Define a route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
+        // Extract the target user's ID from the request
+        const target = BigInt(req.body.user);
 
+        // Retrieve information about the target user, including follow requests
+        const targetUser = await prisma.users.findUnique({
+            where: { user_id: target },
+            include: {
+                follow_requests_follow_requests_requester_idTousers: {
+                    where: { requester_id: _id, requestee_id: target }
+                }
+            }
+        });
 
-        // Check if the follow request already exists
-        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: _id, requestee_id: target } } } })
-
-
+        // Check if a follow request exists for unfollowing
         if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
-            // If a request already exists, you can handle it as desired (e.g., update the request status).
-            const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
+            // Delete the follow request to unfollow the user
+            const followRequest = await prisma.follow_requests.delete({
+                where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id }
+            });
             return res.status(200).json({ "success": true, "requested": true });
         } else {
+            // If no follow request exists, remove the follower-following relationship
             const result = await prisma.$transaction([
                 prisma.following.deleteMany({ where: { following_user_id: target, user_id: _id } }),
                 prisma.followers.deleteMany({ where: { follower_user_id: _id, user_id: target } })
             ]);
             return res.status(200).json({ "success": true, "requested": false });
-
         }
     } catch (error) {
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-// Route for unfollowing a user
+// Define a route for unfollowing a user as the follower
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        const target = BigInt(req.body.user); // Replace with the ID of the user to be followed
+        // Extract the target user's ID from the request
+        const target = BigInt(req.body.user);
 
+        // Retrieve information about the target user, including follow requests
+        const targetUser = await prisma.users.findUnique({
+            where: { user_id: target },
+            include: {
+                follow_requests_follow_requests_requester_idTousers: {
+                    where: { requester_id: target, requestee_id: _id }
+                }
+            }
+        });
 
-        // Check if the follow request already exists
-        const targetUser = await prisma.users.findUnique({ where: { user_id: target }, include: { follow_requests_follow_requests_requester_idTousers: { where: { requester_id: target, requestee_id: _id } } } })
-
-
+        // Check if a follow request exists for unfollowing as the follower
         if (targetUser?.follow_requests_follow_requests_requester_idTousers.length != 0) {
-            // If a request already exists, you can handle it as desired (e.g., update the request status).
-            const followRequest = await prisma.follow_requests.delete({ where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id } })
+            // Delete the follow request to unfollow the user
+            const followRequest = await prisma.follow_requests.delete({
+                where: { request_id: targetUser?.follow_requests_follow_requests_requester_idTousers[0].request_id }
+            });
             return res.status(200).json({ "success": true, "request": true });
         } else {
+            // If no follow request exists, remove the follower-following relationship
             const result = await prisma.$transaction([
                 prisma.following.deleteMany({ where: { following_user_id: _id, user_id: target } }),
                 prisma.followers.deleteMany({ where: { follower_user_id: target, user_id: _id } })
             ]);
             return res.status(200).json({ "success": true, "request": false });
-
         }
     } catch (error) {
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-
-
+// Define a route for unfriending a user
 router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Extract the target user's ID from the request
         const target = BigInt(req.body.user);
+
+        // Retrieve information about the target user, including friend requests and friend relationships
         const friendInfo = await prisma.users.findUnique({
-            where: { user_id: target }, include: {
-                friend_requests_friend_requests_requestee_idTousers: { where: { requester_id: _id, requestee_id: target } }, friends_friends_user1_idTousers: {
+            where: { user_id: target },
+            include: {
+                friend_requests_friend_requests_requestee_idTousers: { where: { requester_id: _id, requestee_id: target } },
+                friends_friends_user1_idTousers: {
                     where: { OR: [{ user1_id: _id, user2_id: target }, { user1_id: target, user2_id: _id }] }
                 }
             }
         });
+
         if (!friendInfo?.friend_requests_friend_requests_requestee_idTousers.length) {
+            // If no friend request exists, delete the friend request to unfriend the user
             const retval = await prisma.friend_requests.delete({ where: { request_id: friendInfo?.friend_requests_friend_requests_requestee_idTousers[0].request_id } })
             res.status(200).json({ "success": true, "request": true });
-        }
-        else {
+        } else {
+            // If a friend request exists, remove the friend relationship
             const retval = await prisma.friends.delete({ where: { friendship_id: friendInfo.friends_friends_user1_idTousers[0].friendship_id } })
             return res.status(200).json({ "success": true, "request": false });
         }
     } catch (error) {
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-// Define a route handler to handle a Get request to "/followers"
+// Define a route to retrieve a user's followers
 router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
-
-    // Get the user ID from the request object
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id)
+        // Retrieve the list of follower users for the target user
         const followerUsers = await prisma.users.findUnique({
             where: { user_id: target },
         }).followers_followers_user_idTousers({
@@ -201,19 +231,20 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
         });
         return res.status(200).json(followerUsers);
     } catch (error) {
-        // If there is an error, return a 400 status code and the error message
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-// Define a route handler to handle a Get request to "/following"
+// Define a route to retrieve a user's following users
 router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
-
-    // Get the user ID from the request object
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id)
+        // Retrieve the list of followed users for the target user
         const followedUsers = await prisma.users.findUnique({
             where: { user_id: target },
         }).following_following_user_idTousers({
@@ -222,22 +253,22 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
         });
         return res.status(200).json(followedUsers);
     } catch (error) {
-        // If there is an error, return a 400 status code and the error message
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
 
-// Define a route handler to handle a Get request to "/friends"
+// Define a route to retrieve a user's friends
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
-
-    // Get the user ID from the request object
+    // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id);
         const pageSize = 20;
 
-
+        // Use a transaction to retrieve a combined list of user1's and user2's friends
         prisma.$transaction(async (tx) => {
             const user1Friends = await tx.users.findUnique({
                 where: { user_id: target }
@@ -245,7 +276,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
                 take: pageSize,
                 skip: (req.headers.page) * pageSize
             });
-            const len = user1Friends == null ? 0 : user1Friends!.length
+            const len = user1Friends == null ? 0 : user1Friends!.length;
             const user2Friends = await tx.users.findUnique({
                 where: { user_id: target }
             }).friends_friends_user2_idTousers({
@@ -256,7 +287,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
             return [...user1Friends ?? [], ...user2Friends ?? []];
         });
     } catch (error) {
-        // If there is an error, return a 400 status code and the error message
+        // Handle any errors that occur during this process
         res.status(400).json({ error });
     }
 });
@@ -264,54 +295,73 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
     try {
-        // Get the user ID from the request object
-        const _id = BigInt((req as CustomRequest).user._id);
-        const target = BigInt(req.body.user);
-        const accepted = req.body.accepted
+        // Convert user IDs to BigInt
+        const _id = BigInt((req as CustomRequest).user._id); // Current user's ID
+        const target = BigInt(req.body.user); // Target user's ID
+        const accepted = req.body.accepted; // Whether the follow request is accepted
 
+        // Find the follow request in the database
         const followRequest = await prisma.follow_requests.findFirst({ where: { requester_id: target, requestee_id: _id } });
+
         if (!followRequest) {
             throw ("No follow request made");
         }
+
+        // Delete the follow request
         const deletionFollowRequest = await prisma.follow_requests.delete({ where: { request_id: followRequest?.request_id } });
+
         if (accepted) {
+            // If the request is accepted, create records in 'following' and 'followers' tables
             const following = await prisma.following.create({
                 data: {
                     following_id: generator.nextId(),
                     following_user_id: target,
                     user_id: _id
                 }
-            })
+            });
             const followers = await prisma.followers.create({
                 data: {
                     follower_id: generator.nextId(),
                     follower_user_id: _id,
                     user_id: target
                 }
-            })//TODO verify target and id right way round
-            return res.status(200).json({ "success": true, "accepted": true })
-        }
-        return res.status(200).json({ "success": true, "accepted": false })
+            });
+            //TODO verify target and id right way round
 
+            // Respond with success and acceptance status
+            return res.status(200).json({ "success": true, "accepted": true });
+        }
+
+        // If the request is not accepted, respond with success and rejection status
+        return res.status(200).json({ "success": true, "accepted": false });
 
     } catch (error) {
+        // Handle any errors and respond with a 400 Bad Request status
         res.status(400).json({ error });
     }
 });
 
 
+// This is a route handler for a PATCH request to "/friend".
 router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
     try {
-        // Get the user ID from the request object
+        // Extract the user's ID from the request object.
         const _id = BigInt((req as CustomRequest).user._id);
 
-        // Find the user to friend in the Friends collection
+        // Extract the target user's ID from the request body.
         const target = BigInt(req.body.user);
+
+        // Delete any existing friend requests between the current user and the target user.
         const request = await prisma.friend_requests.deleteMany({ where: { requestee_id: _id, requester_id: target } });
+
+        // Check if no friend request was found to delete.
         if (request.count == 0) {
-            return res.json({ "error": "No existing request" })
+            return res.json({ "error": "No existing request" });
         }
+
+        // Check if the request body contains an "accepted" flag.
         if (req.body.accepted) {
+            // Create a new entry in the "friends" table to represent the accepted friendship.
             const friendObject = await prisma.friends.create({
                 data: {
                     friendship_id: generator.nextId(),
@@ -319,18 +369,18 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                     user2_id: target
                 }
             });
-            return res.status(200).json({ "success": true, "accepted": true })
-
+            return res.status(200).json({ "success": true, "accepted": true });
         }
         else {
-            return res.status(200).json({ "success": true, "accepted": false })
+            // If the "accepted" flag is not set, return a response indicating that the request was not accepted.
+            return res.status(200).json({ "success": true, "accepted": false });
         }
 
     } catch (error) {
+        // Handle any errors that may occur during the execution of this code.
         res.status(400).json({ error });
     }
 });
-
 
 
 export default router;

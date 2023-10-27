@@ -14,22 +14,28 @@ const generator = new Worker(0, 1, {
   sequenceBits: 12,
 });
 const router = Router();
-// Endpoint for handling POST requests to '/token'
+
+// This is an HTTP POST request handler for the '/token' endpoint
 router.post('/token', middleware.isLoggedIn, async (req: Request, res: Response) => {
+  // Extract the user's _id from the request
   const _id = BigInt((req as CustomRequest).user._id);
 
-
-  // Start a session with MongoDB
-
   try {
-    // Find the user by their _id using the User model and within the session
-    const fcmToken = await prisma.fcm_tokens.upsert({ where: { user_id: _id, token: req.body.fcm_token as string }, create: { token_id: generator.nextId(), user_id: _id, token: req.body.fcm_token }, update: {} });
+    // Try to upsert an FCM token record in the database
+    const fcmToken = await prisma.fcm_tokens.upsert({
+      where: { user_id: _id, token: req.body.fcm_token as string },
+      create: { token_id: generator.nextId(), user_id: _id, token: req.body.fcm_token },
+      update: {} // This is empty because it's an upsert operation
+    });
+
+    // Send a JSON response with the upserted FCM token
     return res.json(fcmToken);
   }
   catch (error) {
-    // If an error occurs, abort the transaction, end the session, and send an error response
+    // If an error occurs, send a JSON response with a 400 Bad Request status and the error message
     res.status(400).json({ error });
   }
 });
+
 
 export default router;

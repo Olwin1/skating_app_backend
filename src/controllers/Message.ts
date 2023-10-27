@@ -15,21 +15,25 @@ const generator = new Worker(0, 1, {
 const router = Router(); // create router to create route bundle
 
 
-// Route to create a new channel with the specified participants
+// This route handles creating a new message channel.
 router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
-    // Get the user ID from the authenticated user object
+    // Extract the user's ID from the request.
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
-        let participants = JSON.parse(req.body.participants).concat([_id])
+        // Parse the list of participants from the request and add the user's ID.
+        let participants = JSON.parse(req.body.participants).concat([_id]);
+        // Generate a unique channel ID.
         const channelId = generator.nextId();
+        // Create a new channel in the database.
         const channel = await prisma.message_channels.create({
             data: {
                 channel_id: channelId,
                 creation_date: Date(),
                 last_message_count: 0
             }
-        })
+        });
+        // Create participant rows for the channel in the database.
         let participantRows = await prisma.participants.createMany({
             data: participants.map((userId: bigint) => ({
                 participant_id: generator.nextId(),
@@ -37,74 +41,78 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
                 channel_id: channelId,
             })),
         });
-
-
+        // Return a success response with the created channel and participants.
         return res.status(200).json({ "channel": channel, "participants": participantRows });
     } catch (error) {
-        // If any transaction fails, abort the session and return an error response
+        // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
     }
 });
 
-
-
-// Route to create a new message
+// This route handles creating a new message in a channel.
 router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id);
-    let retval = await createMessage(_id, BigInt(req.body.channel), req.body.content, req.body.img);
-    res.status(200).json({ "success": true });
-    //TODO add error handling
-});
-
-
-
-// Route to create a get message
-router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
     try {
-        const message = await prisma.messages.findUnique({ where: { message_id: BigInt(req.headers.message) } })
-        return res.status(200).json(message); // send a success response to the client
+        // Extract the user's ID from the request.
+        const _id = BigInt((req as CustomRequest).user._id);
+        // Call the createMessage function to add a new message to the channel.
+        let retval = await createMessage(_id, BigInt(req.body.channel), req.body.content, req.body.img);
+        // Return a success response.
+        res.status(200).json({ "success": true });
     } catch (error) {
-        res.status(500).json({ success: false, error: error }); // send an error response to the client
+        // Handle any errors and return a 500 Internal Server Error response.
+        res.status(500).json({ "success": false, error: error });
     }
 });
 
+// This route handles fetching a single message by ID.
+router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Retrieve a single message by its ID from the database.
+        const message = await prisma.messages.findUnique({ where: { message_id: BigInt(req.headers.message) } });
+        // Return the message as a JSON response.
+        return res.status(200).json(message);
+    } catch (error) {
+        // Handle any errors and return a 500 Internal Server Error response.
+        res.status(500).json({ success: false, error: error });
+    }
+});
 
-// Route for retrieving messages from a specific channel
+// This route handles fetching a list of messages in a channel.
 router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Retrieve the channel details by its ID.
         const channel = await prisma.message_channels.findUnique({
-            where:
-                { channel_id: BigInt(req.headers.channel) },
+            where: { channel_id: BigInt(req.headers.channel) },
         });
 
-        const messages = await prisma.messages.findMany(
-            {
-                where: {
-                    AND: [
-                        { message_number: { gte: channel!.last_message_count - req.headers.page * 20 - 20 } },
-                        { message_number: { lte: channel!.last_message_count - req.headers.page * 20 } },
-                    ]
-                },
-                take: 20,
-                orderBy: { message_number: 'desc' }
+        // Fetch a list of messages within the specified page range.
+        const messages = await prisma.messages.findMany({
+            where: {
+                AND: [
+                    { message_number: { gte: channel!.last_message_count - req.headers.page * 20 - 20 } },
+                    { message_number: { lte: channel!.last_message_count - req.headers.page * 20 } },
+                ]
+            },
+            take: 20,
+            orderBy: { message_number: 'desc' }
+        });
 
-            }
-        );
-
-
+        // Return the list of messages as a JSON response.
         res.status(200).json(messages);
     } catch (error) {
+        // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
     }
 });
 
-// Route for retrieving a list of channels that the user is a member of
+// This route handles fetching a list of channels for the authenticated user.
 router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
     try {
+        // Retrieve a list of channels associated with the user.
         const channels = await prisma.participants.findMany({
             where: {
                 user_id: _id,
@@ -113,60 +121,68 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
                 message_channels: true,
             },
         });
+        // Return the list of channels as a JSON response.
         res.status(200).json(channels);
     } catch (error) {
-        // If an error occurs, abort the transaction and return an error response
+        // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
     }
 });
 
-
-// This route handles GET requests to '/channel'
+// This route handles fetching details of a single channel.
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
-        // Find a channel with the given ID that the user is a participant of
-        const channel = prisma.message_channels.findUnique({ where: { channel_id: BigInt(req.headers.channel) } })
-
-
-        // Send a response with the found channel
+        // Retrieve details of a channel by its ID.
+        const channel = prisma.message_channels.findUnique({ where: { channel_id: BigInt(req.headers.channel) } });
+        // Return the channel details as a JSON response.
         res.status(200).json(channel);
     } catch (error) {
-        // Send a response with an error message
+        // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
     }
 });
 
-
+// This route handles fetching a list of users for the authenticated user.
 router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
 
-
     try {
-
-        // Create an array to store the user IDs from previous conversations
+        // Retrieve a list of user IDs associated with the authenticated user's channels.
         let channelIds = [];
-        const userParticipant = await prisma.participants.findMany({ where: { user_id: _id } })
+        const userParticipant = await prisma.participants.findMany({ where: { user_id: _id } });
         for (let x = 0; x < userParticipant.length; x++) {
-            channelIds.push(userParticipant[x].channel_id
-            )
+            channelIds.push(userParticipant[x].channel_id);
         }
+
+        // Retrieve a list of participants in the user's channels who are not the authenticated user.
         const participants = await prisma.participants.findMany({ where: { AND: [{ channel_id: { in: channelIds } }, { user_id: { not: _id } }] } });
+
+        // Extract user IDs from the participants list.
         const participantIds: bigint[] = []
         participants.map((participant) => {
             participantIds.push(participant.user_id);
-        })
-        const friendUserIds: bigint[] = []
+        });
 
-        const usersFriends = await prisma.friends.findMany({ where: { AND: [{ OR: [{ user1_id: _id }, { user2_id: _id }] }, { AND: [{ user1_id: { not: { in: participantIds } } }, { user2_id: { not: { in: participantIds } } }] }] }, skip: req.headers.page * 20, take: 20 });
+        // Retrieve user IDs of friends not in the participant list.
+        const friendUserIds: bigint[] = []
+        const usersFriends = await prisma.friends.findMany({
+            where: {
+                AND: [
+                    { OR: [{ user1_id: _id }, { user2_id: _id }] },
+                    { AND: [{ user1_id: { not: { in: participantIds } } }, { user2_id: { not: { in: participantIds } } }] }
+                ]
+            },
+            skip: req.headers.page * 20,
+            take: 20
+        });
         usersFriends.map((friend) => {
             friendUserIds.push(friend.user1_id == _id ? friend.user2_id : friend.user1_id);
-        })
-        let users = await prisma.users.findMany({ where: { user_id: { in: friendUserIds } } })
-        // If there are less than 20 results, find following users who are not in previous conversations, with pagination
+        });
+
+        // Retrieve user details of friends not in the participant list.
+        let users = await prisma.users.findMany({ where: { user_id: { in: friendUserIds } } });
+
+        // If there are fewer than 20 users, retrieve additional users who are not in the participant list.
         if (users.length < 20) {
             users = [...users, ...await prisma.users.findMany({
                 where: {
@@ -177,17 +193,20 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
                     },
                     followers_followers_user_idTousers: {
                         some: {
-                            user_id: _id, // User for whom you want to get followers
+                            user_id: _id,
                         },
                     },
                 },
-                skip: req.headers.page * 20, take: 20
+                skip: req.headers.page * 20,
+                take: 20
             })];
         }
 
+        // Prepare and return the list of users as a JSON response.
         let retvals: {
-            user_id: bigint; username
-            : string; avatar: string | null;
+            user_id: bigint;
+            username: string;
+            avatar: string | null;
         }[] = []
         users.map((user) => {
             retvals.push({
@@ -195,11 +214,10 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
                 "username": user.username,
                 "avatar": user.avatar_id
             })
-        })
-        // Commit the MongoDB transaction and send the response with the retrieved user IDs
+        });
         res.status(200).json(retvals);
     } catch (error) {
-        // If there is an error, abort the transaction and send an error response
+        // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
     }
 });
