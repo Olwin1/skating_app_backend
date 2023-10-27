@@ -489,9 +489,14 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
           FROM followers
           WHERE follower_user_id = ${_id}
         ) OR author_id IN (
-            SELECT user1_id, user2_id
+            SELECT 
+                CASE
+                    WHEN user1_id = ${_id} THEN user2_id
+                    ELSE user1_id
+                END AS friend_id
             FROM friends
             WHERE user1_id = ${_id} OR user2_id = ${_id}
+
         )
         ) AND
         author_id NOT IN (
@@ -507,15 +512,21 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         if (posts.length < 20) {
             //TODO fix offset
             const extraPosts = await prisma.$queryRaw`
-SELECT p.*
-FROM posts p
-WHERE author_id IN (
-    SELECT DISTINCT fof.friend_id
-    FROM friends f
-    JOIN friends fof ON (f.user1_id = fof.user1_id OR f.user1_id = fof.user2_id OR f.user2_id = fof.user1_id OR f.user2_id = fof.user2_id)
-    WHERE f.user1_id = ${_id} OR f.user2_id = ${_id}
-        AND f.user1_id <> fof.friend_id -- Exclude the user themselves
-)
+            SELECT p.*
+            FROM posts p
+            WHERE author_id IN (
+                SELECT DISTINCT friend_id
+                FROM (
+                    SELECT DISTINCT f.user1_id AS friend_id
+                    FROM friends f
+                    WHERE (f.user2_id = ${_id} OR f.user1_id = ${_id})
+                    UNION
+                    SELECT DISTINCT f.user2_id AS friend_id
+                    FROM friends f
+                    WHERE (f.user1_id = ${_id} OR f.user2_id = ${_id})
+                ) AS subq
+                WHERE subq.friend_id <> ${_id} -- Exclude the user themselves
+            )
             LIMIT ${take}
             OFFSET ${skip}
           ` as any;
