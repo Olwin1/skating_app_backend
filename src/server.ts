@@ -8,7 +8,6 @@ import log from "./logger";
 import cors from "cors";
 import bodyParser from "body-parser";
 import UserRouter from "./controllers/User"; // Import User Router
-import TodoRouter from "./controllers/Todo"; // Import Todo Router
 import ConnectionsRouter from "./controllers/Connections"; // Import Connections Router
 import PostRouter from "./controllers/Post"; // Import Post Router
 import MessageRouter from "./controllers/Message"; // Import Post Router
@@ -35,17 +34,17 @@ const HTTPS = Boolean(sHTTPS);
 
 
 // This line is from the Node.js HTTPS documentation.
-const options: ServerOptions | null = HTTPS?{
+const options: ServerOptions | null = HTTPS ? {
   key: fs.readFileSync(SSL_KEY!),
   cert: fs.readFileSync(SSL_CERT!)
-}:null;
+} : null;
 
 // Create application object
 const app = express();
 
 // Create server object using the application object
 
-const server = HTTPS?createServerHTTPS(options!, app):createServerHTTP(app);
+const server = HTTPS ? createServerHTTPS(options!, app) : createServerHTTP(app);
 
 // Create a WebSocket instance using the server object
 const io = Websocket.getInstance(server);
@@ -99,7 +98,6 @@ app.get("/", (req: Request, res: Response) => {
   res.send("This is the test route to make sure server is working");
 });
 app.use("/user", UserRouter); // route all "/user" requests to UserRouter for further processing
-app.use("/todos", TodoRouter); // route all "/todos" requests to TodoRouter for further processing
 app.use("/connections", ConnectionsRouter); // route all "/connections" requests to ConnectionsRouter for further processing
 app.use("/post", PostRouter); // route all "/post" requests to ConnectionsRouter for further processing
 app.use("/message", MessageRouter); // route all "/message" requests to MessageRouter for further processing
