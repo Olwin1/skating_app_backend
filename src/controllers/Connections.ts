@@ -228,8 +228,29 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
         }).followers_followers_user_idTousers({
             take: 20,
             skip: (req.headers.page) * 20,
+            include: {
+                users_followers_follower_user_idTousers: true
+            }
         });
-        return res.status(200).json(followerUsers);
+
+
+        let returningUsers = []
+        if (followerUsers == null) {
+            throw new Error("No followed users found")
+        }
+        for (let followerUser of followerUsers) {
+            returningUsers.push({
+                "user_id": followerUser.users_followers_follower_user_idTousers.user_id,
+                "avatar_id": followerUser.users_followers_follower_user_idTousers.avatar_id,
+                "description": followerUser.users_followers_follower_user_idTousers.description,
+                "public_profile": followerUser.users_followers_follower_user_idTousers.public_profile,
+                "country": followerUser.users_followers_follower_user_idTousers.country,
+                "username": followerUser.users_followers_follower_user_idTousers.username,
+                "display_name": followerUser.users_followers_follower_user_idTousers.display_name,
+                "user_role": followerUser.users_followers_follower_user_idTousers.user_role
+            });
+        }
+        return res.status(200).json(returningUsers);
     } catch (error) {
         // Handle any errors that occur during this process
         res.status(400).json({ error });
@@ -250,8 +271,27 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
         }).following_following_user_idTousers({
             take: 20,
             skip: (req.headers.page) * 20,
+            include: {
+                users_following_following_user_idTousers: true
+            }
         });
-        return res.status(200).json(followedUsers);
+        let returningUsers = []
+        if (followedUsers == null) {
+            throw new Error("No followed users found")
+        }
+        for (let followedUser of followedUsers) {
+            returningUsers.push({
+                "user_id": followedUser.users_following_following_user_idTousers.user_id,
+                "avatar_id": followedUser.users_following_following_user_idTousers.avatar_id,
+                "description": followedUser.users_following_following_user_idTousers.description,
+                "public_profile": followedUser.users_following_following_user_idTousers.public_profile,
+                "country": followedUser.users_following_following_user_idTousers.country,
+                "username": followedUser.users_following_following_user_idTousers.username,
+                "display_name": followedUser.users_following_following_user_idTousers.display_name,
+                "user_role": followedUser.users_following_following_user_idTousers.user_role
+            });
+        }
+        return res.status(200).json(returningUsers);
     } catch (error) {
         // Handle any errors that occur during this process
         res.status(400).json({ error });
@@ -274,17 +314,54 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
                 where: { user_id: target }
             }).friends_friends_user1_idTousers({
                 take: pageSize,
-                skip: (req.headers.page) * pageSize
+                skip: (req.headers.page) * pageSize,
+                include: {
+                    users_friends_user2_idTousers: true,
+                }
             });
             const len = user1Friends == null ? 0 : user1Friends!.length;
             const user2Friends = await tx.users.findUnique({
                 where: { user_id: target }
             }).friends_friends_user2_idTousers({
                 take: pageSize - len,
-                skip: Math.max(0, (req.headers.page) * pageSize - len)
+                skip: Math.max(0, (req.headers.page) * pageSize - len),
+                include: {
+                    users_friends_user1_idTousers: true,
+                }
             });
 
-            return [...user1Friends ?? [], ...user2Friends ?? []];
+            let returningUsers = []
+            if (user1Friends != null) {
+                for (let friendUser of user1Friends) {
+                    returningUsers.push({
+                        "user_id": friendUser.users_friends_user2_idTousers.user_id,
+                        "avatar_id": friendUser.users_friends_user2_idTousers.avatar_id,
+                        "description": friendUser.users_friends_user2_idTousers.description,
+                        "public_profile": friendUser.users_friends_user2_idTousers.public_profile,
+                        "country": friendUser.users_friends_user2_idTousers.country,
+                        "username": friendUser.users_friends_user2_idTousers.username,
+                        "display_name": friendUser.users_friends_user2_idTousers.display_name,
+                        "user_role": friendUser.users_friends_user2_idTousers.user_role
+                    });
+                }
+            }
+
+            if (user2Friends != null) {
+                for (let friendUser of user2Friends) {
+                    returningUsers.push({
+                        "user_id": friendUser.users_friends_user1_idTousers.user_id,
+                        "avatar_id": friendUser.users_friends_user1_idTousers.avatar_id,
+                        "description": friendUser.users_friends_user1_idTousers.description,
+                        "public_profile": friendUser.users_friends_user1_idTousers.public_profile,
+                        "country": friendUser.users_friends_user1_idTousers.country,
+                        "username": friendUser.users_friends_user1_idTousers.username,
+                        "display_name": friendUser.users_friends_user1_idTousers.display_name,
+                        "user_role": friendUser.users_friends_user1_idTousers.user_role
+                    });
+                }
+            }
+
+            return res.status(200).json(returningUsers);
         });
     } catch (error) {
         // Handle any errors that occur during this process
