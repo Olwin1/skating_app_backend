@@ -29,7 +29,7 @@ router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
         const channel = await prisma.message_channels.create({
             data: {
                 channel_id: channelId,
-                creation_date: Date(),
+                creation_date: new Date().toISOString(),
                 last_message_count: 0
             }
         });

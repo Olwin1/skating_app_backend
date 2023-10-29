@@ -41,7 +41,7 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
       data: {
         message_id: generator.nextId(),
         sender_id: _id,
-        date_sent: new Date(),
+        date_sent: new Date().toISOString(),
         content: content as string,
         //img: img,
         message_number: userChannel?.last_message_count,

@@ -230,7 +230,7 @@ router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
                 post_id: BigInt(req.body.post), // Extract the post ID from the request
                 sender_id: _id, // Set the sender's user ID
                 content: req.body.content, // Extract the comment content from the request
-                timestamp: new Date(), // Set the current timestamp
+                timestamp: new Date().toISOString(), // Set the current timestamp
                 like_count: 0 // Initialize the like count to 0
             }
         });
