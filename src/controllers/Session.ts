@@ -22,9 +22,10 @@ const router = Router();
 
 // POST endpoint for creating a new session
 router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
-    // Convert user ID to a BigInt
-    const _id = BigInt((req as CustomRequest).user._id);
     try {
+        // Convert user ID to a BigInt
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Create a new session in the database
         const session = await prisma.sessions.create({
             data: {
@@ -66,9 +67,10 @@ router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
 
 // GET endpoint for retrieving a list of sessions for the user's friends
 router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
-    // Convert user ID to a BigInt
-    const _id = BigInt((req as CustomRequest).user._id);
     try {
+        // Convert user ID to a BigInt
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Calculate a cutoff date (24 hours ago)
         let cutoffDate = new Date(new Date().getTime() - (24 * 60 * 60 * 1000)).toISOString();
 

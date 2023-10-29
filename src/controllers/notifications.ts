@@ -17,10 +17,10 @@ const router = Router();
 
 // This is an HTTP POST request handler for the '/token' endpoint
 router.post('/token', middleware.isLoggedIn, async (req: Request, res: Response) => {
-  // Extract the user's _id from the request
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    // Extract the user's _id from the request
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Try to upsert an FCM token record in the database
     const fcmToken = await prisma.fcm_tokens.upsert({
       where: { user_id: _id, token: req.body.fcm_token as string },

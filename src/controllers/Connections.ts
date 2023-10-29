@@ -18,10 +18,10 @@ const generator = new Worker(0, 1, {
 
 // Define a route that allows a user to follow another user
 router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request
         const target = BigInt(req.body.user);
 
@@ -79,10 +79,10 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for sending a friend request
 router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Create a friend request
         const friendRequest = await prisma.friend_requests.create({
             data: {
@@ -101,10 +101,10 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request
         const target = BigInt(req.body.user);
 
@@ -141,10 +141,10 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 
 // Define a route for unfollowing a user as the follower
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request
         const target = BigInt(req.body.user);
 
@@ -181,10 +181,10 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 
 // Define a route for unfriending a user
 router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request
         const target = BigInt(req.body.user);
 
@@ -216,10 +216,10 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route to retrieve a user's followers
 router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id)
         // Retrieve the list of follower users for the target user
@@ -259,10 +259,10 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route to retrieve a user's following users
 router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id)
         // Retrieve the list of followed users for the target user
@@ -300,10 +300,10 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route to retrieve a user's friends
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Extract the target user's ID from the request headers (or use the user's own ID)
         const target = BigInt(req.headers.user ?? _id);
         const pageSize = 20;

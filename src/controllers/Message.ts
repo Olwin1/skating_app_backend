@@ -17,10 +17,10 @@ const router = Router(); // create router to create route bundle
 
 // This route handles creating a new message channel.
 router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
-    // Extract the user's ID from the request.
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        // Extract the user's ID from the request.
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Parse the list of participants from the request and add the user's ID.
         let participants = JSON.parse(req.body.participants).concat([_id]);
         // Generate a unique channel ID.
@@ -79,9 +79,9 @@ router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route handles fetching a list of messages in a channel.
 router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Retrieve the channel details by its ID.
         const channel = await prisma.message_channels.findUnique({
             where: { channel_id: BigInt(req.headers.channel) },
@@ -109,9 +109,9 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route handles fetching a list of channels for the authenticated user.
 router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Retrieve a list of channels associated with the user.
         const channels = await prisma.participants.findMany({
             where: {
@@ -159,9 +159,9 @@ router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
 
 // This route handles fetching a list of users for the authenticated user.
 router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
-    const _id = BigInt((req as CustomRequest).user._id);
-
     try {
+        const _id = BigInt((req as CustomRequest).user._id);
+
         // Retrieve a list of user IDs associated with the authenticated user's channels.
         let channelIds = [];
         const userParticipant = await prisma.participants.findMany({ where: { user_id: _id } });

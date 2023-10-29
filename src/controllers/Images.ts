@@ -18,14 +18,14 @@ router.get("/thumbnail/:image", async (req: any, res) => {
 });
 
 const getImage = async (req: any, res: any, thumbnail: boolean) => {
-    // Convert the request parameter to a MongoDB ObjectId
-    const id = new mongoose.Types.ObjectId(req.params.image);
-
-    // Find the file with the specified ID in the "files" collection
-    const file = await files.findOne({ _id: id });
-
-    // Retrieve the chunks of the file from the "filesChunks" collection
     try {
+        // Convert the request parameter to a MongoDB ObjectId
+        const id = new mongoose.Types.ObjectId(req.params.image);
+
+        // Find the file with the specified ID in the "files" collection
+        const file = await files.findOne({ _id: id });
+
+        // Retrieve the chunks of the file from the "filesChunks" collection
         let chunks = await filesChunks.find({ files_id: file!._id }).sort({ n: 1 }).toArray();
 
         // If no chunks are found, return an error message

@@ -122,10 +122,10 @@ router.post("/login", async (req: any, res) => {
 
 // Define a route for updating user descriptions
 router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
-  // Extract the user ID from the request
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    // Extract the user ID from the request
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Update the user's description in the database using Prisma
     const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { description: req.body.description } });
 
@@ -139,10 +139,10 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route for updating user avatars
 router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
-  // Extract the user ID from the request
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    // Extract the user ID from the request
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Update the user's avatar in the database using Prisma
     const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { avatar_id: req.body.avatar } });
 
@@ -156,10 +156,10 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
 
 // Route handler to update user's email
 router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
-  // Get the user ID from the request object
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Update the user's email in the database 
     //TODO: Redo Email Verification
     const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { email: req.body.description } })
@@ -175,9 +175,9 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
 
 // Retrieves user information.
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
       where: { user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id }
@@ -233,9 +233,9 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
 // This is another route handler for "/follows" that checks if a user is following another user.
 router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Check if the user is following the user specified in the request headers.
     const following = await prisma.following.findFirst({ where: { user_id: _id, following_user_id: BigInt(req.headers.user) } });
 
@@ -259,9 +259,9 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
 
 // Similar to the previous route handlers, this one checks if users are friends.
 router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Check if the user is friends with the user specified in the request headers.
     const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: _id, user2_id: BigInt(req.headers.user) }, { user1_id: BigInt(req.headers.user), user2_id: _id }] } });
 
@@ -287,9 +287,9 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 // Another route handler for user search based on a query.
 router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
-  const _id = BigInt((req as CustomRequest).user._id);
-
   try {
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // Search for users whose usernames contain the query specified in the request headers.
     const results = await prisma.users.findMany({
       where: {
