@@ -203,7 +203,7 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
                 where: {
                     NOT: {
                         user_id: {
-                            in: [...participantIds, ...friendUserIds],
+                            in: [...participantIds, ...friendUserIds, _id],
                         },
                     },
                     followers_followers_user_idTousers: {
