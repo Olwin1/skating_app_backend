@@ -121,8 +121,23 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
                 message_channels: true,
             },
         });
+        let channelIds: bigint[] = []
+        for (const channel of channels) {
+            channelIds.push(channel.channel_id)
+        }
+        const returnChannels = await prisma.message_channels.findMany({
+            where: { channel_id: { in: channelIds } },
+            include: {
+                participants: {
+                    include: {
+                        users: true
+                    }
+                }
+            }
+        });
+
         // Return the list of channels as a JSON response.
-        res.status(200).json(channels);
+        res.status(200).json(returnChannels);
     } catch (error) {
         // Handle any errors and return a 500 Internal Server Error response.
         res.status(500).json({ success: false, error: error });
