@@ -180,7 +180,8 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
-      where: { user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id }
+      where: { user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id },
+      include: { _count: { select: { followers_followers_user_idTousers: true, following_following_user_idTousers: true, friends_friends_user1_idTousers: true, friends_friends_user2_idTousers: true, posts: true } } }
     });
 
     if (user) {
@@ -203,7 +204,11 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           "country": user.country,
           "username": user.username,
           "display_name": user.display_name,
-          "user_role": user.user_role
+          "user_role": user.user_role,
+          "followers": user._count.followers_followers_user_idTousers,
+          "following": user._count.following_following_user_idTousers,
+          "friends": user._count.friends_friends_user1_idTousers + user._count.friends_friends_user2_idTousers,
+          "posts": user._count.posts
         };
       } else {
         returnUser = {
@@ -214,7 +219,11 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           "country": user.country,
           "username": user.username,
           "display_name": user.display_name,
-          "user_role": user.user_role
+          "user_role": user.user_role,
+          "followers": user._count.followers_followers_user_idTousers,
+          "following": user._count.following_following_user_idTousers,
+          "friends": user._count.friends_friends_user1_idTousers + user._count.friends_friends_user2_idTousers,
+          "posts": user._count.posts
         };
       }
 
