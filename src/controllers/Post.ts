@@ -441,7 +441,7 @@ router.get("/comment", middleware.isLoggedIn, async (req: any, res) => {
         const _id = BigInt((req as CustomRequest).user._id);
 
         // Find the comment with the provided ID from the request header
-        const comment = prisma.comments.findFirst({ where: { comment_id: BigInt(req.headers.comment) }, include: { comment_likes: { where: { user_id: _id } } } })
+        const comment = prisma.comments.findFirst({ where: { comment_id: BigInt(req.headers.comment) }, include: { comment_likes: { where: { user_id: _id } }, _count: { select: { comment_likes: true } } } })
 
         // Return the comment object as a response
         res.json(comment);
@@ -457,7 +457,7 @@ router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
         const _id = BigInt((req as CustomRequest).user._id);
 
         // Find the post with the provided ID from the request header
-        const comments = await prisma.posts.findFirst({ where: { post_id: BigInt(req.headers.post) }, include: { comments: { take: 20, skip: 20 * req.headers.page, include: { comment_likes: { where: { user_id: _id } } } } } });
+        const comments = await prisma.posts.findFirst({ where: { post_id: BigInt(req.headers.post) }, include: { comments: { take: 20, skip: 20 * req.headers.page, include: { comment_likes: { where: { user_id: _id } }, _count: { select: { comment_likes: true } } } } } });
         if (comments) {
             // Return the array of comments as a response
             return res.status(200).json(comments.comments);
