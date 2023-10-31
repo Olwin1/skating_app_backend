@@ -17,7 +17,7 @@ const generator = new Worker(0, 1, {
     datacenterIdBits: 5,
     sequenceBits: 12,
 });
-type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint };
+type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint, influencer?: boolean };
 
 // Initialize an empty array to store influencer data.
 let influencers: bigint[] = [];
@@ -707,7 +707,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 location: "",
                 liked: (post.post_likes.length > 0),
                 total_likes: BigInt(post._count.post_likes),
-                comment_count: BigInt(post._count.comments)
+                comment_count: BigInt(post._count.comments),
+                influencer: true
             })
         }
 
@@ -744,10 +745,10 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
 
         console.log(userLikedPosts);
 
-        let influencerPostsFormatted: postsE[] = []
+        let userLikedPostsFormatted: postsE[] = []
 
         for (const post of userLikedPosts) {
-            influencerPostsFormatted.push({
+            userLikedPostsFormatted.push({
                 post_id: post.posts.post_id,
                 author_id: post.posts.author_id,
                 description: post.posts.description,
@@ -764,7 +765,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         //let other_posts = await Post.find({ '_id': { $nin: [...fetchedIds, ...seen] }, 'author': { $in: influencers, $ne: _id } }).sort({ date: -1 }).limit(20 - posts.length);
         //influencerResults = other_posts.length;
         // posts = posts.concat(other_posts)
-        finalPosts = [...finalPosts, ...influencerPostsFormatted]
+        finalPosts = [...finalPosts, ...userLikedPostsFormatted]
     }
     let returnPosts: postsE[] = []
     for (const post of finalPosts) {
