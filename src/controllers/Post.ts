@@ -505,71 +505,34 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     let finalPosts: postsE[] = []
     // Find the user with the provided ID
     finalPosts = await prisma.$queryRaw`
-        SELECT 
-        p.post_id, 
-        p.author_id, 
-        p.description, 
-        p.image, 
-        p.like_count, 
-        p.friends_only, 
-        p."location" :: text, 
-        (
-            SELECT 
-            COUNT(c.comment_id) 
-            FROM 
-            comments c 
-            WHERE 
-            c.post_id = p.post_id
-        ) AS comment_count,
-        ( 
-        SELECT 
-        COUNT(pl.like_id) 
-        FROM 
-        post_likes pl 
-        WHERE 
-        pl.post_id = p.post_id
-        ) AS total_likes
-        FROM 
-        posts p 
-        WHERE 
-        (
-            p.author_id IN (
-            SELECT 
-                following_user_id 
-            FROM 
-                following 
-            WHERE 
-                user_id = ${_id}
-            ) 
-            OR p.author_id IN (
-            SELECT 
-                user_id 
-            FROM 
-                followers 
-            WHERE 
-                follower_user_id = ${_id}
-            ) 
-            OR p.author_id IN (
-            SELECT 
-                CASE WHEN user1_id = ${_id} THEN user2_id ELSE user1_id END AS friend_id 
-            FROM 
-                friends 
-            WHERE 
-                user1_id = ${_id} 
-                OR user2_id = ${_id}
+        SELECT
+            p.post_id,
+            p.author_id,
+            p.description,
+            p.image,
+            p.like_count,
+            p.friends_only,
+            p."location"::text,
+            COUNT(c.comment_id) AS comment_count,
+            COUNT(pl.like_id) AS total_likes
+        FROM posts p
+        LEFT JOIN comments c ON c.post_id = p.post_id
+        LEFT JOIN post_likes pl ON pl.post_id = p.post_id
+        WHERE p.author_id IN (
+                SELECT following_user_id FROM following WHERE user_id = ${_id}
+                UNION
+                SELECT user_id FROM followers WHERE follower_user_id = ${_id}
+                UNION
+                SELECT CASE WHEN user1_id = ${_id} THEN user2_id ELSE user1_id END AS friend_id FROM friends WHERE user1_id = ${_id} OR user2_id = ${_id}
             )
-        ) 
         AND NOT EXISTS (
-            SELECT 
-            1 
-            FROM 
-            post_likes pl 
-            WHERE 
-            pl.user_id = ${_id} 
+            SELECT 1
+            FROM post_likes pl
+            WHERE pl.user_id = ${_id}
             AND pl.post_id = p.post_id
-        ) 
-        LIMIT 
-        ${remaining} OFFSET ${skip};
+        )
+        GROUP BY p.post_id, p.author_id, p.description, p.image, p.like_count, p.friends_only, p."location"
+        LIMIT ${remaining} OFFSET ${skip};
       ` as postsE[];
 
     // If there are still not enough posts, find posts from a random friend of a friend (if they are not private)
@@ -581,76 +544,43 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         remaining = remaining - finalPosts.length
         //TODO fix offset
         const extraPosts = await prisma.$queryRaw`
-            SELECT 
-            p.post_id, 
-            p.author_id, 
-            p.description, 
-            p.image, 
-            p.like_count, 
-            p.friends_only, 
-            p."location" :: text, 
-            (
-                SELECT 
-                COUNT(c.comment_id) 
-                FROM 
-                comments c 
-                WHERE 
-                c.post_id = p.post_id
-            ) AS comment_count, 
-            (
-                SELECT 
-                COUNT(pl.like_id) 
-                FROM 
-                post_likes pl 
-                WHERE 
-                pl.post_id = p.post_id
-            ) AS total_likes
-            FROM 
-            posts p 
-            WHERE 
-            author_id IN (
-                SELECT 
-                DISTINCT friend_id 
-                FROM 
+            WITH user_friends AS (
+                SELECT DISTINCT f.user1_id AS friend_id
+                FROM friends f
+                WHERE (f.user2_id = ${_id} OR f.user1_id = ${_id})
+                UNION
+                SELECT DISTINCT f.user2_id AS friend_id
+                FROM friends f
+                WHERE (f.user1_id = ${_id} OR f.user2_id = ${_id})
+            )
+            SELECT
+                p.post_id,
+                p.author_id,
+                p.description,
+                p.image,
+                p.like_count,
+                p.friends_only,
+                p."location"::text,
                 (
-                    SELECT 
-                    DISTINCT f.user1_id AS friend_id 
-                    FROM 
-                    friends f 
-                    WHERE 
-                    (
-                        f.user2_id = ${_id} 
-                        OR f.user1_id = ${_id}
-                    ) 
-                    UNION 
-                    SELECT 
-                    DISTINCT f.user2_id AS friend_id 
-                    FROM 
-                    friends f 
-                    WHERE 
-                    (
-                        f.user1_id = ${_id} 
-                        OR f.user2_id = ${_id}
-                    )
-                ) AS subq 
-                WHERE 
-                subq.friend_id <> ${_id} -- Exclude the user themselves
-                ) 
-            AND p.post_id NOT IN (
-                SELECT 
-                UNNEST(${finalPostIds} :: bigint[])
-            ) 
-            AND NOT EXISTS (
-            SELECT 
-            1 
-            FROM 
-            post_likes pl 
-            WHERE 
-            pl.user_id = ${_id} 
-            AND pl.post_id = p.post_id
-            ) 
-            LIMIT 
-            ${remaining} OFFSET ${skip}
+                    SELECT COUNT(c.comment_id)
+                    FROM comments c
+                    WHERE c.post_id = p.post_id
+                ) AS comment_count,
+                (
+                    SELECT COUNT(pl.like_id)
+                    FROM post_likes pl
+                    WHERE pl.post_id = p.post_id
+                ) AS total_likes
+            FROM posts p
+            WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${_id})
+                AND p.post_id NOT IN (SELECT UNNEST(${finalPostIds}::bigint[]))
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM post_likes pl
+                    WHERE pl.user_id = ${_id}
+                    AND pl.post_id = p.post_id
+                )
+            LIMIT ${remaining} OFFSET ${skip}
           ` as postsE[];
         finalPosts = [...finalPosts, ...extraPosts]
         remaining -= extraPosts.length;
