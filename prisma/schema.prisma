@@ -61,6 +61,7 @@ model comments {
   content          String
   timestamp        DateTime?          @db.Timestamp(6)
   like_count       Int?
+  dislike_count    Int?
   comment_dislikes comment_dislikes[]
   comment_likes    comment_likes[]
   posts            posts              @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)

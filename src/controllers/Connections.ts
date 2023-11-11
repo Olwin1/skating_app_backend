@@ -47,7 +47,6 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                         request_id: generator.nextId(),
                         requester_id: _id,
                         requestee_id: target,
-                        status: 'pending',
                     },
                 });
                 console.log('Follow request created successfully.');
@@ -89,7 +88,6 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
                 request_id: generator.nextId(),
                 requester_id: _id,
                 requestee_id: BigInt(req.body.user),
-                status: 'pending',
             },
         });
         return res.status(200).json({ "success": true });

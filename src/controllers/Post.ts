@@ -368,72 +368,95 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
-//TODO Add dislike comment
-// // This route is used to dislike a comment
-// router.post("/dislike_comment", middleware.isLoggedIn, async (req: any, res) => {
-//     const _id = BigInt((req as CustomRequest).user._id);
-//     const { Comment } = (req as CustomRequest).context.models;
 
-//     // Start a new session and transaction
-//     const session = await mongoose.startSession();
-//     session.startTransaction();
+// Define a route to like a comment
+router.post("/dislike_comment", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
 
-//     try {
-//         // Find the comment with the provided ID
-//         let comment = await Comment.findOne({ "_id": BigInt(req.body.comment) }).session(session);
+        // Check if the user has already liked the comment
+        const commentDislike = await prisma.comment_dislikes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } });
 
-//         // If the user hasn't already disliked the comment, increment the dislike count and add the user to the list of disliked users
-//         if (!comment.dislike_users.includes(_id) && !comment.like_users.includes(_id)) {
-//             await Comment.updateOne({ "_id": comment._id }, { $inc: { "dislike_count": 1 }, $push: { "dislike_users": _id } }).session(session);
-//         }
+        if (!commentDislike) {
+            try {
+                // Use a transaction to update the comment's like count and create a new comment_like entry
+                await prisma.$transaction(async (tx) => {
+                    const comment = await tx.comments.update({
+                        where: { comment_id: BigInt(req.body.comment) },
+                        data: {
+                            dislike_count: { increment: 1 } // Increment the like count by 1
+                        }
+                    });
 
-//         // Commit the transaction and end the session
-//         await session.commitTransaction();
-//         session.endSession();
+                    const commentDislikeNew = await tx.comment_likes.create({
+                        data: {
+                            like_id: generator.nextId(), // Generate a unique like ID
+                            comment_id: comment.post_id, // Set the comment ID
+                            user_id: _id // Set the user ID
+                        },
+                    });
 
-//         // Return the updated comment object
-//         res.json(comment);
-//     } catch (error) {
-//         // If there's an error, abort the transaction and end the session
-//         await session.abortTransaction();
-//         session.endSession();
-//         // Return an error response
-//         res.status(400).json({ error });
-//     }
-// });
+                    // Send a success message as a JSON response
+                    return res.status(200).json({ "success": true });
+                });
+            } catch (error) {
+                console.error('Error in transaction:', error);
+            }
+        }
+        else {
 
-// // This route is used to undislike a comment
-// router.post("/undislike_comment", middleware.isLoggedIn, async (req: any, res) => {
-//     const _id = BigInt((req as CustomRequest).user._id);
-//     const { Comment } = (req as CustomRequest).context.models;
+            // Send an error message if the comment is already liked
+            return res.json({ "error": "Comment already liked" });
+        }
+    } catch (error) {
+        // Handle errors by sending a 400 status and an error message
+        res.status(400).json({ error });
+    }
+});
 
-//     // Start a new session and transaction
-//     const session = await mongoose.startSession();
-//     session.startTransaction();
+// Define a route to unlike a comment
+router.post("/undislike_comment", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the request
+        const _id = BigInt((req as CustomRequest).user._id);
 
-//     try {
-//         // Find the comment with the provided ID
-//         let comment = await Comment.findOne({ "_id": BigInt(req.body.comment) }).session(session);
+        // Check if the user has already liked the comment
+        const commentDislike = await prisma.comment_dislikes.findFirst({ where: { comment_id: BigInt(req.body.comment), user_id: _id } });
 
-//         // If the user has already disliked the comment, decrement the dislike count and remove the user from the list of disdisliked users
-//         if (comment.dislike_users.includes(_id)) {
-//             await Comment.updateOne({ "_id": comment._id }, { $inc: { "dislike_count": -1 }, $pull: { "dislike_users": _id } }).session(session);
-//         }
+        if (commentDislike) {
+            try {
+                // Use a transaction to update the comment's like count and delete the comment_like entry
+                await prisma.$transaction(async (tx) => {
+                    const comment = await tx.comments.update({
+                        where: { comment_id: BigInt(req.body.comment) },
+                        data: {
+                            like_count: { decrement: 1 } // Decrement the like count by 1
+                        }
+                    });
 
-//         // Commit the transaction and end the session
-//         await session.commitTransaction();
-//         session.endSession();
+                    const commentDislikeNew = await tx.comment_likes.delete({
+                        where: {
+                            like_id: commentDislike.dislike_id // Delete the comment_like entry using its ID
+                        },
+                    });
 
-//         // Return the updated comment object
-//         res.json(comment);
-//     } catch (error) {
-//         // If there's an error, abort the transaction and end the session
-//         await session.abortTransaction();
-//         session.endSession();
-//         // Return an error response
-//         res.status(400).json({ error });
-//     }
-// });
+                    // Send a success message as a JSON response
+                    return res.status(200).json({ "success": true });
+                });
+            } catch (error) {
+                console.error('Error in transaction:', error);
+            }
+        }
+        else {
+            // Send an error message if the comment is not liked
+            return res.json({ "error": "Comment isn't liked" });
+        }
+    } catch (error) {
+        // Handle errors by sending a 400 status and an error message
+        res.status(400).json({ error });
+    }
+});
 
 // This route is used to retrieve a single comment by its ID
 router.get("/comment", middleware.isLoggedIn, async (req: any, res) => {
