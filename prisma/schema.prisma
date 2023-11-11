@@ -55,15 +55,16 @@ model comment_likes {
 }
 
 model comments {
-  comment_id    BigInt          @id
-  post_id       BigInt
-  sender_id     BigInt
-  content       String
-  timestamp     DateTime?       @db.Timestamp(6)
-  like_count    Int?
-  comment_likes comment_likes[]
-  posts         posts           @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
-  users         users           @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  comment_id       BigInt             @id
+  post_id          BigInt
+  sender_id        BigInt
+  content          String
+  timestamp        DateTime?          @db.Timestamp(6)
+  like_count       Int?
+  comment_dislikes comment_dislikes[]
+  comment_likes    comment_likes[]
+  posts            posts              @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  users            users              @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([post_id])
   @@index([sender_id])
@@ -92,12 +93,11 @@ model email_verifications {
 }
 
 model follow_requests {
-  request_id                                BigInt          @id
+  request_id                                BigInt @id
   requester_id                              BigInt
   requestee_id                              BigInt
-  status                                    request_status?
-  users_follow_requests_requestee_idTousers users           @relation("follow_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_follow_requests_requester_idTousers users           @relation("follow_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_follow_requests_requestee_idTousers users  @relation("follow_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_follow_requests_requester_idTousers users  @relation("follow_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([requestee_id])
   @@index([requester_id])
@@ -126,12 +126,11 @@ model following {
 }
 
 model friend_requests {
-  request_id                                BigInt          @id
+  request_id                                BigInt @id
   requester_id                              BigInt
   requestee_id                              BigInt
-  status                                    request_status?
-  users_friend_requests_requestee_idTousers users           @relation("friend_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_friend_requests_requester_idTousers users           @relation("friend_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_friend_requests_requestee_idTousers users  @relation("friend_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_friend_requests_requester_idTousers users  @relation("friend_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([requestee_id])
   @@index([requester_id])
@@ -339,6 +338,7 @@ model users {
   analytics_data                                                         analytics_data[]
   blocked_users_blocked_users_blocked_user_idTousers                     blocked_users[]             @relation("blocked_users_blocked_user_idTousers")
   blocked_users_blocked_users_blocking_user_idTousers                    blocked_users[]             @relation("blocked_users_blocking_user_idTousers")
+  comment_dislikes                                                       comment_dislikes[]
   comment_likes                                                          comment_likes[]
   comments                                                               comments[]
   email_verifications                                                    email_verifications[]
@@ -391,6 +391,16 @@ model saved_posts {
   users         users  @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user_id])
+}
+
+model comment_dislikes {
+  dislike_id BigInt   @id
+  user_id    BigInt
+  comment_id BigInt
+  comments   comments @relation(fields: [comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
+  users      users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([comment_id])
 }
 
 enum account_activity {
