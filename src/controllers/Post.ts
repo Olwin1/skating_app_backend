@@ -191,45 +191,37 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
-//TODO ADD SAVED POSTS (MISSING IN DB)
-// // Route for saving a post to a user's saved_posts array
-// router.post("/save", middleware.isLoggedIn, async (req: any, res) => {
-//     const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
-//     const { User } = (req as CustomRequest).context.models; // Get User model from request context
-//     const session = await mongoose.startSession(); // Start a Mongoose session
-//     session.startTransaction(); // Start a transaction within the session
-//     try {
-//         prisma.pos
-//         // Update the User document with the new saved post
-//         let t = await User.updateOne({ "_id": _id }, { $push: { "saved_posts": BigInt(req.body.post) } }).session(session);
-//         await session.commitTransaction(); // Commit the transaction
-//         session.endSession(); // End the session
-//         res.json(t); // Send a JSON response with the update result
-//     } catch (error) {
-//         await session.abortTransaction(); // Rollback the transaction if there is an error
-//         session.endSession(); // End the session
-//         res.status(400).json({ error }); // Send a 400 response with the error message
-//     }
-// });
+router.post("/save", middleware.isLoggedIn, async (req: any, res) => {
+    const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
+    try {
+        await prisma.saved_posts.create({
+            data: {
+                saved_post_id: generator.nextId(),
+                post_id: req.body.post,
+                user_id: _id
+            }
+        })
+        return res.status(201).json({ "success": true })
+    } catch (error) {
+        res.status(400).json({ error }); // Send a 400 response with the error message
+    }
+});
 
-// // Route for removing a post from a user's saved_posts array
-// router.post("/unsave", middleware.isLoggedIn, async (req: any, res) => {
-//     const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
-//     const { User } = (req as CustomRequest).context.models; // Get User model from request context
-//     const session = await mongoose.startSession(); // Start a Mongoose session
-//     session.startTransaction(); // Start a transaction within the session
-//     try {
-//         // Update the User document by removing the specified saved post
-//         let t = await User.updateOne({ "_id": _id }, { $pull: { "saved_posts": BigInt(req.body.post) } }).session(session);
-//         await session.commitTransaction(); // Commit the transaction
-//         session.endSession(); // End the session
-//         res.json(t); // Send a JSON response with the update result
-//     } catch (error) {
-//         await session.abortTransaction(); // Rollback the transaction if there is an error
-//         session.endSession(); // End the session
-//         res.status(400).json({ error }); // Send a 400 response with the error message
-//     }
-// });
+// Route for removing a post from a user's saved_posts array
+router.post("/unsave", middleware.isLoggedIn, async (req: any, res) => {
+    const _id = BigInt((req as CustomRequest).user._id); // Extract user ID from request object
+    try {
+        const postLikeNew = await prisma.saved_posts.deleteMany({
+            where: {
+                post_id: req.body.post,
+                user_id: _id
+            },
+        });
+        return res.status(200).json({ "success": true })
+    } catch (error) {
+        res.status(400).json({ error }); // Send a 400 response with the error message
+    }
+});
 
 // Define a route to create a new comment
 router.post("/comment", middleware.isLoggedIn, async (req: any, res) => {
