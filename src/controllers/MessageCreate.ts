@@ -49,18 +49,6 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
       },
     });
 
-    // let participant = await User.findOne({ '_id': participantId }).session(session); // find the other participant in the User collection and attach the session to it
-
-    // if (userChannel!.participants.length == 2) { // if the channel has only two participants
-    //     if (!participant!.channels) { // if the other participant doesn't have any channels yet
-    //         let [channels] = await Channels.create([{ channels: [userChannel!._id] }], { session: session }); // create a new channel for them and attach the session to it
-    //         await User.updateOne(
-    //             { "_id": participant!._id },
-    //             { $set: { "channels": channels._id } } // set the channel's ID as the other participant's channels array
-    //         ).session(session);
-    //     }
-    // }
-
     // Create an array to store participant IDs (excluding the sender's ID)
     let participants = [] as bigint[];
     for (let i = 0; i < userChannel.participants.length; i++) {
