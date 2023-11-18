@@ -8,6 +8,7 @@ import prisma from "../db/postgres"; // Import Prisma ORM for database operation
 import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
 import validator from 'validator';
 import { ErrorCode } from "../ErrorCodes";
+import * as securePin from "secure-pin";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -48,6 +49,7 @@ router.post("/signup", async (req: any, res) => {
 
     // Generate a unique user ID
     let userId = generator.nextId();
+    const verifCode = securePin.generatePinSync(4);
 
     // Create a new user in the database using Prisma
     const data = await prisma.users.create({
@@ -59,13 +61,14 @@ router.post("/signup", async (req: any, res) => {
         email_verifications: {
           create: {
             verification_id: generator.nextId(),
-            verification_code: "1111",
+            verification_code: verifCode,
             is_verified: false,
             expiry_timestamp: new Date(Date.now() + 8.64e+7),// Expires in a day
           }
         }
       },
     });
+
 
     // Return a 201 Created response for successful user registration
     res.status(201).json({ "success": true });
@@ -91,16 +94,18 @@ router.post("/login", async (req: any, res) => {
     }
 
     // Find a user in the database by their username
-    const user = await prisma.users.findFirst({ where: { username: req.body.username } })
+    const user = await prisma.users.findFirst({ where: { username: req.body.username } });
 
     if (user) {
       // Compare the provided password with the hashed password stored in the database
       const result = await bcrypt.compare(req.body.password, user.password_hash!);
-
       if (result) {
+        const verified = await prisma.email_verifications.findFirst({ where: { user_id: user.user_id, is_verified: true } })
+        const isVerified = verified?.is_verified ?? false
+
         // If the passwords match, generate a JWT token and return it in the response
-        const token = await jwt.sign({ username: user.username, _id: user.user_id }, SECRET);
-        return res.status(200).json({ token });
+        const token = jwt.sign({ username: user.username, _id: user.user_id }, SECRET);
+        return res.status(200).json({ "token": token, "verified": isVerified });
       } else {
         // Return a 400 Bad Request response with an error code for an incorrect password
         res.status(400).json({ ec: ErrorCode.IncorrectPassword });
@@ -163,6 +168,7 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
     // Update the user's email in the database 
     //TODO: Redo Email Verification
     const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { email: req.body.description } })
+    await prisma.email_verifications.deleteMany({ where: { user_id: _id } })
 
     // Return the response from the database update
     res.status(200).json({ "success": true, "verified": false });
@@ -171,6 +177,47 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
     res.status(400).json({ error });
   }
 });
+
+// Route handler to update user's email verification
+router.post("/verify_email", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
+
+    // Update the user's email in the database
+    const emailVerification = await prisma.email_verifications.findFirst({ where: { user_id: _id, expiry_timestamp: { gt: new Date() }, verification_code: req.body.code } })
+    if (emailVerification != null) {
+      const updatedUser = await prisma.email_verifications.update({ where: { verification_id: emailVerification.verification_id }, data: { is_verified: true } })
+      // Return the response from the database update
+      res.status(200).json({ "success": true, "verified": false });
+    }
+    else {
+      res.status(400).json({ "success": false, "verified": false })
+    }
+
+
+  } catch (error) {
+    // If there is an error, return a 400 status code and the error message
+    res.status(400).json({ error });
+  }
+});
+// Route handler to update user's email
+router.get("/is_verified", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
+
+    // Update the user's email in the database 
+    const verified = await prisma.email_verifications.findFirst({ where: { user_id: _id, is_verified: true } })
+
+    // Return the response from the database update
+    res.status(200).json({ "success": true, "verified": verified?.is_verified ?? false });
+  } catch (error) {
+    // If there is an error, return a 400 status code and the error message
+    res.status(400).json({ error });
+  }
+});
+
 
 
 // Retrieves user information.
