@@ -240,4 +240,19 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
 
 
 
+// This route handles fetching details of a single channel.
+router.delete("/channel", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Retrieve details of a channel by its ID.
+        const participants = await prisma.participants.deleteMany({ where: { channel_id: BigInt(req.headers.channel) } });
+        const messages = await prisma.messages.deleteMany({ where: { channel_id: BigInt(req.headers.channel) } });
+        const channel = await prisma.message_channels.delete({ where: { channel_id: BigInt(req.headers.channel) } });
+        // Return the channel details as a JSON response.
+        res.status(200).json(channel);
+    } catch (error) {
+        // Handle any errors and return a 500 Internal Server Error response.
+        res.status(500).json({ success: false, error: error });
+    }
+});
+
 export default router;
