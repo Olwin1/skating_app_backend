@@ -54,7 +54,8 @@ router.post("/post", middleware.isLoggedIn, async (req: any, res) => {
                 author_id: BigInt(_id), // Set the author's ID.
                 description: req.body.description, // Extract post description from the request.
                 image: req.body.image, // Extract post image hash from the request.
-                like_count: 0 // Initialize the like count to 0.
+                like_count: 0, // Initialize the like count to 0.
+                timestamp: new Date().toISOString(),
             }
         });
 
@@ -126,7 +127,8 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
                         data: {
                             like_id: generator.nextId(),
                             post_id: post.post_id,
-                            user_id: _id
+                            user_id: _id,
+                            timestamp: new Date().toISOString(),
                         },
                     });
                     return res.status(200).json({ "success": true })
@@ -198,7 +200,8 @@ router.post("/save", middleware.isLoggedIn, async (req: any, res) => {
             data: {
                 saved_post_id: generator.nextId(),
                 post_id: req.body.post,
-                user_id: _id
+                user_id: _id,
+                timestamp: new Date().toISOString(),
             }
         })
         return res.status(201).json({ "success": true })
@@ -315,7 +318,8 @@ router.post("/like_comment", middleware.isLoggedIn, async (req: any, res) => {
                         data: {
                             like_id: generator.nextId(), // Generate a unique like ID
                             comment_id: comment.post_id, // Set the comment ID
-                            user_id: _id // Set the user ID
+                            user_id: _id, // Set the user ID
+                            timestamp: new Date().toISOString(),
                         },
                     });
 
@@ -406,7 +410,8 @@ router.post("/dislike_comment", middleware.isLoggedIn, async (req: any, res) => 
                         data: {
                             like_id: generator.nextId(), // Generate a unique like ID
                             comment_id: comment.post_id, // Set the comment ID
-                            user_id: _id // Set the user ID
+                            user_id: _id, // Set the user ID
+                            timestamp: new Date().toISOString(),
                         },
                     });
 
@@ -549,6 +554,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             p.like_count,
             p.friends_only,
             p."location"::text,
+            p.timestamp,
             COUNT(c.comment_id) AS comment_count,
             COUNT(pl.like_id) AS total_likes
         FROM posts p
@@ -597,6 +603,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 p.like_count,
                 p.friends_only,
                 p."location"::text,
+                p.timestamp,
                 (
                     SELECT COUNT(c.comment_id)
                     FROM comments c
@@ -639,6 +646,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     image: true,
                     like_count: true,
                     friends_only: true,
+                    timestamp: true,
                     post_likes: {
                         select: {
                             user_id: true
@@ -674,7 +682,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     liked: (post.post_likes.length > 0),
                     total_likes: BigInt(post._count.post_likes),
                     comment_count: BigInt(post._count.comments),
-                    influencer: true
+                    influencer: true,
+                    timestamp: post.timestamp,
                 })
             }
             finalPosts = [...finalPosts, ...influencerPostsFormatted]
@@ -720,7 +729,8 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     location: "",
                     liked: true,
                     total_likes: BigInt(post.posts._count.post_likes),
-                    comment_count: BigInt(post.posts._count.comments)
+                    comment_count: BigInt(post.posts._count.comments),
+                    timestamp: post.timestamp,
                 })
             }
             finalPosts = [...finalPosts, ...userLikedPostsFormatted]
@@ -747,7 +757,7 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
 
         // Query the database for posts authored by the current user, sorted by date in descending order
         // The "skip" and "limit" options are used for pagination
-        const posts = await prisma.posts.findMany({ where: { author_id: BigInt(req.headers.user) }, orderBy: { post_id: Prisma.SortOrder.asc }, skip: (20 * req.headers.page), take: 20 })
+        const posts = await prisma.posts.findMany({ where: { author_id: BigInt(req.headers.user) }, orderBy: { timestamp: Prisma.SortOrder.desc }, skip: (20 * req.headers.page), take: 20 })
         let postsFormatted = [];
         for (const post of posts) {
             postsFormatted.push({
@@ -757,6 +767,7 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
                 image: post.image,
                 friends_only: post.friends_only,
                 location: "",
+                timestamp: post.timestamp
             })
         }
 

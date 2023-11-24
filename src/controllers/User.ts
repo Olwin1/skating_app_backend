@@ -65,7 +65,8 @@ router.post("/signup", async (req: any, res) => {
             is_verified: false,
             expiry_timestamp: new Date(Date.now() + 8.64e+7),// Expires in a day
           }
-        }
+        },
+        created_at: new Date().toISOString(),
       },
     });
 

@@ -47,6 +47,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                         request_id: generator.nextId(),
                         requester_id: _id,
                         requestee_id: target,
+                        timestamp: new Date().toISOString(),
                     },
                 });
                 console.log('Follow request created successfully.');
@@ -56,12 +57,14 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
                 const followingData = {
                     following_id: generator.nextId(),
                     following_user_id: target,
-                    user_id: _id
+                    user_id: _id,
+                    timestamp: new Date().toISOString(),
                 };
                 const followerData = {
                     follower_id: generator.nextId(),
                     follower_user_id: _id,
-                    user_id: target
+                    user_id: target,
+                    timestamp: new Date().toISOString(),
                 };
                 const result = await prisma.$transaction([
                     prisma.following.create({ data: followingData }),
@@ -88,6 +91,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
                 request_id: generator.nextId(),
                 requester_id: _id,
                 requestee_id: BigInt(req.body.user),
+                timestamp: new Date().toISOString(),
             },
         });
         return res.status(200).json({ "success": true });
@@ -391,14 +395,16 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
                 data: {
                     following_id: generator.nextId(),
                     following_user_id: target,
-                    user_id: _id
+                    user_id: _id,
+                    timestamp: new Date().toISOString(),
                 }
             });
             const followers = await prisma.followers.create({
                 data: {
                     follower_id: generator.nextId(),
                     follower_user_id: _id,
-                    user_id: target
+                    user_id: target,
+                    timestamp: new Date().toISOString(),
                 }
             });
             //TODO verify target and id right way round
@@ -441,7 +447,8 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
                 data: {
                     friendship_id: generator.nextId(),
                     user1_id: _id,
-                    user2_id: target
+                    user2_id: target,
+                    timestamp: new Date().toISOString(),
                 }
             });
             return res.status(200).json({ "success": true, "accepted": true });
