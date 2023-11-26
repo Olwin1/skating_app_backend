@@ -437,6 +437,7 @@ enum feedback_status {
 enum feedback_type {
   feedback
   support_request
+  bug_report
 }
 
 enum payment_status {
