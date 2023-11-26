@@ -200,15 +200,19 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
                 }
             }
         });
-
-        if (!friendInfo?.friend_requests_friend_requests_requestee_idTousers.length) {
+        const length = friendInfo?.friend_requests_friend_requests_requestee_idTousers.length;
+        if (length != null && length != 0) {
             // If no friend request exists, delete the friend request to unfriend the user
             const retval = await prisma.friend_requests.delete({ where: { request_id: friendInfo?.friend_requests_friend_requests_requestee_idTousers[0].request_id } })
             res.status(200).json({ "success": true, "request": true });
-        } else {
+        } else if (friendInfo != null && friendInfo!.friends_friends_user1_idTousers.length != 0) {
             // If a friend request exists, remove the friend relationship
-            const retval = await prisma.friends.delete({ where: { friendship_id: friendInfo.friends_friends_user1_idTousers[0].friendship_id } })
+            const retval = await prisma.friends.delete({ where: { friendship_id: friendInfo!.friends_friends_user1_idTousers[0].friendship_id } })
             return res.status(200).json({ "success": true, "request": false });
+        }
+        else {
+            return res.status(400).json({ "success": false });
+
         }
     } catch (error) {
         // Handle any errors that occur during this process
