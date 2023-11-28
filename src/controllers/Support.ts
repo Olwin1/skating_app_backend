@@ -25,6 +25,7 @@ router.post("/bug", middleware.isLoggedIn, async (req: any, res) => {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
         await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.bug_report);
+        return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the bug report submission
         res.status(400).json({ error });
@@ -37,6 +38,7 @@ router.post("/support", middleware.isLoggedIn, async (req: any, res) => {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
         await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.support_request);
+        return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the support request submission
         res.status(400).json({ error });
@@ -49,6 +51,7 @@ router.post("/feedback", middleware.isLoggedIn, async (req: any, res) => {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
         await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.feedback);
+        return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the general feedback submission
         res.status(400).json({ error });
@@ -60,7 +63,8 @@ router.get("/bug", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await getReports(userId, $Enums.feedback_type.bug_report, req.body.page);
+        let resp = await getReports(userId, $Enums.feedback_type.bug_report, req.headers.page);
+        return res.status(200).json(resp)
     } catch (error) {
         // Handle errors during bug report retrieval
         res.status(400).json({ error });
@@ -72,7 +76,8 @@ router.get("/support", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await getReports(userId, $Enums.feedback_type.support_request, req.body.page);
+        let resp = await getReports(userId, $Enums.feedback_type.support_request, req.headers.page);
+        return res.status(200).json(resp)
     } catch (error) {
         // Handle errors during support request retrieval
         res.status(400).json({ error });
@@ -84,7 +89,8 @@ router.get("/feedback", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await getReports(userId, $Enums.feedback_type.feedback, req.body.page);
+        let resp = await getReports(userId, $Enums.feedback_type.feedback, req.headers.page);
+        return res.status(200).json(resp)
     } catch (error) {
         // Handle errors during general feedback retrieval
         res.status(400).json({ error });
@@ -107,14 +113,14 @@ async function createReport(userId: bigint, subject: string, content: string, ty
 }
 
 // Function to retrieve user feedback or support records
-async function getReports(userId: bigint, type: $Enums.feedback_type, page: number) {
+async function getReports(userId: bigint, type: $Enums.feedback_type, page: string) {
     return await prisma.user_feedback_and_support.findMany({
         where: {
             user_id: userId,
             type: type,
         },
         include: { users_user_feedback_and_support_assigned_toTousers: true },
-        skip: page * 20,
+        skip: parseInt(page) * 20,
         take: 20,
     });
 }
