@@ -359,7 +359,7 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
 
     const returns = [];
     for (let i = 0; i < results.length; i++) {
-      const ret = { "user_id": results[i].user_id, "username": results[i].username, "avatar": results[i].avatar_id };
+      const ret = { "user_id": results[i].user_id, "username": results[i].username, "avatar_id": results[i].avatar_id };
       returns.push(ret);
     }
 

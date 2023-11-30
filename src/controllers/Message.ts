@@ -221,13 +221,13 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
         let retvals: {
             user_id: bigint;
             username: string;
-            avatar: string | null;
+            avatar_id: string | null;
         }[] = []
         users.map((user) => {
             retvals.push({
                 "user_id": user.user_id,
                 "username": user.username,
-                "avatar": user.avatar_id
+                "avatar_id": user.avatar_id
             })
         });
         res.status(200).json(retvals);
