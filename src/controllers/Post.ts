@@ -17,7 +17,7 @@ const generator = new Worker(0, 1, {
     datacenterIdBits: 5,
     sequenceBits: 12,
 });
-type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint, influencer?: boolean };
+type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint, isSaved: boolean, influencer?: boolean };
 
 // Initialize an empty array to store influencer data.
 let influencers: bigint[] = [];
@@ -76,7 +76,8 @@ router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
     try {
 
         // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
-        const post = await prisma.posts.findUnique({ where: { post_id: BigInt(req.headers.post) }, include: { _count: { select: { comments: true, post_likes: true } } } })
+        const postId = BigInt(req.headers.post);
+        const post = await prisma.posts.findUnique({ where: { post_id: postId }, include: { _count: { select: { comments: true, post_likes: true, saved_posts: { where: { post_id: postId } } } } } })
         if (post) {
             const postFormatted = {
                 post_id: post.post_id,
@@ -556,10 +557,12 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             p."location"::text,
             p.timestamp,
             COUNT(c.comment_id) AS comment_count,
-            COUNT(pl.like_id) AS total_likes
+            COUNT(pl.like_id) AS total_likes,
+            CASE WHEN sp.post_id IS NOT NULL THEN true ELSE false END AS post_saved
         FROM posts p
         LEFT JOIN comments c ON c.post_id = p.post_id
         LEFT JOIN post_likes pl ON pl.post_id = p.post_id
+        LEFT JOIN saved_posts sp ON sp.post_id = p.post_id AND sp.user_id = ${_id}
         WHERE p.author_id IN (
                 SELECT following_user_id FROM following WHERE user_id = ${_id}
                 UNION
@@ -573,7 +576,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             WHERE pl.user_id = ${_id}
             AND pl.post_id = p.post_id
         )
-        GROUP BY p.post_id, p.author_id, p.description, p.image, p.like_count, p.friends_only, p."location"
+        GROUP BY p.post_id, p.author_id, p.description, p.image, p.like_count, p.friends_only, p."location", sp.saved_post_id
         LIMIT ${remaining} OFFSET ${skip};
       ` as postsE[];
 
@@ -594,36 +597,52 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 SELECT DISTINCT f.user2_id AS friend_id
                 FROM friends f
                 WHERE (f.user1_id = ${_id} OR f.user2_id = ${_id})
+            ),
+            post_data AS (
+                SELECT
+                    p.post_id,
+                    p.author_id,
+                    p.description,
+                    p.image,
+                    p.like_count,
+                    p.friends_only,
+                    p."location"::text,
+                    p.timestamp,
+                    (
+                        SELECT COUNT(c.comment_id)
+                        FROM comments c
+                        WHERE c.post_id = p.post_id
+                    ) AS comment_count,
+                    (
+                        SELECT COUNT(pl.like_id)
+                        FROM post_likes pl
+                        WHERE pl.post_id = p.post_id
+                    ) AS total_likes
+                FROM posts p
+                WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${_id})
+                    AND p.post_id NOT IN (SELECT UNNEST(${finalPostIds}::bigint[]))
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM post_likes pl
+                        WHERE pl.user_id = ${_id}
+                        AND pl.post_id = p.post_id
+                    )
             )
             SELECT
-                p.post_id,
-                p.author_id,
-                p.description,
-                p.image,
-                p.like_count,
-                p.friends_only,
-                p."location"::text,
-                p.timestamp,
-                (
-                    SELECT COUNT(c.comment_id)
-                    FROM comments c
-                    WHERE c.post_id = p.post_id
-                ) AS comment_count,
-                (
-                    SELECT COUNT(pl.like_id)
-                    FROM post_likes pl
-                    WHERE pl.post_id = p.post_id
-                ) AS total_likes
-            FROM posts p
-            WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${_id})
-                AND p.post_id NOT IN (SELECT UNNEST(${finalPostIds}::bigint[]))
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM post_likes pl
-                    WHERE pl.user_id = ${_id}
-                    AND pl.post_id = p.post_id
-                )
-            LIMIT ${remaining} OFFSET ${skip}
+                pd.post_id,
+                pd.author_id,
+                pd.description,
+                pd.image,
+                pd.like_count,
+                pd.friends_only,
+                pd."location",
+                pd.timestamp,
+                pd.comment_count,
+                pd.total_likes,
+                CASE WHEN sp.saved_post_id IS NOT NULL THEN true ELSE false END AS is_saved
+            FROM post_data pd
+            LEFT JOIN saved_posts sp ON pd.post_id = sp.post_id AND sp.user_id = ${_id}
+            LIMIT ${remaining} OFFSET ${skip};
           ` as postsE[];
             finalPosts = [...finalPosts, ...extraPosts]
             remaining -= extraPosts.length;
@@ -637,7 +656,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             const influencerPosts = await prisma.posts.findMany({
                 where: {
                     author_id: { in: influencers },
-                    post_id: { notIn: finalPostIds }
+                    post_id: { notIn: finalPostIds },
                 },
                 select: {
                     post_id: true,
@@ -649,23 +668,33 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     timestamp: true,
                     post_likes: {
                         select: {
-                            user_id: true
+                            user_id: true,
                         },
                         where: {
-                            user_id: _id
-                        }
+                            user_id: _id,
+                        },
                     },
-                    // Use Prisma aggregation to count likes for each post
                     _count: {
                         select: {
                             post_likes: true,
-                            comments: true
-                        }
+                            comments: true,
+                        },
+                    },
+                    saved_posts: {
+                        select: {
+                            saved_post_id: true,
+                        },
+                        where: {
+                            user_id: _id,
+                            post_id: { in: finalPostIds },
+                        },
                     },
                 },
                 take: remaining,
-                skip: skip
+                skip: skip,
             });
+
+
 
 
             let influencerPostsFormatted: postsE[] = []
@@ -684,6 +713,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     comment_count: BigInt(post._count.comments),
                     influencer: true,
                     timestamp: post.timestamp,
+                    isSaved: post.saved_posts.length > 0 ? true : false
                 })
             }
             finalPosts = [...finalPosts, ...influencerPostsFormatted]
@@ -706,13 +736,20 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                                     comments: true
                                 }
                             },
+                            // Include the relation to check if the post is saved
+                            saved_posts: {
+                                where: {
+                                    user_id: _id, // Replace 'userId' with the actual user's ID
+                                },
+                            },
                         },
                     }
                 },
-
                 skip: skip, // Calculate how many records to skip
                 take: remaining, // Set the number of records to retrieve
             });
+
+
 
             console.log(userLikedPosts);
 
@@ -731,6 +768,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     total_likes: BigInt(post.posts._count.post_likes),
                     comment_count: BigInt(post.posts._count.comments),
                     timestamp: post.timestamp,
+                    isSaved: post.posts.saved_posts.length > 0 ? true : false
                 })
             }
             finalPosts = [...finalPosts, ...userLikedPostsFormatted]
