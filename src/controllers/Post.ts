@@ -17,7 +17,7 @@ const generator = new Worker(0, 1, {
     datacenterIdBits: 5,
     sequenceBits: 12,
 });
-type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint, isSaved: boolean, influencer?: boolean };
+type postsE = Omit<posts, 'location'> & { location: String, liked: boolean, comment_count: bigint, total_likes: bigint, saved: boolean, influencer?: boolean };
 
 // Initialize an empty array to store influencer data.
 let influencers: bigint[] = [];
@@ -558,7 +558,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             p.timestamp,
             COUNT(c.comment_id) AS comment_count,
             COUNT(pl.like_id) AS total_likes,
-            CASE WHEN sp.post_id IS NOT NULL THEN true ELSE false END AS post_saved
+            CASE WHEN sp.post_id IS NOT NULL THEN true ELSE false END AS saved
         FROM posts p
         LEFT JOIN comments c ON c.post_id = p.post_id
         LEFT JOIN post_likes pl ON pl.post_id = p.post_id
@@ -639,7 +639,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 pd.timestamp,
                 pd.comment_count,
                 pd.total_likes,
-                CASE WHEN sp.saved_post_id IS NOT NULL THEN true ELSE false END AS is_saved
+                CASE WHEN sp.saved_post_id IS NOT NULL THEN true ELSE false END AS saved
             FROM post_data pd
             LEFT JOIN saved_posts sp ON pd.post_id = sp.post_id AND sp.user_id = ${_id}
             LIMIT ${remaining} OFFSET ${skip};
@@ -713,7 +713,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     comment_count: BigInt(post._count.comments),
                     influencer: true,
                     timestamp: post.timestamp,
-                    isSaved: post.saved_posts.length > 0 ? true : false
+                    saved: post.saved_posts.length > 0 ? true : false
                 })
             }
             finalPosts = [...finalPosts, ...influencerPostsFormatted]
@@ -768,7 +768,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     total_likes: BigInt(post.posts._count.post_likes),
                     comment_count: BigInt(post.posts._count.comments),
                     timestamp: post.timestamp,
-                    isSaved: post.posts.saved_posts.length > 0 ? true : false
+                    saved: post.posts.saved_posts.length > 0 ? true : false
                 })
             }
             finalPosts = [...finalPosts, ...userLikedPostsFormatted]
