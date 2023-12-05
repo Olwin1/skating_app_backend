@@ -259,6 +259,8 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           "posts": user._count.posts
         };
       } else {
+        const follows = await checkUserFollows(_id, user.user_id);
+        const friends = await checkUserFriends(_id, user.user_id);
         returnUser = {
           "user_id": user.user_id,
           "avatar_id": user.avatar_id,
@@ -271,7 +273,9 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           "followers": user._count.followers_followers_user_idTousers,
           "following": user._count.following_following_user_idTousers,
           "friends": user._count.friends_friends_user1_idTousers + user._count.friends_friends_user2_idTousers,
-          "posts": user._count.posts
+          "posts": user._count.posts,
+          "user_follows": follows,
+          "user_friends": friends
         };
       }
 
@@ -293,21 +297,7 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
   try {
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Check if the user is following the user specified in the request headers.
-    const following = await prisma.following.findFirst({ where: { user_id: _id, following_user_id: BigInt(req.headers.user) } });
-
-    if (following) {
-      // If the user is following, send a JSON response indicating "following" is true.
-      return res.json({ "following": true });
-    } else {
-      // If not following, check if there's a follow request and respond accordingly.
-      const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: _id, requestee_id: BigInt(req.headers.user) } });
-      if (followingRequest) {
-        return res.json({ "following": false, "requested": true });
-      } else {
-        return res.json({ "following": false, "requested": false });
-      }
-    }
+    return res.status(200).json(await checkUserFollows(_id, BigInt(req.headers.user)));
   } catch (error) {
     // Handle and respond to any errors that occur during the process.
     res.status(400).json({ error });
@@ -319,28 +309,51 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
   try {
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Check if the user is friends with the user specified in the request headers.
-    const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: _id, user2_id: BigInt(req.headers.user) }, { user1_id: BigInt(req.headers.user), user2_id: _id }] } });
-
-    if (friends) {
-      return res.json({ "friends": true });
-    } else {
-      const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: _id, requestee_id: BigInt(req.headers.user) } });
-      if (friendsRequestOutgoing) {
-        return res.json({ "friends": false, "requestedOutgoing": true });
-      } else {
-        const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: BigInt(req.headers.user), requestee_id: _id } });
-        if (friendsRequestIncoming) {
-          return res.json({ "friends": false, "requestedIncoming": true });
-        } else {
-          return res.json({ "friends": false });
-        }
-      }
-    }
+    return res.status(200).json(await checkUserFollows(_id, BigInt(req.headers.user)));
   } catch (error) {
     res.status(400).json({ error });
   }
 });
+
+async function checkUserFollows(userId: bigint, targetUser: bigint) {
+  // Check if the user is following the user specified in the request headers.
+  const following = await prisma.following.findFirst({ where: { user_id: userId, following_user_id: targetUser } });
+
+  if (following) {
+    // If the user is following, send a JSON response indicating "following" is true.
+    return { "following": true };
+  } else {
+    // If not following, check if there's a follow request and respond accordingly.
+    const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: userId, requestee_id: targetUser } });
+    if (followingRequest) {
+      return { "following": false, "requested": true };
+    } else {
+      return { "following": false, "requested": false };
+    }
+  }
+}
+
+async function checkUserFriends(userId: bigint, targetUser: bigint) {
+  // Check if the user is friends with the user specified in the request headers.
+  const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: userId, user2_id: targetUser }, { user1_id: targetUser, user2_id: userId }] } });
+
+  if (friends) {
+    return { "friends": true };
+  } else {
+    const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: userId, requestee_id: targetUser } });
+    if (friendsRequestOutgoing) {
+      return { "friends": false, "requestedOutgoing": true };
+    } else {
+      const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: targetUser, requestee_id: userId } });
+      if (friendsRequestIncoming) {
+        return { "friends": false, "requestedIncoming": true };
+      } else {
+        return { "friends": false };
+      }
+    }
+  }
+
+}
 
 // Another route handler for user search based on a query.
 router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
