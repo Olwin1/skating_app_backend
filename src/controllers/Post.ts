@@ -552,7 +552,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             p.author_id,
             p.description,
             p.image,
-            p.like_count,
+            p.like_count AS total_likes,
             p.friends_only,
             p."location"::text,
             p.timestamp,
@@ -638,7 +638,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 pd."location",
                 pd.timestamp,
                 pd.comment_count,
-                pd.total_likes,
+                pd.like_count AS total_likes,
                 CASE WHEN sp.saved_post_id IS NOT NULL THEN true ELSE false END AS saved
             FROM post_data pd
             LEFT JOIN saved_posts sp ON pd.post_id = sp.post_id AND sp.user_id = ${_id}
