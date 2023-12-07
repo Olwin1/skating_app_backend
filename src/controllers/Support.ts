@@ -7,7 +7,8 @@ import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from 'snowflake-uuid'; // Unique ID generator library
-import { $Enums } from "@prisma/client";
+import { $Enums, Prisma } from "@prisma/client";
+import { ErrorCode } from "../ErrorCodes";
 
 // Create an instance of Express Router
 const router = Router();
@@ -124,6 +125,66 @@ async function getReports(userId: bigint, type: $Enums.feedback_type, page: stri
         take: 20,
     });
 }
+
+// Define a route to handle the creation of a new support message
+router.post("/support/message", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the authenticated request
+        const userId = BigInt((req as CustomRequest).user._id);
+
+        // Create a new support message using Prisma
+        const newMessage = await prisma.user_support_messages.create({
+            data: {
+                message_id: generator.nextId(), // Generate a unique message ID
+                feedback_id: BigInt(req.body.feedback_id), // Extract the feedback ID from the request
+                sender_id: userId, // Set the sender's user ID
+                content: req.body.content, // Extract the message content from the request
+                timestamp: new Date().toISOString(), // Set the current timestamp
+            }
+        });
+
+        // Respond with the created support message in JSON format
+        res.json(newMessage);
+    } catch (error) {
+        // Handle errors by sending a 400 status along with an error message in JSON format
+        res.status(400).json({ error: "Failed to create a new support message." });
+    }
+});
+
+
+// Handle GET requests to "/support/messages" endpoint with user authentication middleware
+router.get("/support/messages", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the authenticated request
+        const userId = BigInt((req as CustomRequest).user._id);
+
+        // Find user feedback and support information based on the provided feedback ID from the request header
+        const messages = await prisma.user_feedback_and_support.findFirst({
+            where: { feedback_id: BigInt(req.headers.feedback_id) },
+            include: {
+                // Fetch user support messages with pagination and ordering by timestamp
+                user_support_messages: {
+                    take: 20,
+                    skip: 20 * req.headers.page,
+                    orderBy: { timestamp: Prisma.SortOrder.desc }
+                }
+            }
+        });
+
+        if (messages) {
+            // Respond with the array of user support messages
+            return res.status(200).json(messages.user_support_messages);
+        } else {
+            // Return a 400 status with an error code if no records are found
+            return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+        }
+    } catch (error) {
+        // Handle any errors and respond with a 400 status along with the error details
+        res.status(400).json({ error });
+    }
+});
+
+
 
 // Export the router for use in other modules
 export default router;

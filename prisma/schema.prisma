@@ -263,16 +263,17 @@ model posts {
 }
 
 model reports {
-  report_id                             BigInt            @id
+  report_id                             BigInt                 @id
   reporter_id                           BigInt
   reported_user_id                      BigInt
   reported_content                      reported_content?
-  report_type                           String?           @db.VarChar
+  report_type                           String?                @db.VarChar
   description                           String?
   status                                report_status?
-  timestamp                             DateTime          @db.Timestamp(6)
-  users_reports_reported_user_idTousers users             @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_reports_reporter_idTousers      users             @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  timestamp                             DateTime               @db.Timestamp(6)
+  users_reports_reported_user_idTousers users                  @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_reports_reporter_idTousers      users                  @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  user_report_messages                  user_report_messages[]
 }
 
 model session_images {
@@ -318,73 +319,80 @@ model user_activity_logs {
 }
 
 model user_feedback_and_support {
-  feedback_id                                        BigInt           @id
-  user_id                                            BigInt
-  type                                               feedback_type?
-  subject                                            String?          @db.VarChar
-  content                                            String?
-  status                                             feedback_status?
-  assigned_to                                        BigInt?
-  created_at                                         DateTime         @db.Timestamp(6)
-  users_user_feedback_and_support_assigned_toTousers users?           @relation("user_feedback_and_support_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_user_feedback_and_support_user_idTousers     users            @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  feedback_id                                              BigInt                  @id
+  user_id                                                  BigInt
+  type                                                     feedback_type?
+  subject                                                  String?                 @db.VarChar
+  content                                                  String?
+  status                                                   feedback_status?
+  assigned_to                                              BigInt?
+  created_at                                               DateTime                @db.Timestamp(6)
+  response                                                 String?
+  responder_user_id                                        BigInt?
+  users_user_feedback_and_support_assigned_toTousers       users?                  @relation("user_feedback_and_support_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_feedback_and_support_responder_user_idTousers users?                  @relation("user_feedback_and_support_responder_user_idTousers", fields: [responder_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_feedback_and_support_user_idTousers           users                   @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  user_support_messages                                    user_support_messages[]
 
   @@index([type])
   @@index([user_id])
 }
 
 model users {
-  user_id                                                                BigInt                      @id
-  avatar_id                                                              String?                     @db.Char(24)
-  description                                                            String?
-  email                                                                  String?                     @db.VarChar
-  email_notifications                                                    Boolean?
-  dyslexia_font                                                          Boolean?
-  public_profile                                                         Boolean?
-  hide_location                                                          Boolean?
-  analytics_enabled                                                      Boolean?
-  background                                                             Int?                        @db.SmallInt
-  country                                                                String?                     @db.VarChar
-  password_hash                                                          String                      @unique @db.VarChar
-  username                                                               String                      @unique @db.VarChar
-  display_name                                                           String?                     @db.VarChar
-  user_role                                                              user_role?
-  created_at                                                             DateTime                    @db.Timestamp(6)
-  account_activity_logs                                                  account_activity_logs[]
-  analytics_data                                                         analytics_data[]
-  blocked_users_blocked_users_blocked_user_idTousers                     blocked_users[]             @relation("blocked_users_blocked_user_idTousers")
-  blocked_users_blocked_users_blocking_user_idTousers                    blocked_users[]             @relation("blocked_users_blocking_user_idTousers")
-  comment_dislikes                                                       comment_dislikes[]
-  comment_likes                                                          comment_likes[]
-  comments                                                               comments[]
-  email_verifications                                                    email_verifications[]
-  fcm_tokens                                                             fcm_tokens[]
-  follow_requests_follow_requests_requestee_idTousers                    follow_requests[]           @relation("follow_requests_requestee_idTousers")
-  follow_requests_follow_requests_requester_idTousers                    follow_requests[]           @relation("follow_requests_requester_idTousers")
-  followers_followers_follower_user_idTousers                            followers[]                 @relation("followers_follower_user_idTousers")
-  followers_followers_user_idTousers                                     followers[]                 @relation("followers_user_idTousers")
-  following_following_following_user_idTousers                           following[]                 @relation("following_following_user_idTousers")
-  following_following_user_idTousers                                     following[]                 @relation("following_user_idTousers")
-  friend_requests_friend_requests_requestee_idTousers                    friend_requests[]           @relation("friend_requests_requestee_idTousers")
-  friend_requests_friend_requests_requester_idTousers                    friend_requests[]           @relation("friend_requests_requester_idTousers")
-  friends_friends_user1_idTousers                                        friends[]                   @relation("friends_user1_idTousers")
-  friends_friends_user2_idTousers                                        friends[]                   @relation("friends_user2_idTousers")
-  location_data                                                          location_data[]
-  message_readers                                                        message_readers[]
-  messages                                                               messages[]
-  participants                                                           participants[]
-  payment_history                                                        payment_history[]
-  post_likes                                                             post_likes[]
-  posts                                                                  posts[]
-  reports_reports_reported_user_idTousers                                reports[]                   @relation("reports_reported_user_idTousers")
-  reports_reports_reporter_idTousers                                     reports[]                   @relation("reports_reporter_idTousers")
-  saved_posts                                                            saved_posts[]
-  sessions                                                               sessions[]
-  user_activity_logs                                                     user_activity_logs[]
-  user_feedback_and_support_user_feedback_and_support_assigned_toTousers user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
-  user_feedback_and_support_user_feedback_and_support_user_idTousers     user_feedback_and_support[] @relation("user_feedback_and_support_user_idTousers")
-  backgrounds                                                            backgrounds?                @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
-  countries                                                              countries?                  @relation(fields: [country], references: [country_code], onDelete: NoAction, onUpdate: NoAction)
+  user_id                                                                      BigInt                      @id
+  avatar_id                                                                    String?                     @db.Char(24)
+  description                                                                  String?
+  email                                                                        String?                     @db.VarChar
+  email_notifications                                                          Boolean?
+  dyslexia_font                                                                Boolean?
+  public_profile                                                               Boolean?
+  hide_location                                                                Boolean?
+  analytics_enabled                                                            Boolean?
+  background                                                                   Int?                        @db.SmallInt
+  country                                                                      String?                     @db.VarChar
+  password_hash                                                                String                      @unique @db.VarChar
+  username                                                                     String                      @unique @db.VarChar
+  display_name                                                                 String?                     @db.VarChar
+  user_role                                                                    user_role?
+  created_at                                                                   DateTime                    @db.Timestamp(6)
+  account_activity_logs                                                        account_activity_logs[]
+  analytics_data                                                               analytics_data[]
+  blocked_users_blocked_users_blocked_user_idTousers                           blocked_users[]             @relation("blocked_users_blocked_user_idTousers")
+  blocked_users_blocked_users_blocking_user_idTousers                          blocked_users[]             @relation("blocked_users_blocking_user_idTousers")
+  comment_dislikes                                                             comment_dislikes[]
+  comment_likes                                                                comment_likes[]
+  comments                                                                     comments[]
+  email_verifications                                                          email_verifications[]
+  fcm_tokens                                                                   fcm_tokens[]
+  follow_requests_follow_requests_requestee_idTousers                          follow_requests[]           @relation("follow_requests_requestee_idTousers")
+  follow_requests_follow_requests_requester_idTousers                          follow_requests[]           @relation("follow_requests_requester_idTousers")
+  followers_followers_follower_user_idTousers                                  followers[]                 @relation("followers_follower_user_idTousers")
+  followers_followers_user_idTousers                                           followers[]                 @relation("followers_user_idTousers")
+  following_following_following_user_idTousers                                 following[]                 @relation("following_following_user_idTousers")
+  following_following_user_idTousers                                           following[]                 @relation("following_user_idTousers")
+  friend_requests_friend_requests_requestee_idTousers                          friend_requests[]           @relation("friend_requests_requestee_idTousers")
+  friend_requests_friend_requests_requester_idTousers                          friend_requests[]           @relation("friend_requests_requester_idTousers")
+  friends_friends_user1_idTousers                                              friends[]                   @relation("friends_user1_idTousers")
+  friends_friends_user2_idTousers                                              friends[]                   @relation("friends_user2_idTousers")
+  location_data                                                                location_data[]
+  message_readers                                                              message_readers[]
+  messages                                                                     messages[]
+  participants                                                                 participants[]
+  payment_history                                                              payment_history[]
+  post_likes                                                                   post_likes[]
+  posts                                                                        posts[]
+  reports_reports_reported_user_idTousers                                      reports[]                   @relation("reports_reported_user_idTousers")
+  reports_reports_reporter_idTousers                                           reports[]                   @relation("reports_reporter_idTousers")
+  saved_posts                                                                  saved_posts[]
+  sessions                                                                     sessions[]
+  user_activity_logs                                                           user_activity_logs[]
+  user_feedback_and_support_user_feedback_and_support_assigned_toTousers       user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
+  user_feedback_and_support_user_feedback_and_support_responder_user_idTousers user_feedback_and_support[] @relation("user_feedback_and_support_responder_user_idTousers")
+  user_feedback_and_support_user_feedback_and_support_user_idTousers           user_feedback_and_support[] @relation("user_feedback_and_support_user_idTousers")
+  user_report_messages                                                         user_report_messages[]
+  user_support_messages                                                        user_support_messages[]
+  backgrounds                                                                  backgrounds?                @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
+  countries                                                                    countries?                  @relation(fields: [country], references: [country_code], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([username])
 }
@@ -419,6 +427,32 @@ model comment_dislikes {
   users      users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([comment_id])
+}
+
+model user_report_messages {
+  message_id BigInt    @id
+  report_id  BigInt
+  sender_id  BigInt
+  content    String
+  timestamp  DateTime? @db.Timestamp(6)
+  reports    reports   @relation(fields: [report_id], references: [report_id], onDelete: NoAction, onUpdate: NoAction)
+  users      users     @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([report_id])
+  @@index([sender_id])
+}
+
+model user_support_messages {
+  message_id                BigInt                    @id
+  feedback_id               BigInt
+  sender_id                 BigInt
+  content                   String
+  timestamp                 DateTime?                 @db.Timestamp(6)
+  user_feedback_and_support user_feedback_and_support @relation(fields: [feedback_id], references: [feedback_id], onDelete: NoAction, onUpdate: NoAction)
+  users                     users                     @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([feedback_id])
+  @@index([sender_id])
 }
 
 enum account_activity {
