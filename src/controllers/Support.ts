@@ -127,7 +127,7 @@ async function getReports(userId: bigint, type: $Enums.feedback_type, page: stri
 }
 
 // Define a route to handle the creation of a new support message
-router.post("/support/message", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract the user ID from the authenticated request
         const userId = BigInt((req as CustomRequest).user._id);
@@ -153,7 +153,7 @@ router.post("/support/message", middleware.isLoggedIn, async (req: any, res) => 
 
 
 // Handle GET requests to "/support/messages" endpoint with user authentication middleware
-router.get("/support/messages", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract the user ID from the authenticated request
         const userId = BigInt((req as CustomRequest).user._id);
