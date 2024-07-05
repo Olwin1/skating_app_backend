@@ -3,7 +3,6 @@ import multer from "multer";
 import { GridFsStorage } from "multer-gridfs-storage";
 import mongoose from "./connection";
 import dotenv from "dotenv";
-
 // Loading environment variables from .env file
 dotenv.config();
 const { DATABASE_URL } = process.env;
@@ -12,8 +11,8 @@ const { DATABASE_URL } = process.env;
 const conn = mongoose.createConnection(DATABASE_URL!);
 
 // Declaring variables to store references to the 'uploads.files' and 'uploads.chunks' collections
-let files:mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
-let filesChunks:mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
+let files: mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
+let filesChunks: mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
 
 // Listening for the 'open' event to ensure the connection is established before accessing collections
 conn.once("open", () => {

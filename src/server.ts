@@ -15,6 +15,7 @@ import SessionRouter from "./controllers/Session"; // Import Session Router
 import ImageRouter from "./controllers/Images";
 import NotificationRouter from "./controllers/notifications";
 import SupportRouter from "./controllers/Support";
+import LocationRouter from "./controllers/Location";
 import middleware from "./controllers/middleware";
 import { upload } from "./db/bucket"; // Import upload utility from bucket.ts
 import { createServer as createServerHTTP } from 'http';
@@ -106,6 +107,7 @@ app.use("/image", ImageRouter); // route all "/image" requests to MessageRouter 
 app.use("/session", SessionRouter); // route all "/session" requests to SessionRouter for further processing
 app.use('/notifications', NotificationRouter);
 app.use('/support', SupportRouter);
+app.use('/location', LocationRouter);
 
 
 // Define route for file uploads using the upload utility
