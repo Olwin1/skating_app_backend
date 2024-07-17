@@ -77,7 +77,11 @@ const getPostcodeData = (postcode: string): Promise<any> => {
       });
       res.on("end", () => {
         if (res.statusCode === 200) {
-          resolve(JSON.parse(data));
+          const result = JSON.parse(data);
+          resolve({
+            lat: result.result.latitude,
+            lng: result.result.longitude,
+          });
         } else {
           reject(
             new Error(`Request failed with status code ${res.statusCode}`)
@@ -134,9 +138,10 @@ const searchByTown = async (
   res: any
 ) => {
   try {
+    const code = getCountry(country);
     const results = await Geonames.findOne({
       name: town,
-      countryCode: getCountry(country),
+      countryCode: code,
     }).lean();
     if (
       results &&
@@ -149,7 +154,31 @@ const searchByTown = async (
         radius: 54000,
         ll: `${results.location.coordinates[1]}%2C${results.location.coordinates[0]}`,
       });
-      res.json(data);
+      if (
+        data != null &&
+        data.data != null &&
+        data.data.results != null &&
+        data.data.results.length > 0
+      ) {
+        let ll = {
+          lat: Object.values(data.data.results[0].geocodes as object)[0]
+            .latitude,
+          lng: Object.values(data.data.results[0].geocodes as object)[0]
+            .longitude,
+        };
+        for (const result of data.data.results) {
+          if (result.location.country.toUpperCase() == code.toUpperCase()) {
+            ll = {
+              lat: Object.values(result.geocodes as object)[0].latitude,
+              lng: Object.values(result.geocodes as object)[0].longitude,
+            };
+            break;
+          }
+        }
+        res.json(ll);
+      } else {
+        res.status(404).json({ error: "ERROR: No Records Found" });
+      }
     } else {
       res.status(404).json({ error: "ERROR: Town could not be found" });
     }
@@ -163,7 +192,8 @@ const searchByTown = async (
 const searchByCountry = async (
   country: string,
   queryName: string,
-  res: any
+  res: any,
+  isTown: boolean
 ) => {
   try {
     await loadCSV("./src/assets/country-coord.csv");
@@ -177,7 +207,36 @@ const searchByCountry = async (
           radius: 100000,
           ll: `${result.latitude}%2C${result.longitude}`,
         });
-        res.json(data);
+        if (
+          data != null &&
+          data.data != null &&
+          data.data.results != null &&
+          data.data.results.length > 0
+        ) {
+          let ll = {
+            lat: Object.values(data.data.results[0].geocodes as object)[0]
+              .latitude,
+            lng: Object.values(data.data.results[0].geocodes as object)[0]
+              .longitude,
+          };
+          if (isTown) {
+            for (const result of data.data.results) {
+              if (
+                result.location.post_town.toUpperCase() ==
+                queryName.toUpperCase()
+              ) {
+                ll = {
+                  lat: Object.values(result.geocodes as object)[0].latitude,
+                  lng: Object.values(result.geocodes as object)[0].longitude,
+                };
+                break;
+              }
+            }
+          }
+          res.json(ll);
+        } else {
+          res.status(404).json({ error: "ERROR: No Records Found" });
+        }
       }
     } else {
       res.status(404).json({ error: "ERROR: Country Not Found" });
@@ -206,26 +265,82 @@ const handleSearch = async (req: any, res: any) => {
           res
         );
       } else if (query.country) {
-        await searchByCountry(query.country, query.name, res);
+        await searchByCountry(query.country, query.name, res, false);
       } else {
         const data = await sdk.placeSearch({
           query: query.name,
           radius: 100000,
         });
-        res.json(data);
+        if (
+          data != null &&
+          data.data != null &&
+          data.data.results != null &&
+          data.data.results.length > 0
+        ) {
+          let ll = {
+            lat: Object.values(data.data.results[0].geocodes as object)[0]
+              .latitude,
+            lng: Object.values(data.data.results[0].geocodes as object)[0]
+              .longitude,
+          };
+          for (const result of data.data.results) {
+            if (
+              result.location.name
+                .toUpperCase()
+                .includes(query.name.toUpperCase())
+            ) {
+              ll = {
+                lat: Object.values(result.geocodes as object)[0].latitude,
+                lng: Object.values(result.geocodes as object)[0].longitude,
+              };
+              break;
+            }
+          }
+          res.json(ll);
+        } else {
+          res.status(404).json({ error: "ERROR: No Records Found" });
+        }
       }
     } else if (query.town) {
       if (query.country) {
-        await searchByCountry(query.country, query.town, res);
+        await searchByCountry(query.country, query.town, res, true);
       } else {
         const data = await sdk.placeSearch({
           query: query.town,
           radius: 100000,
         });
+        if (
+          data != null &&
+          data.data != null &&
+          data.data.results != null &&
+          data.data.results.length > 0
+        ) {
+          let ll = {
+            lat: Object.values(data.data.results[0].geocodes as object)[0]
+              .latitude,
+            lng: Object.values(data.data.results[0].geocodes as object)[0]
+              .longitude,
+          };
+          for (const result of data.data.results) {
+            if (
+              result.location.post_town.toUpperCase() ==
+              query.town.toUpperCase()
+            ) {
+              ll = {
+                lat: Object.values(result.geocodes as object)[0].latitude,
+                lng: Object.values(result.geocodes as object)[0].longitude,
+              };
+              break;
+            }
+          }
+          res.json(ll);
+        } else {
+          res.status(404).json({ error: "ERROR: No Records Found" });
+        }
         res.json(data);
       }
     } else if (query.country) {
-      await searchByCountry(query.country, "", res);
+      await searchByCountry(query.country, "", res, false);
     } else {
       res
         .status(400)
