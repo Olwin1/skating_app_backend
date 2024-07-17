@@ -1,11 +1,13 @@
 import api from "api";
-require("dotenv").config(); // load .env variables
-import { Router } from "express"; // import router from express
+import dotenv from "dotenv";
+import { Router } from "express";
 import * as isoCountries from "i18n-iso-countries";
 import CustomRequest from "./CustomRequest";
 import https from "https";
 import fs from "fs";
 import csv from "csv-parser";
+
+dotenv.config();
 
 interface Country {
   Country: string;
@@ -17,7 +19,6 @@ interface Country {
 }
 const countries: Country[] = [];
 
-// Function to read the CSV file and parse it
 const loadCSV = (filePath: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
@@ -32,15 +33,11 @@ const loadCSV = (filePath: string): Promise<void> => {
           "Longitude (average)": parseFloat(row["Longitude (average)"]),
         });
       })
-      .on("end", () => {
-        resolve();
-      })
-      .on("error", (error) => {
-        reject(error);
-      });
+      .on("end", resolve)
+      .on("error", reject);
   });
 };
-// Function to get the latitude and longitude of a given country code
+
 const getLatLong = (
   code: string
 ): { latitude: number; longitude: number } | null => {
@@ -57,8 +54,7 @@ const getLatLong = (
   return null;
 };
 
-// Function to perform the GET request
-function getPostcodeData(postcode: string): Promise<any> {
+const getPostcodeData = (postcode: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: "api.postcodes.io",
@@ -68,13 +64,9 @@ function getPostcodeData(postcode: string): Promise<any> {
 
     const req = https.request(options, (res) => {
       let data = "";
-
-      // A chunk of data has been received
       res.on("data", (chunk) => {
         data += chunk;
       });
-
-      // The whole response has been received
       res.on("end", () => {
         if (res.statusCode === 200) {
           resolve(JSON.parse(data));
@@ -86,34 +78,22 @@ function getPostcodeData(postcode: string): Promise<any> {
       });
     });
 
-    // Handle request errors
-    req.on("error", (e) => {
-      reject(e);
-    });
-
-    // End the request
+    req.on("error", reject);
     req.end();
   });
-}
+};
 
-const { SEARCHING_API_KEY = "none" } = process.env;
-
-const router = Router(); // create router to create route bundle
-
+const SEARCHING_API_KEY = process.env.SEARCHING_API_KEY || "none";
 const sdk = api("@fsq-developer/v1.0#18rps1flohmmndw");
-
 sdk.auth(SEARCHING_API_KEY);
 
-function getCountry(country: string): string {
+const getCountry = (country: string): string => {
   const upperCountry = country.toUpperCase();
-  // Iterate through all country codes and names to find a match
   for (const countryCode of Object.keys(isoCountries.getNames("en"))) {
     const countryName =
-      isoCountries.getName(countryCode, "en") ?? "".toUpperCase();
-
-    // Check if the country code or name is present in the search query
+      isoCountries.getName(countryCode, "en")?.toUpperCase() || "";
     if (
-      countryName != "" &&
+      countryName &&
       (upperCountry.includes(" " + countryCode + " ") ||
         upperCountry.includes(countryName))
     ) {
@@ -121,118 +101,128 @@ function getCountry(country: string): string {
     }
   }
   return "GB";
-}
+};
 
-router.get("/search", async (req: any, res) => {
+const searchByPostcode = async (postcode: string, res: any) => {
   try {
-    const { Geonames, Altnames } = (req as CustomRequest).context.models;
-    const query = JSON.parse(req.headers.terms);
+    const data = await getPostcodeData(postcode);
+    res.json({ lng: data.result.longitude, lat: data.result.latitude });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to fetch postcode data" });
+  }
+};
 
-    if (query.postcode != null) {
-      getPostcodeData(query.postcode)
-        .then((data) => {
-          console.log("Postcode data:", data);
-          return res.json({ lng: data.longitude, lat: data.latitude });
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        });
+const searchByTown = async (
+  town: string,
+  country: string,
+  queryName: string,
+  Geonames: any,
+  res: any
+) => {
+  try {
+    const results = await Geonames.findOne({
+      name: town,
+      countryCode: getCountry(country),
+    }).lean();
+    if (
+      results &&
+      results.location &&
+      results.location.coordinates &&
+      results.location.coordinates.length === 2
+    ) {
+      const data = await sdk.placeSearch({
+        query: queryName,
+        radius: 54000,
+        ll: `${results.location.coordinates[1]}%2C${results.location.coordinates[0]}`,
+      });
+      res.json(data);
+    } else {
+      res.status(404).json({ error: "ERROR: Town could not be found" });
     }
-    if (query.name != null) {
-      if (query.town != null) {
-        const results = await Geonames.findOne({
-          name: query.town,
-          countryCode: getCountry(query.country),
-        }).lean();
-        console.log(results.location);
-        if (
-          results != null &&
-          results.location != null &&
-          results.location.coordinates != null &&
-          results.location.coordinates.length == 2
-        ) {
-          const data = await sdk.placeSearch({
-            query: query.name,
-            radius: 54000,
-            ll: `${results.location.coordinates[1]}%2C${results.location.coordinates[0]}`,
-          });
-          return res.json(data);
-        } else {
-          return res
-            .status(404)
-            .json({ error: "ERROR: Town could not be found" });
-        }
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to fetch town data" });
+  }
+};
+
+const searchByCountry = async (
+  country: string,
+  queryName: string,
+  res: any
+) => {
+  try {
+    await loadCSV("./src/assets/country-coord.csv");
+    const result = getLatLong(getCountry(country));
+    if (result) {
+      if (queryName == "") {
+        res.json({ lat: result.latitude, lng: result.longitude });
       } else {
-        if (query.country != null) {
-          await loadCSV("../assets/country-coord.csv");
-          const result = getLatLong(getCountry(query.country));
-          if (result) {
-            sdk
-              .placeSearch({
-                query: query.name,
-                radius: 100000,
-                ll: `${result.longitude}%2C${result.latitude}`,
-              })
-              .then(({ data }: any) => {
-                return res.json(data);
-              })
-              .catch((err: any) => {
-                return res.json(err);
-              });
-          } else {
-            res.status(404).json({ error: "ERROR: Country Not Found" });
-          }
-        } else {
-          const data = await sdk.placeSearch({
-            query: query.name,
-            radius: 100000,
-          });
-          return res.json(data);
-        }
+        const data = await sdk.placeSearch({
+          query: queryName,
+          radius: 100000,
+          ll: `${result.latitude}%2C${result.longitude}`,
+        });
+        res.json(data);
       }
     } else {
-      if (query.town != null) {
-        if (query.country != null) {
-          await loadCSV("./src/assets/country-coord.csv");
-          const result = getLatLong(getCountry(query.country));
-          if (result) {
-            const data = await sdk.placeSearch({
-              query: query.town,
-              radius: 100000,
-              ll: `${result.latitude}%2C${result.longitude}`,
-            });
-            return res.json(data);
-          } else {
-            return res.status(404).json({ error: "ERROR: Country Not Found." });
-          }
-        } else {
-          const data = await sdk.placeSearch({
-            query: query.town,
-            radius: 100000,
-          });
-          return res.json(data);
-        }
-      } else {
-        if (query.country != null) {
-          await loadCSV("./src/assets/country-coord.csv");
-          const result = getLatLong(getCountry(query.country));
-          if (result) {
-            return res.json({ lat: result.latitude, lng: result.longitude });
-          } else {
-            return res.status(404).json({ error: "ERROR: Country Not Found" });
-          }
-        } else {
-          return res
-            .status(400)
-            .json({ error: "ERROR: Please Provide Valid Search Flags" });
-        }
-      }
+      res.status(404).json({ error: "ERROR: Country Not Found" });
     }
-    return res.status(500).json({ error: "End Reached" });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to fetch country data" });
+  }
+};
+
+const handleSearch = async (req: any, res: any) => {
+  try {
+    const { Geonames } = (req as CustomRequest).context.models;
+    const query = JSON.parse(req.headers.terms);
+
+    if (query.postcode) {
+      await searchByPostcode(query.postcode, res);
+    } else if (query.name) {
+      if (query.town) {
+        await searchByTown(
+          query.town,
+          query.country,
+          query.name,
+          Geonames,
+          res
+        );
+      } else if (query.country) {
+        await searchByCountry(query.country, query.name, res);
+      } else {
+        const data = await sdk.placeSearch({
+          query: query.name,
+          radius: 100000,
+        });
+        res.json(data);
+      }
+    } else if (query.town) {
+      if (query.country) {
+        await searchByCountry(query.country, query.town, res);
+      } else {
+        const data = await sdk.placeSearch({
+          query: query.town,
+          radius: 100000,
+        });
+        res.json(data);
+      }
+    } else if (query.country) {
+      await searchByCountry(query.country, "", res);
+    } else {
+      res
+        .status(400)
+        .json({ error: "ERROR: Please Provide Valid Search Flags" });
+    }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, error: error });
+    res.status(500).json({ success: false, error: error });
   }
-});
+};
+
+const router = Router();
+router.get("/search", handleSearch);
 
 export default router;
