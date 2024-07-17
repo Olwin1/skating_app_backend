@@ -1,3 +1,4 @@
+// Import necessary modules and libraries
 import api from "api";
 import dotenv from "dotenv";
 import { Router } from "express";
@@ -7,8 +8,10 @@ import https from "https";
 import fs from "fs";
 import csv from "csv-parser";
 
+// Load environment variables from .env file
 dotenv.config();
 
+// Define an interface for the Country data
 interface Country {
   Country: string;
   "Alpha-2 code": string;
@@ -17,8 +20,11 @@ interface Country {
   "Latitude (average)": number;
   "Longitude (average)": number;
 }
+
+// Create an empty array to hold country data
 const countries: Country[] = [];
 
+// Function to load country data from a CSV file
 const loadCSV = (filePath: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
@@ -38,6 +44,7 @@ const loadCSV = (filePath: string): Promise<void> => {
   });
 };
 
+// Function to get latitude and longitude by country code
 const getLatLong = (
   code: string
 ): { latitude: number; longitude: number } | null => {
@@ -54,6 +61,7 @@ const getLatLong = (
   return null;
 };
 
+// Function to get postcode data from an API
 const getPostcodeData = (postcode: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     const options = {
@@ -83,10 +91,13 @@ const getPostcodeData = (postcode: string): Promise<any> => {
   });
 };
 
+// Load the API key from environment variables
 const SEARCHING_API_KEY = process.env.SEARCHING_API_KEY || "none";
+// Initialize the API SDK with the key
 const sdk = api("@fsq-developer/v1.0#18rps1flohmmndw");
 sdk.auth(SEARCHING_API_KEY);
 
+// Function to get the country code from country name
 const getCountry = (country: string): string => {
   const upperCountry = country.toUpperCase();
   for (const countryCode of Object.keys(isoCountries.getNames("en"))) {
@@ -103,6 +114,7 @@ const getCountry = (country: string): string => {
   return "GB";
 };
 
+// Function to search by postcode and return coordinates
 const searchByPostcode = async (postcode: string, res: any) => {
   try {
     const data = await getPostcodeData(postcode);
@@ -113,6 +125,7 @@ const searchByPostcode = async (postcode: string, res: any) => {
   }
 };
 
+// Function to search by town and return data
 const searchByTown = async (
   town: string,
   country: string,
@@ -146,6 +159,7 @@ const searchByTown = async (
   }
 };
 
+// Function to search by country and return data
 const searchByCountry = async (
   country: string,
   queryName: string,
@@ -174,6 +188,7 @@ const searchByCountry = async (
   }
 };
 
+// Function to handle search requests
 const handleSearch = async (req: any, res: any) => {
   try {
     const { Geonames } = (req as CustomRequest).context.models;
@@ -222,7 +237,9 @@ const handleSearch = async (req: any, res: any) => {
   }
 };
 
+// Create an Express router and define the search route
 const router = Router();
 router.get("/search", handleSearch);
 
+// Export the router for use in the main application
 export default router;
