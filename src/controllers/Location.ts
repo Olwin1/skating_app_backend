@@ -255,6 +255,7 @@ const handleSearch = async (req: any, res: any) => {
 
     if (query.postcode) {
       await searchByPostcode(query.postcode, res);
+      return;
     } else if (query.name) {
       if (query.town) {
         await searchByTown(
@@ -264,8 +265,10 @@ const handleSearch = async (req: any, res: any) => {
           Geonames,
           res
         );
+        return;
       } else if (query.country) {
         await searchByCountry(query.country, query.name, res, false);
+        return;
       } else {
         const data = await sdk.placeSearch({
           query: query.name,
@@ -297,13 +300,16 @@ const handleSearch = async (req: any, res: any) => {
             }
           }
           res.json(ll);
+          return;
         } else {
           res.status(404).json({ error: "ERROR: No Records Found" });
+          return;
         }
       }
     } else if (query.town) {
       if (query.country) {
         await searchByCountry(query.country, query.town, res, true);
+        return;
       } else {
         const data = await sdk.placeSearch({
           query: query.town,
@@ -334,21 +340,25 @@ const handleSearch = async (req: any, res: any) => {
             }
           }
           res.json(ll);
+          return;
         } else {
           res.status(404).json({ error: "ERROR: No Records Found" });
+          return;
         }
-        res.json(data);
       }
     } else if (query.country) {
       await searchByCountry(query.country, "", res, false);
+      return
     } else {
       res
         .status(400)
         .json({ error: "ERROR: Please Provide Valid Search Flags" });
+        return;
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, error: error });
+    return;
   }
 };
 
