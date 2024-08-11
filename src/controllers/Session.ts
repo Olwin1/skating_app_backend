@@ -35,10 +35,10 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
                 description: req.body.description,
                 //images: images,
                 //type: req.body.type,
-                share: req.body.share,
-                start_timestamp: req.body.start_time,
-                end_timestamp: req.body.end_time,
-                distance: req.body.distance,
+                share: true,//req.body.share,
+                start_timestamp: (new Date(req.body.start_time)).toISOString(),
+                end_timestamp: (new Date (req.body.end_time)).toISOString(),
+                distance: parseFloat(req.body.distance),
                 //latitude: req.body.latitude,
                 //longitude: req.body.longitude,
                 author_id: _id // Set the author ID to the user's ID
@@ -72,17 +72,25 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
         const _id = BigInt((req as CustomRequest).user._id);
 
         // Calculate a cutoff date (24 hours ago)
-        let cutoffDate = new Date(new Date().getTime() - (24 * 60 * 60 * 1000)).toISOString();
+        let cutoffDate = (new Date(new Date().getTime() + (24 * 60 * 60 * 1000))).toISOString();
 
         // Retrieve sessions from the database where the author ID is a friend of the user
         const sessions = await prisma.$queryRaw`
-        SELECT * FROM "sessions"
+        SELECT
+          "session_id",
+          "name",
+          "type",
+          "share",
+          "author_id"
+        FROM "sessions"
         WHERE "author_id" IN (
           SELECT "user1_id" FROM "friends" WHERE "user2_id" = ${_id}
           UNION
           SELECT "user2_id" FROM "friends" WHERE "user1_id" = ${_id}
-        ) AND "end_timestamp" < ${cutoffDate}
+        )
+        AND "end_timestamp" < ${cutoffDate}::timestamp;
       `;
+      
 
         // Respond with the retrieved sessions
         res.json(sessions);
