@@ -122,7 +122,7 @@ const getCountry = (country: string): string => {
 const searchByPostcode = async (postcode: string, res: any) => {
   try {
     const data = await getPostcodeData(postcode);
-    res.json({ lng: data.result.longitude, lat: data.result.latitude });
+    res.json({ lng: data.lng, lat: data.lat });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Failed to fetch postcode data" });
