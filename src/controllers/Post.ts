@@ -80,11 +80,18 @@ router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
 
         // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
         const postId = BigInt(req.headers.post);
-        const post = await prisma.posts.findUnique({ where: { post_id: postId }, include: { _count: { select: { comments: true, post_likes: true } }, saved_posts: {
-            where: {
-                user_id: _id, // Replace 'userId' with the actual user's ID
-            },
-        }, post_likes: {where: {user_id: _id}}} })
+        const post = await prisma.posts.findUnique({
+            where: { post_id: postId },
+            include: {
+                _count: { select: { comments: true, post_likes: true } },
+                saved_posts: {
+                    where: { user_id: _id },
+                },
+                post_likes: {
+                    where: { user_id: _id },
+                }
+            }
+        });
         if (post) {
             const postFormatted = {
                 post_id: post.post_id,
