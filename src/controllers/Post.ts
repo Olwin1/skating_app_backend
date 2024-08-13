@@ -71,33 +71,41 @@ router.post("/post", middleware.isLoggedIn, async (req: any, res) => {
 
 // Define a route that listens for HTTP GET requests at the "/post" endpoint.
 router.get("/post", middleware.isLoggedIn, async (req: any, res) => {
+    // Extract the user ID from the request.
+    const _id = BigInt((req as CustomRequest).user._id);
+
     // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
 
     try {
 
         // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
         const postId = BigInt(req.headers.post);
-        const post = await prisma.posts.findUnique({ where: { post_id: postId }, include: { _count: { select: { comments: true, post_likes: true, saved_posts: { where: { post_id: postId } } } } } })
+        const post = await prisma.posts.findUnique({ where: { post_id: postId }, include: { _count: { select: { comments: true, post_likes: true } }, saved_posts: {
+            where: {
+                user_id: _id, // Replace 'userId' with the actual user's ID
+            },
+        }, post_likes: {where: {user_id: _id}}} })
         if (post) {
             const postFormatted = {
                 post_id: post.post_id,
                 author_id: post.author_id,
                 description: post.description,
                 image: post.image,
-                like_count: post.like_count,
                 friends_only: post.friends_only,
                 location: "",
-                total_likes: post._count.post_likes,
-                comment_count: post._count.comments
+                like_count: post._count.post_likes,
+                comment_count: post._count.comments,
+                saved: post.saved_posts.length > 0 ? true : false,
+                liked: post.post_likes.length > 0 ? true : false
             }
-            res.json(postFormatted);
+            return res.json(postFormatted);
         }
 
         // Send a JSON response containing the retrieved post to the client.
-        res.json(post);
+        return res.json(post);
     } catch (error) {
         // Set the response status code to 400 (Bad Request) to indicate an error.
-        res.status(400).json({ error });
+        return res.status(400).json({ error });
     }
 });
 
