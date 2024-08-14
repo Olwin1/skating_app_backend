@@ -156,7 +156,7 @@ router.post("/like", middleware.isLoggedIn, async (req: any, res) => {
         else {
 
             // If the user has already liked the post, return an error
-            return res.status(400).json({ "error": "Post already liked" });
+            return res.status(409).json({ "error": "Post already liked" });
         }
     } catch (error) {
         // Handle any other errors with a 400 status code
@@ -200,7 +200,7 @@ router.post("/unlike", middleware.isLoggedIn, async (req: any, res) => {
         else {
 
             // If the user hasn't liked the post, return an error
-            return res.status(400).json({ "error": "Post isn't liked" });
+            return res.status(409).json({ "error": "Post isn't liked" });
         }
     } catch (error) {
         // Handle any other errors with a 400 status code
