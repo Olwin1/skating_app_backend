@@ -3,6 +3,7 @@ import createMessage from "./controllers/MessageCreate";
 
 // Define a function to handle a new connection to the socket
 const handleConnection = (socket: Socket, payload: any) => {
+    console.log("Connecting new client to socket.")
     const { _id } = payload
 
     // Call the sendEvent function when a new connection is established
@@ -14,7 +15,9 @@ function sendEvent(socket: Socket, id: string) {
     // Listen for a 'message' event over the socket
     socket.on('message', (e) => {
         // Parse the message data from the incoming event
-        const data = JSON.parse(e)
+        //if(e.)
+        //const data = JSON.parse(e)
+        const data = e
         // Check if the message has an image and replace empty strings with null
         data.img == '' ? data.img = null : null
         // Join the socket to the channel associated with the message
@@ -49,7 +52,7 @@ function sendEvent(socket: Socket, id: string) {
         try {
             if (e) {
                 // Parse the typing data from the incoming event
-                let channels = e.slice(1).slice(0, e.length - 1).split(",")
+                let channels = e as string;
                 // Join the socket to the channel associated with the typing indicator
                 console.log(channels);
                 socket.join(channels)
@@ -59,6 +62,10 @@ function sendEvent(socket: Socket, id: string) {
             console.log(e)
             console.log(e.message);
         }
+    })
+
+    socket.onAny((e: String) => {
+        console.log(`Recieved Event: ${e}`)
     })
 }
 
