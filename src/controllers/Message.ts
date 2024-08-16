@@ -148,7 +148,7 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
 router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Retrieve details of a channel by its ID.
-        const channel = prisma.message_channels.findUnique({ where: { channel_id: BigInt(req.headers.channel) } });
+        const channel = await prisma.message_channels.findUnique({ where: { channel_id: BigInt(req.headers.channel) } });
         // Return the channel details as a JSON response.
         res.status(200).json(channel);
     } catch (error) {
