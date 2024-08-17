@@ -95,6 +95,7 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
                     { message_number: { lte: channel!.last_message_count - req.headers.page * 20 } },
                 ]
             },
+            include: {message_readers: true},
             take: 20,
             orderBy: { message_number: 'desc' }
         });

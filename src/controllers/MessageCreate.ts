@@ -37,7 +37,7 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
     });
 
     // Create a new message in the database
-    await prisma.messages.create({
+    const result = await prisma.messages.create({
       data: {
         message_id: generator.nextId(),
         sender_id: _id,
@@ -100,7 +100,7 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
             }
           });
       }
-      return userChannel.last_message_count;
+      return result;
     }
 
     // Return a success response

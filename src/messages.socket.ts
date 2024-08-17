@@ -1,5 +1,14 @@
 import { Socket } from "socket.io";
 import createMessage from "./controllers/MessageCreate";
+import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
+import prisma from "./db/postgres";
+
+// Create a unique ID generator instance
+const generator = new Worker(0, 1, {
+    workerIdBits: 5,
+    datacenterIdBits: 5,
+    sequenceBits: 12,
+});
 
 // Define a function to handle a new connection to the socket
 const handleConnection = (socket: Socket, payload: any) => {
@@ -24,18 +33,30 @@ function sendEvent(socket: Socket, id: string) {
         socket.join(data.channel)
         // Call the createMessage function to save the message in the database
         const result = await createMessage(BigInt(id), data.channel, data.content, data.img)
-        if(Number.isInteger(result)) {
-            data["messageNumber"] = result
+        if('message_number' in result) {
+            data["messageNumber"] = result.message_number
+            data["messageId"] = result.message_id
+
         // Emit a 'newMessage' event to all sockets in the channel except the sender
         socket.to(data.channel).emit('newMessage', { ...data, "sender": id });
-        console.log(`Message Number ${data["messageNumber"]}`)
+        socket.emit('delivered', { ...data, "sender": id });
+        console.log(`Message Number ${data["messageNumber"]} Message Id ${data["messageId"]}`)
         }
         //TODO Handle ERROR
     })
     // Listen for a 'seen' event over the socket
-    socket.on('seen', (data) => {
+    socket.on('seen', async (data) => {
         // Join the socket to the channel associated with the seen message
         socket.join(data.channel)
+        const readerId = generator.nextId();
+        
+        const result = await prisma.message_readers.create({data: {
+            message_reader_id: readerId,
+            message_id: BigInt(data.messageId),
+            user_id: BigInt(id),
+            timestamp: new Date()
+        }})
+
         // Emit a 'newSeen' event to all sockets in the channel except the sender
         socket.to(data.channel).emit('newSeen', {...data, "sender": id});
     })
