@@ -13,7 +13,7 @@ const handleConnection = (socket: Socket, payload: any) => {
 // Define a function to send a new event over the socket
 function sendEvent(socket: Socket, id: string) {
     // Listen for a 'message' event over the socket
-    socket.on('message', (e) => {
+    socket.on('message', async (e) => {
         // Parse the message data from the incoming event
         //if(e.)
         //const data = JSON.parse(e)
@@ -23,23 +23,24 @@ function sendEvent(socket: Socket, id: string) {
         // Join the socket to the channel associated with the message
         socket.join(data.channel)
         // Call the createMessage function to save the message in the database
-        createMessage(BigInt(id), data.channel, data.content, data.img)
+        const result = await createMessage(BigInt(id), data.channel, data.content, data.img)
+        if(Number.isInteger(result)) {
+            data["messageNumber"] = result
         // Emit a 'newMessage' event to all sockets in the channel except the sender
         socket.to(data.channel).emit('newMessage', { ...data, "sender": id });
+        console.log(`Message Number ${data["messageNumber"]}`)
+        }
+        //TODO Handle ERROR
     })
     // Listen for a 'seen' event over the socket
-    socket.on('seen', (e) => {
-        // Parse the seen data from the incoming event
-        const data = JSON.parse(e)
+    socket.on('seen', (data) => {
         // Join the socket to the channel associated with the seen message
         socket.join(data.channel)
         // Emit a 'newSeen' event to all sockets in the channel except the sender
-        socket.to(data.channel).emit('newSeen', id);
+        socket.to(data.channel).emit('newSeen', {...data, "sender": id});
     })
     // Listen for a 'typing' event over the socket
-    socket.on('typing', (e) => {
-        // Parse the typing data from the incoming event
-        const data = JSON.parse(e)
+    socket.on('typing', (data) => {
         // Join the socket to the channel associated with the typing indicator
         socket.join(data.channel)
         // Emit a 'newTyping' event to all sockets in the channel except the sender

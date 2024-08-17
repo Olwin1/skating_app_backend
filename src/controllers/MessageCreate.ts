@@ -100,6 +100,7 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
             }
           });
       }
+      return userChannel.last_message_count;
     }
 
     // Return a success response
