@@ -65,7 +65,7 @@ function sendEvent(socket: Socket, id: string) {
         // Join the socket to the channel associated with the typing indicator
         socket.join(data.channel)
         // Emit a 'newTyping' event to all sockets in the channel except the sender
-        socket.to(data.channel).emit('newTyping', { "id": id, "started": data.started });
+        socket.to(data.channel).emit('newTyping', { ...data, "sender": id });
     })
     socket.on('joinChannel', (e: String) => {
         console.log(e)
