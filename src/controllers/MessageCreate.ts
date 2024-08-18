@@ -1,8 +1,7 @@
-import firebase from "firebase-admin"
+import firebase from "firebase-admin";
 import { TokenMessage } from "firebase-admin/lib/messaging/messaging-api";
 import prisma from "../db/postgres";
-import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
-
+import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -13,7 +12,12 @@ const generator = new Worker(0, 1, {
 const getMessaging = firebase.messaging; // Initialize Firebase Messaging
 
 // Create an asynchronous function to send a message
-const createMessage = async (_id: bigint, channel: bigint, content: String, img: String) => {
+const createMessage = async (
+  _id: bigint,
+  channel: bigint,
+  content: String,
+  img: String
+) => {
   console.log("Creating message");
 
   try {
@@ -33,7 +37,7 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
       },
       data: {
         last_message_count: { increment: 1 },
-      }
+      },
     });
 
     // Create a new message in the database
@@ -58,7 +62,9 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
     }
 
     // Retrieve FCM tokens for the participants
-    const fcmTokens = await prisma.fcm_tokens.findMany({ where: { user_id: { in: participants } } });
+    const fcmTokens = await prisma.fcm_tokens.findMany({
+      where: { user_id: { in: participants } },
+    });
     const user = await prisma.users.findUnique({ where: { user_id: _id } });
 
     if (userChannel != null) {
@@ -77,26 +83,32 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
           android: {
             notification: {
               //icon: participant["avatar"]?"http://10.0.2.2:4000/image/thumbnail/"+participant["avatar"]:null
-            }
+            },
           },
-          token: currentToken
+          token: currentToken,
         } as TokenMessage;
 
         console.log("SENDING MESSAGE!" + message.toString());
 
         // Send the FCM message
-        getMessaging().send(message)
+        getMessaging()
+          .send(message)
           .then((response) => {
-            console.log('Successfully sent message:', response);
+            console.log("Successfully sent message:", response);
           })
           .catch(async (error: any) => {
-            4
+            4;
             //TODO FIX THIS BIT - DELETE TOKEN IF FAILED TO SEND NOT SURE IF S|TILL NEEDS FIX
-            console.log('Error sending message:', error);
+            console.log("Error sending message:", error);
 
             // If the error is due to an unregistered token, delete it from the database
-            if (error["code"] == "messaging/registration-token-not-registered" && participants[i]) {
-              await prisma.fcm_tokens.delete({ where: { token_id: fcmTokens[i].token_id } });
+            if (
+              error["code"] == "messaging/registration-token-not-registered" &&
+              participants[i]
+            ) {
+              await prisma.fcm_tokens.delete({
+                where: { token_id: fcmTokens[i].token_id },
+              });
             }
           });
       }
@@ -112,6 +124,5 @@ const createMessage = async (_id: bigint, channel: bigint, content: String, img:
     return { success: false, error: error };
   }
 };
-
 
 export default createMessage;

@@ -348,12 +348,12 @@ const handleSearch = async (req: any, res: any) => {
       }
     } else if (query.country) {
       await searchByCountry(query.country, "", res, false);
-      return
+      return;
     } else {
       res
         .status(400)
         .json({ error: "ERROR: Please Provide Valid Search Flags" });
-        return;
+      return;
     }
   } catch (error) {
     console.error(error);
