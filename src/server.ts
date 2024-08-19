@@ -119,6 +119,12 @@ app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req: Request,
 }
 );
 
+app.post("/ping", middleware.isLoggedIn, (req: Request, res: Response) => {
+  const clientTime = req.body.timestamp;
+  const serverTime = new Date();
+  console.log("Client Heardbeat");
+});
+
 // Start listening for incoming requests
 //app.listen(PORT, () =>
 //  log.log.green("SERVER STATUS", `Listening on port ${PORT}`)
