@@ -1,6 +1,6 @@
 // Importing required modules and packages
 import multer from "multer";
-import { GridFsStorage } from "multer-gridfs-storage";
+import MulterGridfsStorage from "multer-gridfs-storage";
 import mongoose from "./connection";
 import dotenv from "dotenv";
 // Loading environment variables from .env file
@@ -21,7 +21,7 @@ conn.once("open", () => {
 });
 
 // Configuring GridFS storage engine for Multer
-const storage = new GridFsStorage({
+const storage = new MulterGridfsStorage({
   url: DATABASE_URL!,
   file: (req, file) => {
     // Return a promise that resolves with an object containing the filename and bucketName of the uploaded file
