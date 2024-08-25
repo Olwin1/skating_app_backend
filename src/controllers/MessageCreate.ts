@@ -15,8 +15,8 @@ const getMessaging = firebase.messaging; // Initialize Firebase Messaging
 const createMessage = async (
   _id: bigint,
   channel: bigint,
-  content: String,
-  img: String
+  content: string,
+  img: string
 ) => {
   console.log("Creating message");
 
@@ -29,11 +29,7 @@ const createMessage = async (
         channel_id: channel,
       },
       include: {
-        participants: {
-          where: {
-            participant_id: _id,
-          },
-        },
+        participants: true,
       },
       data: {
         last_message_count: { increment: 1 },
@@ -82,8 +78,14 @@ const createMessage = async (
           },
           android: {
             notification: {
-              //icon: participant["avatar"]?"http://10.0.2.2:4000/image/thumbnail/"+participant["avatar"]:null
+              imageUrl: (user!=null&&user!["avatar_id"]!=null)?"http://10.0.2.2:4000/image/thumbnail/"+user!["avatar_id"]:null
             },
+          },
+          data: {
+            // Additional data to identify the chat
+            channelId: userChannel?.channel_id.toString(),  // The ID of the chat
+            senderId: user?.user_id.toString(),
+            click_action: "FLUTTER_NOTIFICATION_CLICK",  // Required to handle notification clicks in Flutter
           },
           token: currentToken,
         } as TokenMessage;
@@ -99,16 +101,19 @@ const createMessage = async (
           .catch(async (error: any) => {
             4;
             //TODO FIX THIS BIT - DELETE TOKEN IF FAILED TO SEND NOT SURE IF S|TILL NEEDS FIX
-            console.log("Error sending message:", error);
 
             // If the error is due to an unregistered token, delete it from the database
             if (
               error["code"] == "messaging/registration-token-not-registered" &&
-              participants[i]
+              fcmTokens[i]
             ) {
+              console.log(`Failed for token: ${fcmTokens[i].token_id} - Deregistering.`)
               await prisma.fcm_tokens.delete({
                 where: { token_id: fcmTokens[i].token_id },
               });
+            }
+            else {
+            console.log("Error sending notification to client:", error);
             }
           });
       }
