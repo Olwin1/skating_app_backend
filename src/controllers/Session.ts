@@ -72,7 +72,7 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
         const _id = BigInt((req as CustomRequest).user._id);
 
         // Calculate a cutoff date (24 hours ago)
-        let cutoffDate = (new Date(new Date().getTime() + (24 * 60 * 60 * 1000))).toISOString();
+        let cutoffDate = (new Date(new Date().getTime() - (24 * 60 * 60 * 1000))).toISOString();
 
         // Retrieve sessions from the database where the author ID is a friend of the user
         const sessions = await prisma.$queryRaw`
@@ -88,7 +88,7 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
           UNION
           SELECT "user2_id" FROM "friends" WHERE "user1_id" = ${_id}
         )
-        AND "end_timestamp" < ${cutoffDate}::timestamp;
+        AND "end_timestamp" > ${cutoffDate}::timestamp;
       `;
       
 
