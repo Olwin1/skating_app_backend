@@ -9,6 +9,18 @@ import prisma from "../db/postgres";
 import { Worker } from 'snowflake-uuid'; // Unique ID generator library
 import { $Enums, Prisma } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
+interface ReportType {
+        feedback_id: bigint;
+        user_id: bigint;
+        type: $Enums.feedback_type | null;
+        subject: string | null;
+        content: string | null;
+        status: $Enums.feedback_status | null;
+        assigned_to: bigint | null;
+        created_at: Date;
+        response: string | null;
+        responder_user_id: bigint | null;
+}
 
 // Create an instance of Express Router
 const router = Router();
@@ -115,6 +127,83 @@ async function createReport(userId: bigint, subject: string, content: string, ty
 
 // Function to retrieve user feedback or support records
 async function getReports(userId: bigint, type: $Enums.feedback_type, page: string) {
+    const user = await prisma.users.findUnique({where: {user_id: userId}});
+    if(user==null) {
+        return;
+    }
+    if(user!.user_role == $Enums.user_role.moderator || user!.user_role == $Enums.user_role.administrator) {
+        const pageSize = 20;
+        const pageNumber = parseInt(page) * pageSize;
+        let remaining = pageSize;
+        
+        // Step 1: Fetch `myReports`
+        const myReports = await prisma.user_feedback_and_support.findMany({
+            where: {
+                user_id: userId,
+                type: type,
+            },
+            include: { users_user_feedback_and_support_assigned_toTousers: true },
+            orderBy: {
+                created_at: 'asc',
+            },
+            skip: pageNumber,
+            take: remaining,
+        });
+        
+        // Adjust the remaining items to fetch
+        remaining -= myReports.length;
+        
+        // Step 2: Fetch `assignedReports` if there are remaining slots
+        let assignedReports:ReportType[] = [];
+        if (remaining > 0) {
+            assignedReports = await prisma.user_feedback_and_support.findMany({
+                where: {
+                    assigned_to: userId,
+                    type: type,
+                    OR: [
+                        { status: $Enums.feedback_status.in_progress },
+                        { status: $Enums.feedback_status.open },
+                        { status: $Enums.feedback_status.resolved },
+                    ],
+                },
+                orderBy: {
+                    created_at: 'asc',
+                },
+                skip: pageNumber > myReports.length ? pageNumber - myReports.length : 0,
+                take: remaining,
+            });
+        
+            // Adjust the remaining items to fetch
+            remaining -= assignedReports.length;
+        }
+        
+        // Step 3: Fetch `unclaimedReports` if there are still remaining slots
+        let unclaimedReports:ReportType[] = [];
+        if (remaining > 0) {
+            unclaimedReports = await prisma.user_feedback_and_support.findMany({
+                where: {
+                    assigned_to: null,
+                    type: type,
+                    OR: [
+                        { status: $Enums.feedback_status.in_progress },
+                        { status: $Enums.feedback_status.open },
+                        { status: $Enums.feedback_status.resolved },
+                    ],
+                },
+                orderBy: {
+                    created_at: 'asc',
+                },
+                skip: pageNumber > (myReports.length + assignedReports.length) ? pageNumber - (myReports.length + assignedReports.length) : 0,
+                take: remaining,
+            });
+        }
+        
+        // Combine the results
+        const results = [...myReports, ...assignedReports, ...unclaimedReports];
+        
+        return results;
+    }
+    else {
     return await prisma.user_feedback_and_support.findMany({
         where: {
             user_id: userId,
@@ -124,6 +213,8 @@ async function getReports(userId: bigint, type: $Enums.feedback_type, page: stri
         skip: parseInt(page) * 20,
         take: 20,
     });
+}
+
 }
 
 // Define a route to handle the creation of a new support message
