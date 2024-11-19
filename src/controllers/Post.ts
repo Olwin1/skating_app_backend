@@ -548,7 +548,6 @@ router.delete("/post", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
-
 // This route is used to retrieve a page of posts
 router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     //! NEEDS TESTING
@@ -579,17 +578,21 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         LEFT JOIN post_likes pl ON pl.post_id = p.post_id
         LEFT JOIN saved_posts sp ON sp.post_id = p.post_id AND sp.user_id = ${_id}
         WHERE p.author_id IN (
+                -- Combined query for following, followers, and friends
                 SELECT following_user_id FROM following WHERE user_id = ${_id}
                 UNION
                 SELECT user_id FROM followers WHERE follower_user_id = ${_id}
                 UNION
-                SELECT CASE WHEN user1_id = ${_id} THEN user2_id ELSE user1_id END AS friend_id FROM friends WHERE user1_id = ${_id} OR user2_id = ${_id}
+                SELECT CASE WHEN user1_id = ${_id} THEN user2_id ELSE user1_id END 
+                FROM friends WHERE ${_id} IN (user1_id, user2_id)
             )
+        -- Ensure the user has not liked the post
         AND NOT EXISTS (
-            SELECT 1
-            FROM post_likes pl
-            WHERE pl.user_id = ${_id}
-            AND pl.post_id = p.post_id
+            SELECT 1 FROM post_likes pl WHERE pl.user_id = ${_id} AND pl.post_id = p.post_id
+        )
+        -- Ensure the user has not blocked the author
+        AND p.author_id NOT IN (
+            SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ${_id}
         )
         GROUP BY p.post_id, p.author_id, p.description, p.image, p.like_count, p.friends_only, p."location", sp.saved_post_id
         LIMIT ${remaining} OFFSET ${skip};
