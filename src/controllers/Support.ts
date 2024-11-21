@@ -276,6 +276,32 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 
+// Define a route to handle the creation of a new support message
+router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the authenticated request
+        const userId = BigInt((req as CustomRequest).user._id);
+
+        // Create a new support message using Prisma
+        const newMessage = await prisma.user_support_messages.create({
+            data: {
+                message_id: generator.nextId(), // Generate a unique message ID
+                feedback_id: BigInt(req.body.feedback_id), // Extract the feedback ID from the request
+                sender_id: userId, // Set the sender's user ID
+                content: req.body.content, // Extract the message content from the request
+                timestamp: new Date().toISOString(), // Set the current timestamp
+            }
+        });
+
+        // Respond with the created support message in JSON format
+        res.json(newMessage);
+    } catch (error) {
+        // Handle errors by sending a 400 status along with an error message in JSON format
+        res.status(400).json({ error: "Failed to create a new support message." });
+    }
+});
+
+
 
 // Export the router for use in other modules
 export default router;
