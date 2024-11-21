@@ -266,11 +266,12 @@ model reports {
   report_id                             BigInt                 @id
   reporter_id                           BigInt
   reported_user_id                      BigInt
-  reported_content                      reported_content?
   report_type                           String?                @db.VarChar
   description                           String?
   status                                report_status?
   timestamp                             DateTime               @db.Timestamp(6)
+  reported_content_id                   BigInt?
+  reported_content                      reported_content?
   users_reports_reported_user_idTousers users                  @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_reports_reporter_idTousers      users                  @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   user_report_messages                  user_report_messages[]

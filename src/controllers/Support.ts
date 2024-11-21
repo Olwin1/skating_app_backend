@@ -37,7 +37,7 @@ router.post("/bug", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.bug_report);
+        await createSupportReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.bug_report);
         return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the bug report submission
@@ -50,7 +50,7 @@ router.post("/support", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.support_request);
+        await createSupportReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.support_request);
         return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the support request submission
@@ -63,7 +63,7 @@ router.post("/feedback", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract user ID from the request
         const userId = BigInt((req as CustomRequest).user._id);
-        await createReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.feedback);
+        await createSupportReport(userId, req.body.subject, req.body.content, $Enums.feedback_type.feedback);
         return res.status(201).json({ "success": true })
     } catch (error) {
         // Handle errors during the general feedback submission
@@ -111,7 +111,7 @@ router.get("/feedback", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Function to create a new user feedback or support record
-async function createReport(userId: bigint, subject: string, content: string, type: $Enums.feedback_type) {
+async function createSupportReport(userId: bigint, subject: string, content: string, type: $Enums.feedback_type) {
     return await prisma.user_feedback_and_support.create({
         data: {
             feedback_id: generator.nextId(),
@@ -298,6 +298,131 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
     } catch (error) {
         // Handle errors by sending a 400 status along with an error message in JSON format
         res.status(400).json({ error: "Failed to create a new support message." });
+    }
+});
+
+
+// Define a route for submitting general feedback
+router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract user ID from the request
+        const userId = BigInt((req as CustomRequest).user._id);
+        
+        let reportedContent;
+        switch(req.body.reported_content) {
+            case "comment":
+                reportedContent = $Enums.reported_content.comment
+                break;
+            case "post":
+                reportedContent = $Enums.reported_content.post
+                break;
+            case "message":
+                reportedContent = $Enums.reported_content.message
+                break;
+            default:
+                throw Error('reported_content can only be of type "comment"|"post"|"message"');
+        }
+        
+        await prisma.reports.create({data: {
+            report_id: generator.nextId(),
+            reporter_id: userId,
+            reported_user_id: req.body.reported_user_id,
+            report_type: req.body.report_type,
+            description: req.body.description,
+            status: $Enums.report_status.open,
+            timestamp: new Date().toISOString(),
+            reported_content_id: req.body.reported_content_id,
+            reported_content: reportedContent
+        }})
+
+        return res.status(201).json({ "success": true })
+    } catch (error) {
+        // Handle errors during the general feedback submission
+        res.status(400).json({ error });
+    }
+});
+
+
+// Handle GET requests to "/support/messages" endpoint with user authentication middleware
+router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the authenticated request
+        const userId = BigInt((req as CustomRequest).user._id);
+
+        // Find user feedback and support information based on the provided feedback ID from the request header
+        const report = await prisma.reports.findFirst({
+            where: { report_id: BigInt(req.headers.report_id) }
+        });
+
+        if (report) {
+            const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
+            // Check if the user exists
+            if(moderatorUser) {
+                //BREA
+                if(moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator) {
+                    if(report.reported_content_id) {
+                    // Is authorised to access this information
+
+
+
+                    // If the type of data reported is messages
+                    //---------------------------------------
+                    if(report.reported_content == $Enums.reported_content.message) {
+                    // Is authorised to see other users messages provided a report on those messages has been made
+                    const rootMessage = await prisma.messages.findFirst({where: {message_id: report.reported_content_id}});
+                    if(rootMessage) {
+                        // If there is a root message attempt to get recent messages around the reported message
+                        const surroundingMessages = await prisma.messages.findMany({
+                            where: {message_channels: {channel_id: rootMessage.channel_id},
+                             AND: [
+                                {message_number: {gte: rootMessage.message_number - 10}}, 
+                                {message_number: {lte: rootMessage.message_number + 10}}
+                                ]
+                            }
+                        });
+                        return res.status(200).json(surroundingMessages);
+                    }
+                    else {
+                        // If original message not found
+                    }
+                    }
+                    // --------------------------------------
+
+                    // If the type of data is comment
+                    // ---------------------------------------
+                    else if (report.reported_content == $Enums.reported_content.comment) {
+                        const comment = await prisma.comments.findFirst({where: {comment_id: report.reported_content_id}, include: {posts: true}});
+                        return res.status(200).json(comment);
+
+                    }
+                    // ---------------------------------------
+
+                    // If the type of data is post
+                    // ---------------------------------------
+                    else if (report.reported_content == $Enums.reported_content.post) {
+                        const post = await prisma.posts.findFirst({where: {post_id: report.reported_content_id}});
+                        return res.status(200).json(post);
+                    }
+                    // ---------------------------------------
+
+                    // This should never run.  Should probably change this to an actual descriptive error at some point
+                    return res.status(500).json({});
+
+                }} else {
+                    return res.status(403).json({});
+                }
+            } else {
+                // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
+                // Return a 400 status with an error code if no records are found
+                return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+            }
+        } else {
+            // Return a 400 status with an error code if no records are found
+            return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+        }
+    } catch (error) {
+        // Handle any errors and respond with a 400 status along with the error details
+        res.status(400).json({ error });
     }
 });
 
