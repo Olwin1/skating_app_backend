@@ -342,8 +342,43 @@ router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
     }
 });
 
+// Handle GET requests to "/support/report" endpoint with user authentication middleware
+router.get("/report", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract the user ID from the authenticated request
+        const userId = BigInt((req as CustomRequest).user._id);
 
-// Handle GET requests to "/support/messages" endpoint with user authentication middleware
+        // Find user feedback and support information based on the provided feedback ID from the request header
+        const report = await prisma.reports.findFirst({
+            where: { report_id: BigInt(req.headers.report_id) }
+        });
+
+        if (report) {
+            const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
+            // Check if the user exists
+            if(moderatorUser) {
+                if(moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator) {
+                    // If they're authorised to access report data then return it back to them
+                    return res.status(200).json(report);
+            } else {
+                    return res.status(403).json({});
+                }
+            } else {
+                // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
+                // Return a 400 status with an error code if no records are found
+                return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+            }
+        } else {
+            // Return a 400 status with an error code if no records are found
+            return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+        }
+    } catch (error) {
+        // Handle any errors and respond with a 400 status along with the error details
+        res.status(400).json({ error });
+    }
+});
+
+// Handle GET requests to "/support/report_data" endpoint with user authentication middleware
 router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
     try {
         // Extract the user ID from the authenticated request
