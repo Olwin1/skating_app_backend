@@ -329,7 +329,7 @@ router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
             reported_user_id: req.body.reported_user_id,
             report_type: req.body.report_type,
             description: req.body.description,
-            status: $Enums.report_status.open,
+            status: $Enums.report_status.pending_review,
             timestamp: new Date().toISOString(),
             reported_content_id: req.body.reported_content_id,
             reported_content: reportedContent
@@ -461,7 +461,79 @@ router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
     }
 });
 
+// Modify Report Status
+router.post("/report/modify", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+        // Extract user ID from the request
+        const userId = BigInt((req as CustomRequest).user._id);
+        
+        const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
+        // Check if the user exists
+        if(!moderatorUser) {
+            throw Error("No user with that id could be located.");
+        }
+        if(!(moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator)) {
+            return res.status(403).json({});
+        }
 
+        
+        let reportType:$Enums.report_status;
+        switch(req.body.report_status) {
+            case "closed_no_resolution":
+                reportType = $Enums.report_status.closed_no_resolution;
+                break;
+            case "escalated":
+                reportType = $Enums.report_status.escalated;
+                break;
+            case "further_investigation":
+                reportType = $Enums.report_status.further_investigation;
+                break;
+            case "invalid":
+                reportType = $Enums.report_status.invalid;
+                break;
+            case "pending_review":
+                reportType = $Enums.report_status.pending_review;
+                break;
+            case "permanent_ban":
+                reportType = $Enums.report_status.permanent_ban;
+                break;
+            case "resolved":
+                reportType = $Enums.report_status.resolved;
+                break;
+            case "temporary_ban":
+                reportType = $Enums.report_status.temporary_ban;
+                break;
+            case "valid_no_action":
+                reportType = $Enums.report_status.valid_no_action;
+                break;
+            case "warning_issued":
+                reportType = $Enums.report_status.warning_issued;
+                break;
+            default:
+                throw Error("Invalid report_type argument.");
+        }
+        
+        await prisma.reports.update({data: {
+            status: reportType
+        }, where: {report_id: req.body.report_id}});
+
+        return res.status(201).json({ "success": true })
+    } catch (error) {
+        // Handle errors during the general feedback submission
+        res.status(400).json({ error });
+    }
+});
+
+// TODO: Get list of active reports
+
+
+// TODO: Get list of reports made by a specific user
+// TODO: Get a list of reports against a specific user
+
+// TODO: ADD FIELD TO REPORTS TO DETERMINE OUTCOME OF REPORT BEYOND SIMPLY CLOSED
+//       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? DO THEY HAVE A HISTORY?
+
+// TODO: Also at some point implement ways to punish - e.g. BANS.  
 
 // Export the router for use in other modules
 export default router;
