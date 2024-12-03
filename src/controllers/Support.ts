@@ -524,11 +524,89 @@ router.post("/report/modify", middleware.isLoggedIn, async (req: any, res) => {
     }
 });
 
-// TODO: Get list of active reports
+// Get list of active reports
+router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+    // Extract user ID from the request
+    const userId = BigInt((req as CustomRequest).user._id);
+    const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
 
 
-// TODO: Get list of reports made by a specific user
-// TODO: Get a list of reports against a specific user
+    if(req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator)) {
+        const reports = await prisma.reports.findMany({
+            orderBy: {
+                timestamp: 'desc'
+            },
+            skip: parseInt(req.headers.page) * 20,
+            take: 20,
+        });
+        return res.status(200).json(reports);
+    }
+
+    } catch (error) {
+        // Handle errors during request
+        res.status(400).json({ error });
+    }
+
+});
+
+// Get list of reports made by a specific user
+router.get("/report/list/from", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+    // Extract user ID from the request
+    const userId = BigInt((req as CustomRequest).user._id);
+    const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
+
+
+    if(req.headers.user == null || req.headers.user == userId || (req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator))) {
+        const reports = await prisma.reports.findMany({
+            where: {
+                reporter_id: req.headers.user ?? userId,
+            },
+            orderBy: {
+                timestamp: 'asc',
+            },
+            skip: parseInt(req.headers.page) * 20,
+            take: 20,
+        });
+        return res.status(200).json(reports);
+    }
+
+    } catch (error) {
+        // Handle errors during request
+        res.status(400).json({ error });
+    }
+
+});
+
+// Get a list of reports against a specific user
+router.get("/report/list/against", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+    // Extract user ID from the request
+    const userId = BigInt((req as CustomRequest).user._id);
+    const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
+
+
+    if(req.headers.user && req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator)) {
+        const reports = await prisma.reports.findMany({
+            where: {
+                reported_user_id: req.headers.user,
+            },
+            orderBy: {
+                timestamp: 'asc',
+            },
+            skip: parseInt(req.headers.page) * 20,
+            take: 20,
+        });
+        return res.status(200).json(reports);
+    }
+
+    } catch (error) {
+        // Handle errors during request
+        res.status(400).json({ error });
+    }
+
+});
 
 // TODO: ADD FIELD TO REPORTS TO DETERMINE OUTCOME OF REPORT BEYOND SIMPLY CLOSED
 //       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? DO THEY HAVE A HISTORY?
