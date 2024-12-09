@@ -558,7 +558,7 @@ router.get("/report/list/from", middleware.isLoggedIn, async (req: any, res) => 
     const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
 
 
-    if(req.headers.user == null || req.headers.user == userId || (req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator))) {
+    if(req.headers.user == '' || req.headers.user == null || req.headers.user == userId || (req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator))) {
         const reports = await prisma.reports.findMany({
             where: {
                 reporter_id: req.headers.user ?? userId,
@@ -609,9 +609,10 @@ router.get("/report/list/against", middleware.isLoggedIn, async (req: any, res) 
 });
 
 // TODO: ADD FIELD TO REPORTS TO DETERMINE OUTCOME OF REPORT BEYOND SIMPLY CLOSED
-//       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? DO THEY HAVE A HISTORY?
+//       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? I.E DO THEY HAVE A HISTORY?
 
-// TODO: Also at some point implement ways to punish - e.g. BANS.  
+// TODO: Also at some point implement ways to punish - e.g. BANS.
+
 
 // Export the router for use in other modules
 export default router;
