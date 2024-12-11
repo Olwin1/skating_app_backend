@@ -328,7 +328,7 @@ router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
             reporter_id: userId,
             reported_user_id: req.body.reported_user_id,
             report_type: req.body.report_type,
-            description: req.body.description,
+            description: req.body.description!=""?req.body.description:null,
             status: $Enums.report_status.pending_review,
             timestamp: new Date().toISOString(),
             reported_content_id: req.body.reported_content_id,
@@ -461,6 +461,8 @@ router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
     }
 });
 
+
+//TODO: Add duration for tempbans and handle creation of tempbans/whatever other punishment.  
 // Modify Report Status
 router.post("/report/modify", middleware.isLoggedIn, async (req: any, res) => {
     try {
@@ -532,7 +534,7 @@ router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
     const moderatorUser = await prisma.users.findFirst({where: {user_id: userId}});
 
 
-    if(req.headers.page && moderatorUser && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator)) {
+    if(req.headers.page && moderatorUser && req.headers.is_self == "false" && (moderatorUser.user_role == $Enums.user_role.moderator || moderatorUser.user_role == $Enums.user_role.administrator)) {
         const reports = await prisma.reports.findMany({
             orderBy: {
                 timestamp: 'desc'
@@ -541,6 +543,17 @@ router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
             take: 20,
         });
         return res.status(200).json(reports);
+    } else {
+        const reports = await prisma.reports.findMany({
+            where: {reporter_id: userId},
+            orderBy: {
+                timestamp: 'desc'
+            },
+            skip: parseInt(req.headers.page) * 20,
+            take: 20,
+        });
+        return res.status(200).json(reports);
+
     }
 
     } catch (error) {
@@ -599,6 +612,74 @@ router.get("/report/list/against", middleware.isLoggedIn, async (req: any, res) 
             take: 20,
         });
         return res.status(200).json(reports);
+    }
+
+    } catch (error) {
+        // Handle errors during request
+        res.status(400).json({ error });
+    }
+
+});
+
+
+
+// Get a list of reports against a specific user
+router.get("/report/messages", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+    // Extract user ID from the request
+    const userId = BigInt((req as CustomRequest).user._id);
+    const user = await prisma.users.findFirst({where: {user_id: userId}});
+    const report = await prisma.reports.findFirst({
+        where: {
+            report_id: req.headers.report_id,
+        },
+        include: {
+            user_report_messages: {orderBy: {timestamp: 'asc'}}
+        },
+        skip: parseInt(req.headers.page) * 20,
+        take: 20,
+    });
+
+    if(report && user && (user.user_role == $Enums.user_role.moderator || user.user_role == $Enums.user_role.administrator || user.user_id == report.reporter_id)) {
+
+        return res.status(200).json(report.user_report_messages);
+    } else {
+        return res.status(401).json({"Error": "Unauthorised"});
+    }
+
+    } catch (error) {
+        // Handle errors during request
+        res.status(400).json({ error });
+    }
+
+});
+
+
+// Get a list of reports against a specific user
+router.post("/report/message", middleware.isLoggedIn, async (req: any, res) => {
+    try {
+    // Extract user ID from the request
+    const userId = BigInt((req as CustomRequest).user._id);
+    const user = await prisma.users.findFirst({where: {user_id: userId}});
+    const report = await prisma.reports.findFirst({
+        where: {
+            report_id: req.body.report_id,
+        }
+    });
+
+    if(report && user && (user.user_role == $Enums.user_role.moderator || user.user_role == $Enums.user_role.administrator)) {
+        await prisma.user_report_messages.create({
+            data: {
+                message_id: generator.nextId(),
+                report_id: report.report_id,
+                sender_id: user.user_id,
+                content: req.body.content,
+                timestamp: new Date().toISOString()
+            }});
+
+        return res.status(200).json({"Success": true});
+    } else {
+        return res.status(401).json({"Error": "Unauthorised"});
     }
 
     } catch (error) {
