@@ -9,6 +9,7 @@ import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
 import validator from 'validator';
 import { ErrorCode } from "../ErrorCodes";
 import * as securePin from "secure-pin";
+import { $Enums } from "@prisma/client";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -219,6 +220,52 @@ router.get("/is_verified", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
+
+// Route handler to check if user is allowed to access app
+router.get("/is_restricted", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
+
+    const isRestrictedData = await prisma.user_actions.findMany({where: {
+      user_id: _id,
+      AND: [
+      {OR: [
+        {action_type: $Enums.user_action_type.ban},
+        {action_type: $Enums.user_action_type.mute}
+      ]},
+      {OR: [
+        {end_timestamp: {gte: new Date(Date.now())}},
+        {end_timestamp: null}
+      ]}]
+    }});
+
+    let isBanned = false;
+    let isMuted = false;
+    let endTimestamp: Date|null = new Date(0);
+    for(let i = 0; i < isRestrictedData.length; i++) {
+      if(!isBanned && isRestrictedData[i].action_type == $Enums.user_action_type.mute) {
+        isMuted = true;
+        endTimestamp = isRestrictedData[i].end_timestamp;
+      } else if (endTimestamp && isRestrictedData[i].action_type == $Enums.user_action_type.ban) {
+          if(endTimestamp && ((isRestrictedData[i].end_timestamp == null) || (endTimestamp < isRestrictedData[i].end_timestamp!))) {
+            isBanned = true;
+            endTimestamp = isRestrictedData[i].end_timestamp;
+            if(endTimestamp == null) {
+             break;
+            }
+      }
+    }
+  }
+
+    // Return the response from the database update
+    //res.status(200).json({ "is_banned": isBanned, "is_muted": isMuted, "end_timestamp": endTimestamp});
+    res.status(200).json({ "is_banned": isBanned, "is_muted": true, "end_timestamp": endTimestamp});
+  } catch (error) {
+    // If there is an error, return a 400 status code and the error message
+    res.status(400).json({ error });
+  }
+});
 
 
 // Retrieves user information.

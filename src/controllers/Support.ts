@@ -689,7 +689,6 @@ router.post("/report/message", middleware.isLoggedIn, async (req: any, res) => {
 
 });
 
-// TODO: ADD FIELD TO REPORTS TO DETERMINE OUTCOME OF REPORT BEYOND SIMPLY CLOSED
 //       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? I.E DO THEY HAVE A HISTORY?
 
 // TODO: Also at some point implement ways to punish - e.g. BANS.

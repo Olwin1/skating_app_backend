@@ -386,6 +386,8 @@ model users {
   reports_reports_reporter_idTousers                                           reports[]                   @relation("reports_reporter_idTousers")
   saved_posts                                                                  saved_posts[]
   sessions                                                                     sessions[]
+  user_actions_user_actions_moderator_idTousers                                user_actions[]              @relation("user_actions_moderator_idTousers")
+  user_actions_user_actions_user_idTousers                                     user_actions[]              @relation("user_actions_user_idTousers")
   user_activity_logs                                                           user_activity_logs[]
   user_feedback_and_support_user_feedback_and_support_assigned_toTousers       user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
   user_feedback_and_support_user_feedback_and_support_responder_user_idTousers user_feedback_and_support[] @relation("user_feedback_and_support_responder_user_idTousers")
@@ -454,6 +456,20 @@ model user_support_messages {
 
   @@index([feedback_id])
   @@index([sender_id])
+}
+
+model user_actions {
+  action_id                              BigInt           @id
+  user_id                                BigInt
+  action_type                            user_action_type
+  reason                                 String?
+  moderator_id                           BigInt
+  timestamp                              DateTime         @db.Timestamp(6)
+  end_timestamp                          DateTime?        @db.Timestamp(6)
+  users_user_actions_moderator_idTousers users            @relation("user_actions_moderator_idTousers", fields: [moderator_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_moderator")
+  users_user_actions_user_idTousers      users            @relation("user_actions_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user")
+
+  @@index([user_id], map: "idx_user_actions_user_id")
 }
 
 enum account_activity {
@@ -547,4 +563,10 @@ enum user_role {
   regular
   moderator
   administrator
+}
+
+enum user_action_type {
+  ban
+  mute
+  warning
 }
