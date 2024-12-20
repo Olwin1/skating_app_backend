@@ -16,8 +16,8 @@ let filesChunks: mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
 
 // Listening for the 'open' event to ensure the connection is established before accessing collections
 conn.once("open", () => {
-  files = conn.db.collection("uploads.files")
-  filesChunks = conn.db.collection("uploads.chunks")
+  files = conn.db.collection("uploads.files");
+  filesChunks = conn.db.collection("uploads.chunks");
 });
 
 // Configuring GridFS storage engine for Multer
@@ -28,11 +28,11 @@ const storage = new MulterGridfsStorage({
     return new Promise((resolve, reject) => {
       const fileInfo = {
         filename: file.originalname,
-        bucketName: "uploads"
+        bucketName: "uploads",
       };
       resolve(fileInfo);
     });
-  }
+  },
 });
 
 // Creating a Multer instance with the GridFS storage engine

@@ -1,4 +1,4 @@
 interface IsAnimated {
-    (img: Buffer): boolean;
-  }
-export default IsAnimated
+  (img: Buffer): boolean;
+}
+export default IsAnimated;

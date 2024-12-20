@@ -78,14 +78,17 @@ const createMessage = async (
           },
           android: {
             notification: {
-              imageUrl: (user!=null&&user!["avatar_id"]!=null)?"http://10.0.2.2:4000/image/thumbnail/"+user!["avatar_id"]:null
+              imageUrl:
+                user != null && user!["avatar_id"] != null
+                  ? "http://10.0.2.2:4000/image/thumbnail/" + user!["avatar_id"]
+                  : null,
             },
           },
           data: {
             // Additional data to identify the chat
-            channelId: userChannel?.channel_id.toString(),  // The ID of the chat
+            channelId: userChannel?.channel_id.toString(), // The ID of the chat
             senderId: user?.user_id.toString(),
-            click_action: "FLUTTER_NOTIFICATION_CLICK",  // Required to handle notification clicks in Flutter
+            click_action: "FLUTTER_NOTIFICATION_CLICK", // Required to handle notification clicks in Flutter
           },
           token: currentToken,
         } as TokenMessage;
@@ -107,13 +110,14 @@ const createMessage = async (
               error["code"] == "messaging/registration-token-not-registered" &&
               fcmTokens[i]
             ) {
-              console.log(`Failed for token: ${fcmTokens[i].token_id} - Deregistering.`)
+              console.log(
+                `Failed for token: ${fcmTokens[i].token_id} - Deregistering.`
+              );
               await prisma.fcm_tokens.delete({
                 where: { token_id: fcmTokens[i].token_id },
               });
-            }
-            else {
-            console.log("Error sending notification to client:", error);
+            } else {
+              console.log("Error sending notification to client:", error);
             }
           });
       }

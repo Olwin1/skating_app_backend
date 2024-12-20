@@ -18,10 +18,10 @@ import SupportRouter from "./controllers/Support";
 import LocationRouter from "./controllers/Location";
 import middleware from "./controllers/middleware";
 import { upload } from "./db/bucket"; // Import upload utility from bucket.ts
-import { createServer as createServerHTTP } from 'http';
-import { createServer as createServerHTTPS, ServerOptions } from 'https';
+import { createServer as createServerHTTP } from "http";
+import { createServer as createServerHTTPS, ServerOptions } from "https";
 
-import Websocket from './websocket';
+import Websocket from "./websocket";
 import MessagesSocket from "./messages.socket";
 import jwt, { Secret } from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -29,17 +29,17 @@ import initFirebase from "./initFirebase";
 import { Request, Response } from "express";
 import fs from "fs";
 
-
 // Destructure environment variables with default values
 const { PORT = 3000, sHTTPS = false, SSL_KEY, SSL_CERT } = process.env;
 const HTTPS = Boolean(sHTTPS);
 
-
 // This line is from the Node.js HTTPS documentation.
-const options: ServerOptions | null = HTTPS ? {
-  key: fs.readFileSync(SSL_KEY!),
-  cert: fs.readFileSync(SSL_CERT!)
-} : null;
+const options: ServerOptions | null = HTTPS
+  ? {
+      key: fs.readFileSync(SSL_KEY!),
+      cert: fs.readFileSync(SSL_CERT!),
+    }
+  : null;
 
 // Create application object
 const app = express();
@@ -50,11 +50,10 @@ const server = HTTPS ? createServerHTTPS(options!, app) : createServerHTTP(app);
 
 // Create a WebSocket instance using the server object
 const io = Websocket.getInstance(server);
-initFirebase()
+initFirebase();
 
 // When a new WebSocket connection is established, run the following function
-io.on('connection', (socket) => {
-
+io.on("connection", (socket) => {
   try {
     // Check if authorization token exists in query params
     if (socket.handshake.headers.token) {
@@ -105,18 +104,21 @@ app.use("/post", PostRouter); // route all "/post" requests to ConnectionsRouter
 app.use("/message", MessageRouter); // route all "/message" requests to MessageRouter for further processing
 app.use("/image", ImageRouter); // route all "/image" requests to MessageRouter for further processing
 app.use("/session", SessionRouter); // route all "/session" requests to SessionRouter for further processing
-app.use('/notifications', NotificationRouter);
-app.use('/support', SupportRouter);
-app.use('/location', LocationRouter);
-
+app.use("/notifications", NotificationRouter);
+app.use("/support", SupportRouter);
+app.use("/location", LocationRouter);
 
 // Define route for file uploads using the upload utility
-app.post("/upload", middleware.isLoggedIn, upload.single("file"), (req: Request, res: Response) => {
-  const fileInfo = req.file as any
-  const id = fileInfo["id"] as mongoose.Schema.Types.ObjectId
-  res.json(id.toString())
-  console.log(id.toString())
-}
+app.post(
+  "/upload",
+  middleware.isLoggedIn,
+  upload.single("file"),
+  (req: Request, res: Response) => {
+    const fileInfo = req.file as any;
+    const id = fileInfo["id"] as mongoose.Schema.Types.ObjectId;
+    res.json(id.toString());
+    console.log(id.toString());
+  }
 );
 
 app.post("/ping", middleware.isLoggedIn, (req: Request, res: Response) => {

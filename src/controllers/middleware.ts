@@ -1,22 +1,24 @@
 require("dotenv").config(); // loading env variables
 import jwt, { Secret } from "jsonwebtoken";
-import { Response, NextFunction, RequestHandler } from 'express';
+import { Response, NextFunction, RequestHandler } from "express";
 import CustomRequest from "./CustomRequest";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
 
-
 // CREATE CONTEXT MIDDLEWARE
-const createContext: RequestHandler = (req, res: Response, next: NextFunction) => {
+const createContext: RequestHandler = (
+  req,
+  res: Response,
+  next: NextFunction
+) => {
   (req as CustomRequest).context = {
     models: {
       Geonames,
-      Altnames
+      Altnames,
     },
   };
   next();
 };
-
 
 // MIDDLEWARE FOR AUTHORIZATION (MAKING SURE THEY ARE LOGGED IN)
 const isLoggedIn: RequestHandler = async (req, res, next) => {
@@ -48,5 +50,5 @@ const isLoggedIn: RequestHandler = async (req, res, next) => {
 // export custom middleware
 export default {
   isLoggedIn,
-  createContext
+  createContext,
 };

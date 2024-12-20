@@ -1,6 +1,4 @@
 declare module "is-animated" {
-    function isAnimated(img: Buffer): boolean;
-    export = isAnimated;
-  }
-
-  
+  function isAnimated(img: Buffer): boolean;
+  export = isAnimated;
+}
