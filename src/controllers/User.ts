@@ -1,12 +1,12 @@
 require("dotenv").config(); // Load .env variables
-import { Router } from "express" // Import router from express
-import bcrypt from "bcryptjs" // Import bcrypt to hash passwords
-import jwt from "jsonwebtoken" // Import jwt to sign tokens
+import { Router } from "express"; // Import router from express
+import bcrypt from "bcryptjs"; // Import bcrypt to hash passwords
+import jwt from "jsonwebtoken"; // Import jwt to sign tokens
 import middleware from "./middleware"; // Import custom middleware
 import CustomRequest from "./CustomRequest"; // Import a custom request type
 import prisma from "../db/postgres"; // Import Prisma ORM for database operations
-import { Worker } from 'snowflake-uuid'; // Import a unique ID generator library
-import validator from 'validator';
+import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import validator from "validator";
 import { ErrorCode } from "../ErrorCodes";
 import * as securePin from "secure-pin";
 import { $Enums } from "@prisma/client";
@@ -30,9 +30,15 @@ router.post("/signup", async (req: any, res) => {
     // Check if the email is valid
     const isEmail = validator.isEmail(req.body.email);
     // Check if the password meets length requirements
-    const isValidPassword = validator.isLength(req.body.password, { min: 8, max: 100 });
+    const isValidPassword = validator.isLength(req.body.password, {
+      min: 8,
+      max: 100,
+    });
     // Check if the username meets length requirements
-    const isValidUsername = validator.isLength(req.body.username, { min: 4, max: 24 });
+    const isValidUsername = validator.isLength(req.body.username, {
+      min: 4,
+      max: 24,
+    });
 
     if (!isEmail) {
       // Return a 400 Bad Request response with an error code for an invalid email
@@ -64,16 +70,15 @@ router.post("/signup", async (req: any, res) => {
             verification_id: generator.nextId(),
             verification_code: verifCode,
             is_verified: false,
-            expiry_timestamp: new Date(Date.now() + 8.64e+7),// Expires in a day
-          }
+            expiry_timestamp: new Date(Date.now() + 8.64e7), // Expires in a day
+          },
         },
         created_at: new Date().toISOString(),
       },
     });
 
-
     // Return a 201 Created response for successful user registration
-    res.status(201).json({ "success": true });
+    res.status(201).json({ success: true });
   } catch (error) {
     // Return a 400 Bad Request response with the error if something went wrong
     res.status(400).json({ error });
@@ -83,9 +88,15 @@ router.post("/signup", async (req: any, res) => {
 router.post("/login", async (req: any, res) => {
   try {
     // Check if the password meets length requirements
-    const isValidPassword = validator.isLength(req.body.password, { min: 8, max: 100 });
+    const isValidPassword = validator.isLength(req.body.password, {
+      min: 8,
+      max: 100,
+    });
     // Check if the username meets length requirements
-    const isValidUsername = validator.isLength(req.body.username, { min: 4, max: 24 });
+    const isValidUsername = validator.isLength(req.body.username, {
+      min: 4,
+      max: 24,
+    });
 
     if (!isValidPassword) {
       // Return a 400 Bad Request response with an error code for an invalid password
@@ -96,18 +107,28 @@ router.post("/login", async (req: any, res) => {
     }
 
     // Find a user in the database by their username
-    const user = await prisma.users.findFirst({ where: { username: req.body.username } });
+    const user = await prisma.users.findFirst({
+      where: { username: req.body.username },
+    });
 
     if (user) {
       // Compare the provided password with the hashed password stored in the database
-      const result = await bcrypt.compare(req.body.password, user.password_hash!);
+      const result = await bcrypt.compare(
+        req.body.password,
+        user.password_hash!
+      );
       if (result) {
-        const verified = await prisma.email_verifications.findFirst({ where: { user_id: user.user_id, is_verified: true } })
-        const isVerified = verified?.is_verified ?? false
+        const verified = await prisma.email_verifications.findFirst({
+          where: { user_id: user.user_id, is_verified: true },
+        });
+        const isVerified = verified?.is_verified ?? false;
 
         // If the passwords match, generate a JWT token and return it in the response
-        const token = jwt.sign({ username: user.username, _id: user.user_id }, SECRET);
-        return res.status(200).json({ "token": token, "verified": isVerified });
+        const token = jwt.sign(
+          { username: user.username, _id: user.user_id },
+          SECRET
+        );
+        return res.status(200).json({ token: token, verified: isVerified });
       } else {
         // Return a 400 Bad Request response with an error code for an incorrect password
         res.status(400).json({ ec: ErrorCode.IncorrectPassword });
@@ -122,7 +143,6 @@ router.post("/login", async (req: any, res) => {
   }
 });
 
-
 // End of User Authentication Endpoints
 
 // Define route handlers for various user-related operations
@@ -134,10 +154,13 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
     // Update the user's description in the database using Prisma
-    const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { description: req.body.description } });
+    const updatedUser = await prisma.users.update({
+      where: { user_id: _id },
+      data: { description: req.body.description },
+    });
 
     // Send a success response with a JSON object
-    res.status(200).json({ "success": true });
+    res.status(200).json({ success: true });
   } catch (error) {
     // Send an error response with the error object
     res.status(400).json({ error });
@@ -151,10 +174,13 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
     // Update the user's avatar in the database using Prisma
-    const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { avatar_id: req.body.avatar } });
+    const updatedUser = await prisma.users.update({
+      where: { user_id: _id },
+      data: { avatar_id: req.body.avatar },
+    });
 
     // Send a success response with a JSON object
-    res.status(200).json({ "success": true });
+    res.status(200).json({ success: true });
   } catch (error) {
     // Send an error response with the error object
     res.status(400).json({ error });
@@ -167,13 +193,16 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Update the user's email in the database 
+    // Update the user's email in the database
     //TODO: Redo Email Verification
-    const updatedUser = await prisma.users.update({ where: { user_id: _id }, data: { email: req.body.description } })
-    await prisma.email_verifications.deleteMany({ where: { user_id: _id } })
+    const updatedUser = await prisma.users.update({
+      where: { user_id: _id },
+      data: { email: req.body.description },
+    });
+    await prisma.email_verifications.deleteMany({ where: { user_id: _id } });
 
     // Return the response from the database update
-    res.status(200).json({ "success": true, "verified": false });
+    res.status(200).json({ success: true, verified: false });
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
@@ -187,17 +216,23 @@ router.post("/verify_email", middleware.isLoggedIn, async (req: any, res) => {
     const _id = BigInt((req as CustomRequest).user._id);
 
     // Update the user's email in the database
-    const emailVerification = await prisma.email_verifications.findFirst({ where: { user_id: _id, expiry_timestamp: { gt: new Date() }, verification_code: req.body.code } })
+    const emailVerification = await prisma.email_verifications.findFirst({
+      where: {
+        user_id: _id,
+        expiry_timestamp: { gt: new Date() },
+        verification_code: req.body.code,
+      },
+    });
     if (emailVerification != null) {
-      const updatedUser = await prisma.email_verifications.update({ where: { verification_id: emailVerification.verification_id }, data: { is_verified: true } })
+      const updatedUser = await prisma.email_verifications.update({
+        where: { verification_id: emailVerification.verification_id },
+        data: { is_verified: true },
+      });
       // Return the response from the database update
-      res.status(200).json({ "success": true, "verified": false });
+      res.status(200).json({ success: true, verified: false });
+    } else {
+      res.status(400).json({ success: false, verified: false });
     }
-    else {
-      res.status(400).json({ "success": false, "verified": false })
-    }
-
-
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
@@ -209,17 +244,20 @@ router.get("/is_verified", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Update the user's email in the database 
-    const verified = await prisma.email_verifications.findFirst({ where: { user_id: _id, is_verified: true } })
+    // Update the user's email in the database
+    const verified = await prisma.email_verifications.findFirst({
+      where: { user_id: _id, is_verified: true },
+    });
 
     // Return the response from the database update
-    res.status(200).json({ "success": true, "verified": verified?.is_verified ?? false });
+    res
+      .status(200)
+      .json({ success: true, verified: verified?.is_verified ?? false });
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
   }
 });
-
 
 // Route handler to check if user is allowed to access app
 router.get("/is_restricted", middleware.isLoggedIn, async (req: any, res) => {
@@ -227,46 +265,66 @@ router.get("/is_restricted", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    const isRestrictedData = await prisma.user_actions.findMany({where: {
-      user_id: _id,
-      AND: [
-      {OR: [
-        {action_type: $Enums.user_action_type.ban},
-        {action_type: $Enums.user_action_type.mute}
-      ]},
-      {OR: [
-        {end_timestamp: {gte: new Date(Date.now())}},
-        {end_timestamp: null}
-      ]}]
-    }});
+    const isRestrictedData = await prisma.user_actions.findMany({
+      where: {
+        user_id: _id,
+        AND: [
+          {
+            OR: [
+              { action_type: $Enums.user_action_type.ban },
+              { action_type: $Enums.user_action_type.mute },
+            ],
+          },
+          {
+            OR: [
+              { end_timestamp: { gte: new Date(Date.now()) } },
+              { end_timestamp: null },
+            ],
+          },
+        ],
+      },
+    });
 
     let isBanned = false;
     let isMuted = false;
-    let endTimestamp: Date|null = new Date(0);
-    for(let i = 0; i < isRestrictedData.length; i++) {
-      if(!isBanned && isRestrictedData[i].action_type == $Enums.user_action_type.mute) {
+    let endTimestamp: Date | null = new Date(0);
+    for (let i = 0; i < isRestrictedData.length; i++) {
+      if (
+        !isBanned &&
+        isRestrictedData[i].action_type == $Enums.user_action_type.mute
+      ) {
         isMuted = true;
         endTimestamp = isRestrictedData[i].end_timestamp;
-      } else if (endTimestamp && isRestrictedData[i].action_type == $Enums.user_action_type.ban) {
-          if(endTimestamp && ((isRestrictedData[i].end_timestamp == null) || (endTimestamp < isRestrictedData[i].end_timestamp!))) {
-            isBanned = true;
-            endTimestamp = isRestrictedData[i].end_timestamp;
-            if(endTimestamp == null) {
-             break;
-            }
+      } else if (
+        endTimestamp &&
+        isRestrictedData[i].action_type == $Enums.user_action_type.ban
+      ) {
+        if (
+          endTimestamp &&
+          (isRestrictedData[i].end_timestamp == null ||
+            endTimestamp < isRestrictedData[i].end_timestamp!)
+        ) {
+          isBanned = true;
+          endTimestamp = isRestrictedData[i].end_timestamp;
+          if (endTimestamp == null) {
+            break;
+          }
+        }
       }
     }
-  }
 
     // Return the response from the database update
     //res.status(200).json({ "is_banned": isBanned, "is_muted": isMuted, "end_timestamp": endTimestamp});
-    res.status(200).json({ "is_banned": isBanned, "is_muted": true, "end_timestamp": endTimestamp});
+    res.status(200).json({
+      is_banned: isBanned,
+      is_muted: true,
+      end_timestamp: endTimestamp,
+    });
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
   }
 });
-
 
 // Retrieves user information.
 router.get("/", middleware.isLoggedIn, async (req: any, res) => {
@@ -275,8 +333,23 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
-      where: { user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id },
-      include: { _count: { select: { followers_followers_user_idTousers: true, following_following_user_idTousers: true, friends_friends_user1_idTousers: true, friends_friends_user2_idTousers: true, posts: true } } }
+      where: {
+        user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id,
+      },
+      include: {
+        _count: {
+          select: {
+            followers_followers_user_idTousers: true,
+            following_following_user_idTousers: true,
+            friends_friends_user1_idTousers: true,
+            friends_friends_user2_idTousers: true,
+            posts: true,
+          },
+        },
+        blocked_users_blocked_users_blocked_user_idTousers: {
+          where: { blocking_user_id: _id },
+        },
+      },
     });
 
     if (user) {
@@ -286,43 +359,52 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
       // If it is logged in user return more data
       if (user.user_id == _id) {
         returnUser = {
-          "user_id": user.user_id,
-          "avatar_id": user.avatar_id,
-          "description": user.description,
-          "email": user.email,
-          "email_notifications": user.email_notifications,
-          "dyslexia_font": user.dyslexia_font,
-          "public_profile": user.public_profile,
-          "hide_location": user.hide_location,
-          "analytics_enabled": user.analytics_enabled,
-          "background": user.background,
-          "country": user.country,
-          "username": user.username,
-          "display_name": user.display_name,
-          "user_role": user.user_role,
-          "followers": user._count.followers_followers_user_idTousers,
-          "following": user._count.following_following_user_idTousers,
-          "friends": user._count.friends_friends_user1_idTousers + user._count.friends_friends_user2_idTousers,
-          "posts": user._count.posts
+          user_id: user.user_id,
+          avatar_id: user.avatar_id,
+          description: user.description,
+          email: user.email,
+          email_notifications: user.email_notifications,
+          dyslexia_font: user.dyslexia_font,
+          public_profile: user.public_profile,
+          hide_location: user.hide_location,
+          analytics_enabled: user.analytics_enabled,
+          background: user.background,
+          country: user.country,
+          username: user.username,
+          display_name: user.display_name,
+          user_role: user.user_role,
+          followers: user._count.followers_followers_user_idTousers,
+          following: user._count.following_following_user_idTousers,
+          friends:
+            user._count.friends_friends_user1_idTousers +
+            user._count.friends_friends_user2_idTousers,
+          posts: user._count.posts,
         };
       } else {
         const follows = await checkUserFollows(_id, user.user_id);
         const friends = await checkUserFriends(_id, user.user_id);
         returnUser = {
-          "user_id": user.user_id,
-          "avatar_id": user.avatar_id,
-          "description": user.description,
-          "public_profile": user.public_profile,
-          "country": user.country,
-          "username": user.username,
-          "display_name": user.display_name,
-          "user_role": user.user_role,
-          "followers": user._count.followers_followers_user_idTousers,
-          "following": user._count.following_following_user_idTousers,
-          "friends": user._count.friends_friends_user1_idTousers + user._count.friends_friends_user2_idTousers,
-          "posts": user._count.posts,
-          "user_follows": follows,
-          "user_friends": friends
+          user_id: user.user_id,
+          avatar_id: user.avatar_id,
+          description: user.description,
+          public_profile: user.public_profile,
+          country: user.country,
+          username: user.username,
+          display_name: user.display_name,
+          user_role: user.user_role,
+          followers: user._count.followers_followers_user_idTousers,
+          following: user._count.following_following_user_idTousers,
+          friends:
+            user._count.friends_friends_user1_idTousers +
+            user._count.friends_friends_user2_idTousers,
+          posts: user._count.posts,
+          user_follows: follows,
+          user_friends: friends,
+          // Check if user is blocked by requester or not
+          blocked:
+            user.blocked_users_blocked_users_blocked_user_idTousers.length > 0
+              ? true
+              : false,
         };
       }
 
@@ -332,7 +414,6 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
       // If the user is not found, send a JSON response with an error code.
       res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-
   } catch (error) {
     // If an error occurs during the database query or processing, send an error response.
     res.status(400).json({ error });
@@ -344,7 +425,9 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
   try {
     const _id = BigInt((req as CustomRequest).user._id);
 
-    return res.status(200).json(await checkUserFollows(_id, BigInt(req.headers.user)));
+    return res
+      .status(200)
+      .json(await checkUserFollows(_id, BigInt(req.headers.user)));
   } catch (error) {
     // Handle and respond to any errors that occur during the process.
     res.status(400).json({ error });
@@ -356,7 +439,9 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
   try {
     const _id = BigInt((req as CustomRequest).user._id);
 
-    return res.status(200).json(await checkUserFollows(_id, BigInt(req.headers.user)));
+    return res
+      .status(200)
+      .json(await checkUserFollows(_id, BigInt(req.headers.user)));
   } catch (error) {
     res.status(400).json({ error });
   }
@@ -364,42 +449,56 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
 async function checkUserFollows(userId: bigint, targetUser: bigint) {
   // Check if the user is following the user specified in the request headers.
-  const following = await prisma.following.findFirst({ where: { user_id: userId, following_user_id: targetUser } });
+  const following = await prisma.following.findFirst({
+    where: { user_id: userId, following_user_id: targetUser },
+  });
 
   if (following) {
     // If the user is following, send a JSON response indicating "following" is true.
-    return { "following": true };
+    return { following: true };
   } else {
     // If not following, check if there's a follow request and respond accordingly.
-    const followingRequest = await prisma.follow_requests.findFirst({ where: { requester_id: userId, requestee_id: targetUser } });
+    const followingRequest = await prisma.follow_requests.findFirst({
+      where: { requester_id: userId, requestee_id: targetUser },
+    });
     if (followingRequest) {
-      return { "following": false, "requested": true };
+      return { following: false, requested: true };
     } else {
-      return { "following": false, "requested": false };
+      return { following: false, requested: false };
     }
   }
 }
 
 async function checkUserFriends(userId: bigint, targetUser: bigint) {
   // Check if the user is friends with the user specified in the request headers.
-  const friends = await prisma.friends.findFirst({ where: { OR: [{ user1_id: userId, user2_id: targetUser }, { user1_id: targetUser, user2_id: userId }] } });
+  const friends = await prisma.friends.findFirst({
+    where: {
+      OR: [
+        { user1_id: userId, user2_id: targetUser },
+        { user1_id: targetUser, user2_id: userId },
+      ],
+    },
+  });
 
   if (friends) {
-    return { "friends": true };
+    return { friends: true };
   } else {
-    const friendsRequestOutgoing = await prisma.friend_requests.findFirst({ where: { requester_id: userId, requestee_id: targetUser } });
+    const friendsRequestOutgoing = await prisma.friend_requests.findFirst({
+      where: { requester_id: userId, requestee_id: targetUser },
+    });
     if (friendsRequestOutgoing) {
-      return { "friends": false, "requestedOutgoing": true };
+      return { friends: false, requestedOutgoing: true };
     } else {
-      const friendsRequestIncoming = await prisma.friend_requests.findFirst({ where: { requester_id: targetUser, requestee_id: userId } });
+      const friendsRequestIncoming = await prisma.friend_requests.findFirst({
+        where: { requester_id: targetUser, requestee_id: userId },
+      });
       if (friendsRequestIncoming) {
-        return { "friends": false, "requestedIncoming": true };
+        return { friends: false, requestedIncoming: true };
       } else {
-        return { "friends": false };
+        return { friends: false };
       }
     }
   }
-
 }
 
 // Another route handler for user search based on a query.
@@ -414,12 +513,21 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
           contains: req.headers.query,
         },
       },
+      include: {
+        blocked_users_blocked_users_blocked_user_idTousers: {
+          where: { blocking_user_id: _id },
+        },
+      },
       take: 10,
     });
 
     const returns = [];
     for (let i = 0; i < results.length; i++) {
-      const ret = { "user_id": results[i].user_id, "username": results[i].username, "avatar_id": results[i].avatar_id };
+      const ret = {
+        user_id: results[i].user_id,
+        username: results[i].username,
+        avatar_id: results[i].avatar_id,
+      };
       returns.push(ret);
     }
 
@@ -431,6 +539,44 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
+// Route handler to block user
+router.post("/block", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
 
+    const blockedRecord = await prisma.blocked_users.create({
+      data: {
+        blocked_id: generator.nextId(),
+        blocking_user_id: _id,
+        blocked_user_id: req.body.user,
+        timestamp: new Date(Date.now()),
+      },
+    });
+    return res.status(201).json({ success: true });
+  } catch (error) {
+    // If there is an error, return a 400 status code and the error message
+    res.status(400).json({ error });
+  }
+});
+
+// Route handler to unblock user
+router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    // Get the user ID from the request object
+    const _id = BigInt((req as CustomRequest).user._id);
+
+    const blockedRecord = await prisma.blocked_users.deleteMany({
+      where: {
+        blocking_user_id: _id,
+        blocked_user_id: req.body.user,
+      },
+    });
+    return res.status(200).json({ success: true, count: blockedRecord.count });
+  } catch (error) {
+    // If there is an error, return a 400 status code and the error message
+    res.status(400).json({ error });
+  }
+});
 
 export default router;

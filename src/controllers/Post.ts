@@ -514,7 +514,36 @@ router.get("/comments", middleware.isLoggedIn, async (req: any, res) => {
         const _id = BigInt((req as CustomRequest).user._id);
 
         // Find the post with the provided ID from the request header
-        const comments = await prisma.posts.findFirst({ where: { post_id: BigInt(req.headers.post) }, include: { comments: { take: 20, skip: 20 * req.headers.page, include: { comment_likes: { where: { user_id: _id } } } } } });
+        const comments = await prisma.posts.findFirst({
+            where: { 
+              post_id: BigInt(req.headers.post),
+              NOT: {}
+            },
+            include: { 
+              comments: { 
+                take: 20, 
+                skip: 20 * req.headers.page, 
+                where: {
+                  NOT: {
+                    OR: [
+                      // Exclude comments by users blocked by the current user
+                      { sender_id: { in: (await prisma.blocked_users.findMany({ where: { blocking_user_id: _id }, select: { blocked_user_id: true } })).map(b => b.blocked_user_id) } },
+                      // Exclude comments by users who have blocked the current user
+                      { sender_id: { in: (await prisma.blocked_users.findMany({ where: { blocked_user_id: _id }, select: { blocking_user_id: true } })).map(b => b.blocking_user_id) } }
+                    ]
+                  }
+                },
+                include: { 
+                  comment_likes: { 
+                    where: { 
+                      user_id: _id 
+                    } 
+                  } 
+                } 
+              } 
+            }
+          });
+          
         if (comments) {
             // Return the array of comments as a response
             return res.status(200).json(comments.comments);
@@ -593,6 +622,10 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
         -- Ensure the user has not blocked the author
         AND p.author_id NOT IN (
             SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ${_id}
+        )
+        -- Ensure the author has not blocked the user
+        AND ${_id} NOT IN (
+            SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = p.author_id
         )
         GROUP BY p.post_id, p.author_id, p.description, p.image, p.like_count, p.friends_only, p."location", sp.saved_post_id
         LIMIT ${remaining} OFFSET ${skip};
@@ -673,7 +706,25 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
             getInfluencers()
             const influencerPosts = await prisma.posts.findMany({
                 where: {
-                    author_id: { in: influencers },
+                    author_id: { 
+                        in: influencers,
+                        notIn: [
+                            ...(
+                                await prisma.blocked_users.findMany({
+                                    where: {
+                                        OR: [
+                                            { blocking_user_id: _id }, // Users blocked by the querying user
+                                            { blocked_user_id: _id }, // Users who blocked the querying user
+                                        ],
+                                    },
+                                    select: {
+                                        blocking_user_id: true,
+                                        blocked_user_id: true,
+                                    },
+                                })
+                            ).flatMap(blocked => [blocked.blocking_user_id, blocked.blocked_user_id]) // Extract unique user IDs
+                        ],
+                    },
                     post_id: { notIn: finalPostIds },
                 },
                 select: {
@@ -710,7 +761,7 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                 },
                 take: remaining,
                 skip: skip,
-            });
+            });            
 
 
 

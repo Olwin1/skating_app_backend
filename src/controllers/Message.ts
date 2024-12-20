@@ -65,19 +65,6 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // This route handles fetching a single message by ID.
-router.get("/message", middleware.isLoggedIn, async (req: any, res) => {
-    try {
-        // Retrieve a single message by its ID from the database.
-        const message = await prisma.messages.findUnique({ where: { message_id: BigInt(req.headers.message) } });
-        // Return the message as a JSON response.
-        return res.status(200).json(message);
-    } catch (error) {
-        // Handle any errors and return a 500 Internal Server Error response.
-        res.status(500).json({ success: false, error: error });
-    }
-});
-
-// This route handles fetching a list of messages in a channel.
 router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
     try {
         const _id = BigInt((req as CustomRequest).user._id);
@@ -85,19 +72,43 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
         // Retrieve the channel details by its ID.
         const channel = await prisma.message_channels.findUnique({
             where: { channel_id: BigInt(req.headers.channel) },
+            include: {participants: true}
         });
 
-        // Fetch a list of messages within the specified page range.
-        const messages = await prisma.messages.findMany({
+
+        let blockedUserConstraints = channel?.participants.map(participant => participant.user_id);
+
+        // Check if the current user has blocked the target user
+        const blockRecord = await prisma.blocked_users.findFirst({
             where: {
-                AND: [
-                    { message_number: { gte: channel!.last_message_count - req.headers.page * 20 - 20 } },
-                    { message_number: { lte: channel!.last_message_count - req.headers.page * 20 } },
-                ]
+                blocking_user_id: _id,
+                blocked_user_id: {in: blockedUserConstraints},
             },
-            include: {message_readers: true},
+        });
+
+        // If the user has blocked the target, fetch messages before the block timestamp
+        const messageConditions: any = {
+            AND: [
+                { message_number: { gte: channel!.last_message_count - req.headers.page * 20 - 20 } },
+                { message_number: { lte: channel!.last_message_count - req.headers.page * 20 } },
+            ],
+        };
+
+        // If the current user has blocked the target user, filter by the block timestamp
+        if (blockRecord) {
+            messageConditions.AND.push({
+                date_sent: {
+                    lt: blockRecord.timestamp, // Exclude messages after the block timestamp
+                },
+            });
+        }
+
+        // Fetch a list of messages within the specified page range, considering the block condition
+        const messages = await prisma.messages.findMany({
+            where: messageConditions,
+            include: { message_readers: true },
             take: 20,
-            orderBy: { message_number: 'desc' }
+            orderBy: { message_number: 'desc' },
         });
 
         // Return the list of messages as a JSON response.
@@ -107,6 +118,7 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
         res.status(500).json({ success: false, error: error });
     }
 });
+
 
 // This route handles fetching a list of channels for the authenticated user.
 router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
@@ -130,8 +142,11 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
             where: { channel_id: { in: channelIds } },
             include: {
                 participants: {
-                    include: {
-                        users: true
+                    select: {
+                        users: {
+                            select: {avatar_id: true, username: true, display_name: true,
+                            blocked_users_blocked_users_blocked_user_idTousers: {where: {blocking_user_id: _id}},
+                        }}
                     }
                 }
             }
@@ -159,6 +174,7 @@ router.get("/channel", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // This route handles fetching a list of users for the authenticated user.
+// Used for creating message channels.  
 router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
     try {
         const _id = BigInt((req as CustomRequest).user._id);
@@ -179,13 +195,17 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
             participantIds.push(participant.user_id);
         });
 
+        // Create an exclusion list including those who are blocked by the user and those that have been blocked from the user
+        const blockedUsers = (await prisma.blocked_users.findMany({where: {blocking_user_id: _id}, select: {blocked_user_id: true}})).map(user => user.blocked_user_id)
+        const exclusionUsers = blockedUsers.concat((await prisma.blocked_users.findMany({where: {blocked_user_id: _id}, select: {blocking_user_id: true}})).map(user => user.blocking_user_id)).concat(participantIds)
+
         // Retrieve user IDs of friends not in the participant list.
         const friendUserIds: bigint[] = []
         const usersFriends = await prisma.friends.findMany({
             where: {
                 AND: [
                     { OR: [{ user1_id: _id }, { user2_id: _id }] },
-                    { AND: [{ user1_id: { not: { in: participantIds } } }, { user2_id: { not: { in: participantIds } } }] }
+                    { AND: [{ user1_id: { not: { in: exclusionUsers } } }, { user2_id: { not: { in: exclusionUsers } } }] }
                 ]
             },
             skip: req.headers.page * 20,
@@ -204,7 +224,7 @@ router.get("/users", middleware.isLoggedIn, async (req: any, res) => {
                 where: {
                     NOT: {
                         user_id: {
-                            in: [...participantIds, ...friendUserIds, _id],
+                            in: [...exclusionUsers, ...friendUserIds, _id],
                         },
                     },
                     followers_followers_user_idTousers: {
