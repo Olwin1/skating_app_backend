@@ -5,6 +5,7 @@ import createMessage from "./MessageCreate";
 import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import { $Enums, Prisma } from "@prisma/client";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -13,6 +14,33 @@ const generator = new Worker(0, 1, {
   sequenceBits: 12,
 });
 const router = Router(); // create router to create route bundle
+
+interface IMessageData {
+  messageId: bigint;
+  messageAuthor: bigint;
+  messageContent: string;
+  messageTimestamp: Date;
+}
+interface IBlockingData {
+  blocked_id: bigint;
+  blocking_user_id: bigint;
+  blocked_user_id: bigint;
+  timestamp: Date;
+}
+
+interface IParticipantData {
+  avatar_id: bigint;
+  username: String;
+  display_name: String;
+  blocked_users_blocked_users_blocked_user_idTousers: IBlockingData;
+  blocked_users_blocked_users_blocking_user_idTousers: IBlockingData;
+}
+interface IChannelData {
+  channelId: bigint;
+  creationDate: Date;
+  participants: IParticipantData[];
+  lastMessage: IMessageData;
+}
 
 // This route handles creating a new message channel.
 router.post("/channel", middleware.isLoggedIn, async (req: any, res) => {
@@ -145,25 +173,22 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
         user_id: _id,
       },
       include: {
-        message_channels: true,
-      },
-    });
-    let channelIds: bigint[] = [];
-    for (const channel of channels) {
-      channelIds.push(channel.channel_id);
-    }
-    const returnChannels = await prisma.message_channels.findMany({
-      where: { channel_id: { in: channelIds } },
-      include: {
-        participants: {
-          select: {
-            users: {
+        message_channels: {
+          include: {
+            participants: {
               select: {
-                avatar_id: true,
-                username: true,
-                display_name: true,
-                blocked_users_blocked_users_blocked_user_idTousers: {
-                  where: { blocking_user_id: _id },
+                users: {
+                  select: {
+                    avatar_id: true,
+                    username: true,
+                    display_name: true,
+                    blocked_users_blocked_users_blocked_user_idTousers: {
+                      where: { blocking_user_id: _id },
+                    },
+                    blocked_users_blocked_users_blocking_user_idTousers: {
+                      where: { blocked_user_id: _id },
+                    },
+                  },
                 },
               },
             },
@@ -171,9 +196,49 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
         },
       },
     });
+    let channelIds: bigint[] = [];
+    let channelLastMessageNumber: number[] = [];
+    for (const channel of channels) {
+      channelIds.push(channel.channel_id);
+      channelLastMessageNumber.push(
+        channel.message_channels.last_message_count
+      );
+    }
+    let lastMessageContent: { [channelId: string]: IMessageData } = {};
 
-    // Return the list of channels as a JSON response.
-    res.status(200).json(returnChannels);
+    let lastMessages = await prisma.messages.findMany({
+      where: {
+        channel_id: { in: channelIds },
+        message_number: { in: channelLastMessageNumber },
+      },
+    });
+    for (const channel of channels) {
+      const lastMessageIndex = lastMessages.findIndex(
+        (message: { channel_id: bigint }) =>
+          message.channel_id == channel.channel_id
+      );
+      lastMessageContent[channel.channel_id.toString()] = {
+        messageId: lastMessages[lastMessageIndex].message_id,
+        messageAuthor: lastMessages[lastMessageIndex].sender_id,
+        messageContent: lastMessages[lastMessageIndex].content ?? "",
+        messageTimestamp:
+          lastMessages[lastMessageIndex].date_sent ?? new Date(),
+      };
+    }
+
+    let retVals = [] as IChannelData[];
+    for (let i = 0; i < channels.length; i++) {
+      // Return the list of channels as a JSON response.
+      let retVal: IChannelData = {
+        channelId: channels[i].channel_id,
+        creationDate: channels[i].message_channels.creation_date ?? new Date(),
+        participants: channels[i].message_channels
+          .participants as unknown as IParticipantData[],
+        lastMessage: lastMessageContent[channels[i].channel_id.toString()],
+      };
+      retVals.push(retVal);
+    }
+    return res.status(200).json(retVals);
   } catch (error) {
     // Handle any errors and return a 500 Internal Server Error response.
     res.status(500).json({ success: false, error: error });

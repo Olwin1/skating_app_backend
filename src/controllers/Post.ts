@@ -698,12 +698,26 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
                     ) AS total_likes
                 FROM posts p
                 WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${_id})
-                    AND p.post_id NOT IN (SELECT UNNEST(${finalPostIds}::bigint[]))
+                ${
+                  finalPostIds.length > 0
+                    ? Prisma.sql`
+                  AND p.post_id NOT IN (SELECT * FROM UNNEST(ARRAY[${Prisma.join(
+                    finalPostIds.map((id) => BigInt(id))
+                  )}]::bigint[]))
+                  `
+                    : Prisma.sql``
+                }
                     AND NOT EXISTS (
                         SELECT 1
                         FROM post_likes pl
                         WHERE pl.user_id = ${_id}
                         AND pl.post_id = p.post_id
+                    )
+                    AND ${_id} NOT IN (
+                      SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = p.author_id
+                    )
+                    AND p.author_id NOT IN (
+                      SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ${_id}
                     )
             )
             SELECT
@@ -731,29 +745,32 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
     if (finalPosts.length < 20) {
       //TODO NEEDS FURTHER TESTING
       getInfluencers();
+      const blockedUsers = await prisma.blocked_users.findMany({
+        where: {
+          OR: [
+            { blocking_user_id: _id }, // Users blocked by the querying user
+            { blocked_user_id: _id }, // Users who blocked the querying user
+          ],
+        },
+        select: {
+          blocking_user_id: true,
+          blocked_user_id: true,
+        },
+      });
+
+      // Extract unique user IDs
+      const blockedUserIds = new Set(
+        blockedUsers.flatMap((blocked) => [
+          blocked.blocking_user_id,
+          blocked.blocked_user_id,
+        ])
+      );
+
       const influencerPosts = await prisma.posts.findMany({
         where: {
           author_id: {
             in: influencers,
-            notIn: [
-              ...(
-                await prisma.blocked_users.findMany({
-                  where: {
-                    OR: [
-                      { blocking_user_id: _id }, // Users blocked by the querying user
-                      { blocked_user_id: _id }, // Users who blocked the querying user
-                    ],
-                  },
-                  select: {
-                    blocking_user_id: true,
-                    blocked_user_id: true,
-                  },
-                })
-              ).flatMap((blocked) => [
-                blocked.blocking_user_id,
-                blocked.blocked_user_id,
-              ]), // Extract unique user IDs
-            ],
+            notIn: Array.from(blockedUserIds), // Convert Set back to an array
           },
           post_id: { notIn: finalPostIds },
         },
@@ -816,26 +833,39 @@ router.post("/posts", middleware.isLoggedIn, async (req: any, res) => {
       remaining -= influencerPostsFormatted.length;
     }
     if (finalPosts.length < 20) {
-      //TODO NEEDS FURTHER TESTING
-
       const userLikedPosts = await prisma.post_likes.findMany({
         where: {
-          user_id: _id, // Replace 'userId' with the actual user's ID
+          user_id: _id, // Replace '_id' with the actual user's ID
+          posts: {
+            author_id: {
+              notIn: (
+                await prisma.blocked_users.findMany({
+                  where: {
+                    OR: [
+                      { blocking_user_id: _id }, // Users the target user has blocked
+                      { blocked_user_id: _id }, // Users who have blocked the target user
+                    ],
+                  },
+                  select: { blocked_user_id: true, blocking_user_id: true },
+                })
+              ).map(
+                (blocked) => blocked.blocked_user_id || blocked.blocking_user_id
+              ),
+            },
+          },
         },
         include: {
           posts: {
             include: {
-              // Use Prisma aggregation to count likes for each post
               _count: {
                 select: {
                   post_likes: true,
                   comments: true,
                 },
               },
-              // Include the relation to check if the post is saved
               saved_posts: {
                 where: {
-                  user_id: _id, // Replace 'userId' with the actual user's ID
+                  user_id: _id, // Replace '_id' with the actual user's ID
                 },
               },
             },
