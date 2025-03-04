@@ -545,15 +545,28 @@ router.post("/block", middleware.isLoggedIn, async (req: any, res) => {
     // Get the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
 
-    const blockedRecord = await prisma.blocked_users.create({
-      data: {
-        blocked_id: generator.nextId(),
-        blocking_user_id: _id,
+    const isAlreadyBlocked = await prisma.blocked_users.findFirst({
+      where: {
         blocked_user_id: req.body.user,
-        timestamp: new Date(Date.now()),
+        blocking_user_id: _id,
       },
     });
-    return res.status(201).json({ success: true });
+    if (!isAlreadyBlocked) {
+      const blockedRecord = await prisma.blocked_users.create({
+        data: {
+          blocked_id: generator.nextId(),
+          blocking_user_id: _id,
+          blocked_user_id: req.body.user,
+          timestamp: new Date(Date.now()),
+        },
+      });
+      // New record created so return 201 status with success
+      return res.status(201).json({ success: true });
+    } else {
+      // Already blocking the user so return a 200 with success
+      // TODO: Change to error later and add handler on client side
+      return res.status(200).json({ success: true });
+    }
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
     res.status(400).json({ error });
