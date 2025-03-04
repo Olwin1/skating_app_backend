@@ -579,4 +579,45 @@ router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
+// Another route handler for user search based on a query.
+router.get("/blocked_users", middleware.isLoggedIn, async (req: any, res) => {
+  try {
+    const _id = BigInt((req as CustomRequest).user._id);
+
+    // Search for users whose usernames contain the query specified in the request headers.
+    const users = await prisma.blocked_users.findMany({
+      where: {
+        blocking_user_id: _id,
+      },
+      include: {
+        users_blocked_users_blocking_user_idTousers: {
+          select: {
+            user_id: true,
+            username: true,
+            avatar_id: true,
+          },
+        },
+      },
+      take: 10,
+    });
+
+    const returns = [];
+    for (let i = 0; i < users.length; i++) {
+      const ret = {
+        user_id: users[i].users_blocked_users_blocking_user_idTousers.user_id,
+        username: users[i].users_blocked_users_blocking_user_idTousers.username,
+        avatar_id:
+          users[i].users_blocked_users_blocking_user_idTousers.avatar_id,
+      };
+      returns.push(ret);
+    }
+
+    // Send a JSON response with the search results.
+    return res.json(returns);
+  } catch (error) {
+    // Handle and respond to any errors that occur during the search.
+    res.status(400).json({ error });
+  }
+});
+
 export default router;
