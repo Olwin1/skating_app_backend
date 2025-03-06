@@ -16,10 +16,10 @@ const generator = new Worker(0, 1, {
 const router = Router(); // create router to create route bundle
 
 interface IMessageData {
-  messageId: bigint;
-  messageAuthor: bigint;
-  messageContent: string;
-  messageTimestamp: Date;
+  message_id: bigint;
+  message_author: bigint;
+  message_content: string;
+  message_timestamp: Date;
 }
 interface IBlockingData {
   blocked_id: bigint;
@@ -36,10 +36,10 @@ interface IParticipantData {
   blocked_users_blocked_users_blocking_user_idTousers: IBlockingData;
 }
 interface IChannelData {
-  channelId: bigint;
-  creationDate: Date;
+  channel_id: bigint;
+  creation_date: Date;
   participants: IParticipantData[];
-  lastMessage: IMessageData;
+  last_message: IMessageData;
 }
 
 // This route handles creating a new message channel.
@@ -218,10 +218,10 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
           message.channel_id == channel.channel_id
       );
       lastMessageContent[channel.channel_id.toString()] = {
-        messageId: lastMessages[lastMessageIndex].message_id,
-        messageAuthor: lastMessages[lastMessageIndex].sender_id,
-        messageContent: lastMessages[lastMessageIndex].content ?? "",
-        messageTimestamp:
+        message_id: lastMessages[lastMessageIndex].message_id,
+        message_author: lastMessages[lastMessageIndex].sender_id,
+        message_content: lastMessages[lastMessageIndex].content ?? "",
+        message_timestamp:
           lastMessages[lastMessageIndex].date_sent ?? new Date(),
       };
     }
@@ -230,11 +230,11 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
     for (let i = 0; i < channels.length; i++) {
       // Return the list of channels as a JSON response.
       let retVal: IChannelData = {
-        channelId: channels[i].channel_id,
-        creationDate: channels[i].message_channels.creation_date ?? new Date(),
+        channel_id: channels[i].channel_id,
+        creation_date: channels[i].message_channels.creation_date ?? new Date(),
         participants: channels[i].message_channels
           .participants as unknown as IParticipantData[],
-        lastMessage: lastMessageContent[channels[i].channel_id.toString()],
+        last_message: lastMessageContent[channels[i].channel_id.toString()],
       };
       retVals.push(retVal);
     }
