@@ -585,6 +585,7 @@ router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
         blocked_user_id: req.body.user,
       },
     });
+    //TODO: FIX ME DELETING NOT FINDING CORRECT RECORDS
     return res.status(200).json({ success: true, count: blockedRecord.count });
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
@@ -597,13 +598,13 @@ router.get("/blocked_users", middleware.isLoggedIn, async (req: any, res) => {
   try {
     const _id = BigInt((req as CustomRequest).user._id);
 
-    // Search for users whose usernames contain the query specified in the request headers.
+    // Get all user records showing the users that the user has blocked
     const users = await prisma.blocked_users.findMany({
       where: {
         blocking_user_id: _id,
       },
       include: {
-        users_blocked_users_blocking_user_idTousers: {
+        users_blocked_users_blocked_user_idTousers: {
           select: {
             user_id: true,
             username: true,
@@ -616,11 +617,12 @@ router.get("/blocked_users", middleware.isLoggedIn, async (req: any, res) => {
 
     const returns = [];
     for (let i = 0; i < users.length; i++) {
+      // Loop through each record and add each user's user_id, username, and avatar_id to the array
       const ret = {
-        user_id: users[i].users_blocked_users_blocking_user_idTousers.user_id,
-        username: users[i].users_blocked_users_blocking_user_idTousers.username,
+        user_id: users[i].users_blocked_users_blocked_user_idTousers.user_id,
+        username: users[i].users_blocked_users_blocked_user_idTousers.username,
         avatar_id:
-          users[i].users_blocked_users_blocking_user_idTousers.avatar_id,
+          users[i].users_blocked_users_blocked_user_idTousers.avatar_id,
       };
       returns.push(ret);
     }
