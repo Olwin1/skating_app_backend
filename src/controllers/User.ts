@@ -585,7 +585,6 @@ router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
         blocked_user_id: req.body.user,
       },
     });
-    //TODO: FIX ME DELETING NOT FINDING CORRECT RECORDS
     return res.status(200).json({ success: true, count: blockedRecord.count });
   } catch (error) {
     // If there is an error, return a 400 status code and the error message
