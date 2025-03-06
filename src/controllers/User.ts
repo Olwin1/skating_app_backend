@@ -515,7 +515,12 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
       },
       include: {
         blocked_users_blocked_users_blocked_user_idTousers: {
+          // To know if the user is blocking the specific person
           where: { blocking_user_id: _id },
+        },
+        blocked_users_blocked_users_blocking_user_idTousers: {
+          // To know if the user is blocking the specific person
+          where: { blocked_user_id: _id },
         },
       },
       take: 10,
@@ -523,6 +528,10 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
 
     const returns = [];
     for (let i = 0; i < results.length; i++) {
+      // Hide results that the user has blocked
+      if(results[i].blocked_users_blocked_users_blocked_user_idTousers.length != 0) {continue;}
+      // Hide results that have blocked the user
+      if(results[i].blocked_users_blocked_users_blocking_user_idTousers.length != 0) {continue;}
       const ret = {
         user_id: results[i].user_id,
         username: results[i].username,
