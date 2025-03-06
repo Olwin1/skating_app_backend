@@ -10,6 +10,7 @@ import validator from "validator";
 import { ErrorCode } from "../ErrorCodes";
 import * as securePin from "secure-pin";
 import { $Enums } from "@prisma/client";
+import HandleBlocks from "../utils/handleBlocks";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -513,25 +514,16 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
           contains: req.headers.query,
         },
       },
-      include: {
-        blocked_users_blocked_users_blocked_user_idTousers: {
-          // To know if the user is blocking the specific person
-          where: { blocking_user_id: _id },
-        },
-        blocked_users_blocked_users_blocking_user_idTousers: {
-          // To know if the user is blocking the specific person
-          where: { blocked_user_id: _id },
-        },
-      },
+      include: HandleBlocks.getIncludeBlockInfo(_id),
       take: 10,
     });
 
     const returns = [];
     for (let i = 0; i < results.length; i++) {
-      // Hide results that the user has blocked
-      if(results[i].blocked_users_blocked_users_blocked_user_idTousers.length != 0) {continue;}
-      // Hide results that have blocked the user
-      if(results[i].blocked_users_blocked_users_blocking_user_idTousers.length != 0) {continue;}
+      //If is blocked then skip
+      if(HandleBlocks.checkIsBlocked(results[i])) {continue;}
+
+
       const ret = {
         user_id: results[i].user_id,
         username: results[i].username,
