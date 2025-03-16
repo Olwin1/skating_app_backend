@@ -196,9 +196,10 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
     let channelIds: bigint[] = [];
     let channelLastMessageNumber: number[] = [];
     for (const channel of channels) {
-      channelIds.push(channel.channel_id);
+      const currentChannel = channel.message_channels
+      channelIds.push(currentChannel.channel_id);
       channelLastMessageNumber.push(
-        channel.message_channels.last_message_count
+        currentChannel.last_message_count
       );
     }
     let lastMessageContent: { [channelId: string]: IMessageData } = {};
@@ -210,18 +211,20 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
       },
     });
     for (const channel of channels) {
-      const lastMessageIndex = lastMessages.findIndex(
-        (message: { channel_id: bigint }) =>
-          message.channel_id == channel.channel_id
-      );
-      lastMessageContent[channel.channel_id.toString()] = {
-        message_id: lastMessages[lastMessageIndex].message_id,
-        message_author: lastMessages[lastMessageIndex].sender_id,
-        message_content: lastMessages[lastMessageIndex].content ?? "",
-        message_timestamp:
-          lastMessages[lastMessageIndex].date_sent ?? new Date(),
-      };
+      const lastMessage = lastMessages
+        .filter((message: { channel_id: bigint }) => message.channel_id === channel.channel_id)
+        .at(-1); // Get the most recent message
+    
+      if (lastMessage) {
+        lastMessageContent[channel.channel_id.toString()] = {
+          message_id: lastMessage.message_id,
+          message_author: lastMessage.sender_id,
+          message_content: lastMessage.content ?? "",
+          message_timestamp: lastMessage.date_sent ?? new Date(),
+        };
+      }
     }
+    
 
     let retVals = [] as IChannelData[];
     // Loop through each possible channel
