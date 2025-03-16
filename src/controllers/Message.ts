@@ -6,6 +6,7 @@ import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import { $Enums, Prisma } from "@prisma/client";
+import HandleBlocks from "../utils/handleBlocks";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -21,19 +22,19 @@ interface IMessageData {
   message_content: string;
   message_timestamp: Date;
 }
-interface IBlockingData {
-  blocked_id: bigint;
-  blocking_user_id: bigint;
-  blocked_user_id: bigint;
-  timestamp: Date;
-}
+// interface IBlockingData {
+//   blocked_id: bigint;
+//   blocking_user_id: bigint;
+//   blocked_user_id: bigint;
+//   timestamp: Date;
+// }
 
 interface IParticipantData {
-  avatar_id: bigint;
+  user_id: bigint;
+  avatar_id: String | null;
   username: String;
   display_name: String;
-  blocked_users_blocked_users_blocked_user_idTousers: IBlockingData;
-  blocked_users_blocked_users_blocking_user_idTousers: IBlockingData;
+  is_blocked: boolean;
 }
 interface IChannelData {
   channel_id: bigint;
@@ -179,15 +180,11 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
               select: {
                 users: {
                   select: {
+                    user_id: true,
                     avatar_id: true,
                     username: true,
                     display_name: true,
-                    blocked_users_blocked_users_blocked_user_idTousers: {
-                      where: { blocking_user_id: _id },
-                    },
-                    blocked_users_blocked_users_blocking_user_idTousers: {
-                      where: { blocked_user_id: _id },
-                    },
+                    ...HandleBlocks.getIncludeBlockInfo(_id)
                   },
                 },
               },
@@ -227,13 +224,26 @@ router.get("/channels", middleware.isLoggedIn, async (req: any, res) => {
     }
 
     let retVals = [] as IChannelData[];
+    // Loop through each possible channel
     for (let i = 0; i < channels.length; i++) {
+
+      // Go through every participant of a channel and check if they are blocked
+      let participants = [] as IParticipantData[];
+      for(let j = 0; j < channels[i].message_channels.participants.length; j++) {
+        let currentParticipant = channels[i].message_channels.participants[j].users;
+        participants[j] = {
+          user_id: currentParticipant.user_id,
+          avatar_id: currentParticipant.avatar_id,
+          username: currentParticipant.username,
+          display_name: currentParticipant.display_name,
+          is_blocked: HandleBlocks.checkIsBlocked(currentParticipant),
+        } as IParticipantData;
+      }
       // Return the list of channels as a JSON response.
       let retVal: IChannelData = {
         channel_id: channels[i].channel_id,
         creation_date: channels[i].message_channels.creation_date ?? new Date(),
-        participants: channels[i].message_channels
-          .participants as unknown as IParticipantData[],
+        participants: participants,
         last_message: lastMessageContent[channels[i].channel_id.toString()],
       };
       retVals.push(retVal);
