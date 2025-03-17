@@ -4,6 +4,7 @@ import middleware from "./middleware";
 import CustomRequest from "./CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import HandleBlocks from "../utils/handleBlocks";
 
 const router = Router(); // create router to create route bundle
 
@@ -30,8 +31,15 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         follow_requests_follow_requests_requester_idTousers: {
           where: { requester_id: _id, requestee_id: target },
         },
+        // Get Info on blocked user data
+        ...HandleBlocks.getIncludeBlockInfo(_id),
       },
     });
+    // Check if the user is blocked or the other way round
+    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
+    if(isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you")
+    }
 
     // Check if a follow request already exists
     if (
@@ -85,6 +93,15 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
   try {
     // Extract the user's ID from the request
     const _id = BigInt((req as CustomRequest).user._id);
+    const targetUser = await prisma.users.findFirst({
+      where: { user_id: req.body.user },
+      include: HandleBlocks.getIncludeBlockInfo(_id),
+    });
+    // Check if the user is blocked or the other way round
+    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
+    if(isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you")
+    }
 
     // Create a friend request
     const friendRequest = await prisma.friend_requests.create({
