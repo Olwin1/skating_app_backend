@@ -37,8 +37,8 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
     });
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if(isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you")
+    if (isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you");
     }
 
     // Check if a follow request already exists
@@ -99,8 +99,8 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
     });
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if(isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you")
+    if (isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you");
     }
 
     // Create a friend request
@@ -292,6 +292,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     const followerUsers = await prisma.users
       .findUnique({
         where: { user_id: target },
+        include: HandleBlocks.getIncludeBlockInfo(target),
       })
       .followers_followers_user_idTousers({
         take: 20,
@@ -300,6 +301,15 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
           users_followers_follower_user_idTousers: true,
         },
       });
+
+    // If the user is blocked then don't get anything for them
+    if (target != _id) {
+      // Check if the user is blocked or the other way round
+      const isBlocked = HandleBlocks.checkIsBlocked(target);
+      if (isBlocked) {
+        throw Error("Target user has been blocked by you or has blocked you");
+      }
+    }
 
     let returningUsers = [];
     if (followerUsers == null) {
@@ -341,6 +351,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     const followedUsers = await prisma.users
       .findUnique({
         where: { user_id: target },
+        include: HandleBlocks.getIncludeBlockInfo(target),
       })
       .following_following_user_idTousers({
         take: 20,
@@ -349,6 +360,16 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
           users_following_following_user_idTousers: true,
         },
       });
+
+    // If the user is blocked then don't get anything for them
+    if (target != _id) {
+      // Check if the user is blocked or the other way round
+      const isBlocked = HandleBlocks.checkIsBlocked(target);
+      if (isBlocked) {
+        throw Error("Target user has been blocked by you or has blocked you");
+      }
+    }
+
     let returningUsers = [];
     if (followedUsers == null) {
       throw new Error("No followed users found");
@@ -390,64 +411,90 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
 
     // Use a transaction to retrieve a combined list of user1's and user2's friends
     prisma.$transaction(async (tx) => {
-      const user1Friends = await tx.users
-        .findUnique({
+      try {
+        const user1Friends = await tx.users.findUnique({
           where: { user_id: target },
-        })
-        .friends_friends_user1_idTousers({
-          take: pageSize,
-          skip: req.headers.page * pageSize,
           include: {
-            users_friends_user2_idTousers: true,
-          },
-        });
-      const len = user1Friends == null ? 0 : user1Friends!.length;
-      const user2Friends = await tx.users
-        .findUnique({
-          where: { user_id: target },
-        })
-        .friends_friends_user2_idTousers({
-          take: pageSize - len,
-          skip: Math.max(0, req.headers.page * pageSize - len),
-          include: {
-            users_friends_user1_idTousers: true,
+            friends_friends_user1_idTousers: {
+              take: pageSize,
+              skip: req.headers.page * pageSize,
+              include: {
+                users_friends_user2_idTousers: true,
+              },
+            },
           },
         });
 
-      let returningUsers = [];
-      if (user1Friends != null) {
-        for (let friendUser of user1Friends) {
-          returningUsers.push({
-            user_id: friendUser.users_friends_user2_idTousers.user_id,
-            avatar_id: friendUser.users_friends_user2_idTousers.avatar_id,
-            description: friendUser.users_friends_user2_idTousers.description,
-            public_profile:
-              friendUser.users_friends_user2_idTousers.public_profile,
-            country: friendUser.users_friends_user2_idTousers.country,
-            username: friendUser.users_friends_user2_idTousers.username,
-            display_name: friendUser.users_friends_user2_idTousers.display_name,
-            user_role: friendUser.users_friends_user2_idTousers.user_role,
-          });
-        }
-      }
+        const len =
+          user1Friends == null
+            ? 0
+            : user1Friends.friends_friends_user1_idTousers.length;
+        const user2Friends = await tx.users.findUnique({
+          where: { user_id: target },
+          include: {
+            friends_friends_user2_idTousers: {
+              take: pageSize - len,
+              skip: Math.max(0, req.headers.page * pageSize - len),
+              include: {
+                users_friends_user1_idTousers: true,
+              },
+            },
+          },
+        });
 
-      if (user2Friends != null) {
-        for (let friendUser of user2Friends) {
-          returningUsers.push({
-            user_id: friendUser.users_friends_user1_idTousers.user_id,
-            avatar_id: friendUser.users_friends_user1_idTousers.avatar_id,
-            description: friendUser.users_friends_user1_idTousers.description,
-            public_profile:
-              friendUser.users_friends_user1_idTousers.public_profile,
-            country: friendUser.users_friends_user1_idTousers.country,
-            username: friendUser.users_friends_user1_idTousers.username,
-            display_name: friendUser.users_friends_user1_idTousers.display_name,
-            user_role: friendUser.users_friends_user1_idTousers.user_role,
+        // If the user is blocked then don't get anything for them
+        if (target != _id) {
+          const targetUser = await tx.users.findFirst({
+            where: { user_id: target },
+            include: HandleBlocks.getIncludeBlockInfo(_id),
           });
+          // Check if the user is blocked or the other way round
+          const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
+          if (isBlocked) {
+            throw Error(
+              "Target user has been blocked by you or has blocked you"
+            );
+          }
         }
-      }
 
-      return res.status(200).json(returningUsers);
+        let returningUsers = [];
+        if (user1Friends != null) {
+          for (let friendUser of user1Friends.friends_friends_user1_idTousers) {
+            const friendUserData = friendUser.users_friends_user2_idTousers;
+            returningUsers.push({
+              user_id: friendUserData.user_id,
+              avatar_id: friendUserData.avatar_id,
+              description: friendUserData.description,
+              public_profile: friendUserData.public_profile,
+              country: friendUserData.country,
+              username: friendUserData.username,
+              display_name: friendUserData.display_name,
+              user_role: friendUserData.user_role,
+            });
+          }
+        }
+
+        if (user2Friends != null) {
+          for (let friendUser of user2Friends.friends_friends_user2_idTousers) {
+            const friendUserData = friendUser.users_friends_user1_idTousers;
+            returningUsers.push({
+              user_id: friendUserData.user_id,
+              avatar_id: friendUserData.avatar_id,
+              description: friendUserData.description,
+              public_profile: friendUserData.public_profile,
+              country: friendUserData.country,
+              username: friendUserData.username,
+              display_name: friendUserData.display_name,
+              user_role: friendUserData.user_role,
+            });
+          }
+        }
+
+        return res.status(200).json(returningUsers);
+      } catch (error) {
+        // Handle any errors that occur during this process
+        res.status(400).json({ error });
+      }
     });
   } catch (error) {
     // Handle any errors that occur during this process

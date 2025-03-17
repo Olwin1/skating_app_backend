@@ -7,6 +7,7 @@ import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import { Prisma, posts } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
+import HandleBlocks from "../utils/handleBlocks";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -915,6 +916,16 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: any, res) => {
   try {
     // Extract the user ID from the request object
     const _id = BigInt((req as CustomRequest).user._id);
+
+    const targetUser = await prisma.users.findFirst({
+      where: { user_id: req.headers.user },
+      include: HandleBlocks.getIncludeBlockInfo(_id),
+    });
+    // Check if the user is blocked or the other way round
+    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
+    if(isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you")
+    }
 
     // Query the database for posts authored by the current user, sorted by date in descending order
     // The "skip" and "limit" options are used for pagination
