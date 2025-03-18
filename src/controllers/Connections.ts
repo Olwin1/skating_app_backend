@@ -289,27 +289,29 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the target user's ID from the request headers (or use the user's own ID)
     const target = BigInt(req.headers.user ?? _id);
     // Retrieve the list of follower users for the target user
-    const followerUsers = await prisma.users
+    const followerUsersRaw = await prisma.users
       .findUnique({
         where: { user_id: target },
-        include: HandleBlocks.getIncludeBlockInfo(target),
+        include: {followers_followers_user_idTousers: {
+          take: 20,
+          skip: req.headers.page * 20,
+          include: {
+            users_followers_follower_user_idTousers: true,
+          },
+        }, ...HandleBlocks.getIncludeBlockInfo(target),}
       })
-      .followers_followers_user_idTousers({
-        take: 20,
-        skip: req.headers.page * 20,
-        include: {
-          users_followers_follower_user_idTousers: true,
-        },
-      });
 
     // If the user is blocked then don't get anything for them
     if (target != _id) {
       // Check if the user is blocked or the other way round
-      const isBlocked = HandleBlocks.checkIsBlocked(target);
+      const isBlocked = HandleBlocks.checkIsBlocked(followerUsersRaw);
       if (isBlocked) {
         throw Error("Target user has been blocked by you or has blocked you");
       }
     }
+
+    const followerUsers = followerUsersRaw?.followers_followers_user_idTousers;
+
 
     let returningUsers = [];
     if (followerUsers == null) {
@@ -348,27 +350,29 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     // Extract the target user's ID from the request headers (or use the user's own ID)
     const target = BigInt(req.headers.user ?? _id);
     // Retrieve the list of followed users for the target user
-    const followedUsers = await prisma.users
-      .findUnique({
-        where: { user_id: target },
-        include: HandleBlocks.getIncludeBlockInfo(target),
-      })
-      .following_following_user_idTousers({
-        take: 20,
-        skip: req.headers.page * 20,
-        include: {
-          users_following_following_user_idTousers: true,
+    const followedUsersRaw = await prisma.users.findUnique({
+      where: { user_id: target },
+      include: {
+        following_following_user_idTousers: {
+          take: 20,
+          skip: req.headers.page * 20,
+          include: {
+            users_following_following_user_idTousers: true,
+          },
         },
-      });
+        ...HandleBlocks.getIncludeBlockInfo(target),
+      },
+    });
 
     // If the user is blocked then don't get anything for them
     if (target != _id) {
       // Check if the user is blocked or the other way round
-      const isBlocked = HandleBlocks.checkIsBlocked(target);
+      const isBlocked = HandleBlocks.checkIsBlocked(followedUsersRaw);
       if (isBlocked) {
         throw Error("Target user has been blocked by you or has blocked you");
       }
     }
+    const followedUsers = followedUsersRaw?.following_following_user_idTousers;
 
     let returningUsers = [];
     if (followedUsers == null) {
