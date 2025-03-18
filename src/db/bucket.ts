@@ -1,18 +1,19 @@
 // Importing required modules and packages
 import multer from "multer";
-import MulterGridfsStorage from "multer-gridfs-storage";
+import * as GridFSStorage from "multer-gridfs-storage";
 import mongoose from "./connection";
 import dotenv from "dotenv";
 // Loading environment variables from .env file
 dotenv.config();
-const { DATABASE_URL } = process.env;
+const { DATABASE_URI } = process.env;
 
 // Creating a new Mongoose connection to the database URL
-const conn = mongoose.createConnection(DATABASE_URL!);
+const conn = mongoose.createConnection(DATABASE_URI!);
 
 // Declaring variables to store references to the 'uploads.files' and 'uploads.chunks' collections
-let files: mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
-let filesChunks: mongoose.mongo.Collection<mongoose.mongo.BSON.Document>;
+let files: any;
+let filesChunks: any;
+mongoose.set("debug", true);
 
 // Listening for the 'open' event to ensure the connection is established before accessing collections
 conn.once("open", () => {
@@ -21,8 +22,8 @@ conn.once("open", () => {
 });
 
 // Configuring GridFS storage engine for Multer
-const storage = new MulterGridfsStorage({
-  url: DATABASE_URL!,
+const storage = new GridFSStorage.GridFsStorage({
+  url: DATABASE_URI!,
   file: (req, file) => {
     // Return a promise that resolves with an object containing the filename and bucketName of the uploaded file
     return new Promise((resolve, reject) => {
