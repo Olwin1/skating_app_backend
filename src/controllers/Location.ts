@@ -7,6 +7,7 @@ import CustomRequest from "./CustomRequest";
 import https from "https";
 import fs from "fs";
 import csv from "csv-parser";
+import mongoose from "../db/connection";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -122,7 +123,7 @@ const getCountry = (country: string): string => {
 const searchByPostcode = async (postcode: string, res: any) => {
   try {
     const data = await getPostcodeData(postcode);
-    res.json({ lng: data.lng, lat: data.lat });
+    return res.json({ lng: data.lng, lat: data.lat });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Failed to fetch postcode data" });
@@ -133,226 +134,139 @@ const searchByPostcode = async (postcode: string, res: any) => {
 const searchByTown = async (
   town: string,
   country: string,
-  queryName: string,
   Geonames: any,
   res: any
 ) => {
   try {
-    const code = getCountry(country);
-    const results = await Geonames.findOne({
-      name: town,
-      countryCode: code,
+    const code = country ? getCountry(country) : undefined;
+    //TODO Support altnames
+    const results = await Geonames.find({
+      $or: [{ name: town }, { asciiname: town }],
     }).lean();
-    if (
-      results &&
-      results.location &&
-      results.location.coordinates &&
-      results.location.coordinates.length === 2
-    ) {
-      const data = await sdk.placeSearch({
-        query: queryName,
-        radius: 54000,
-        ll: `${results.location.coordinates[1]}%2C${results.location.coordinates[0]}`,
-      });
-      if (
-        data != null &&
-        data.data != null &&
-        data.data.results != null &&
-        data.data.results.length > 0
-      ) {
-        let ll = {
-          lat: Object.values(data.data.results[0].geocodes as object)[0]
-            .latitude,
-          lng: Object.values(data.data.results[0].geocodes as object)[0]
-            .longitude,
-        };
-        for (const result of data.data.results) {
-          if (result.location.country.toUpperCase() == code.toUpperCase()) {
-            ll = {
-              lat: Object.values(result.geocodes as object)[0].latitude,
-              lng: Object.values(result.geocodes as object)[0].longitude,
-            };
-            break;
+    if (results && results.length != 0) {
+      let highestPop = 0;
+      let latlong = { lat: null, lng: null };
+      if (code) {
+        for (let result of results) {
+          if (code == result.countryCode) {
+            if (result.population > highestPop) {
+              latlong.lat = result.location.coordinates[1];
+              latlong.lng = result.location.coordinates[0];
+              highestPop = result.population;
+            }
           }
         }
-        res.json(ll);
       } else {
-        res.status(404).json({ error: "ERROR: No Records Found" });
+        for (let result of results) {
+          if (result.population > highestPop) {
+            latlong.lat = result.location.coordinates[1];
+            latlong.lng = result.location.coordinates[0];
+            highestPop = result.population;
+          }
+        }
       }
+      return latlong;
     } else {
-      res.status(404).json({ error: "ERROR: Town could not be found" });
+      return null;
     }
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "Failed to fetch town data" });
+    return res.status(500).json({ error: "Failed to fetch town data" });
   }
 };
 
 // Function to search by country and return data
-const searchByCountry = async (
-  country: string,
-  queryName: string,
-  res: any,
-  isTown: boolean
-) => {
+const searchByCountry = async (country: string, res: any) => {
   try {
     await loadCSV("./src/assets/country-coord.csv");
     const result = getLatLong(getCountry(country));
     if (result) {
-      if (queryName == "") {
-        res.json({ lat: result.latitude, lng: result.longitude });
-      } else {
-        const data = await sdk.placeSearch({
-          query: queryName,
-          radius: 100000,
-          ll: `${result.latitude}%2C${result.longitude}`,
-        });
-        if (
-          data != null &&
-          data.data != null &&
-          data.data.results != null &&
-          data.data.results.length > 0
-        ) {
-          let ll = {
-            lat: Object.values(data.data.results[0].geocodes as object)[0]
-              .latitude,
-            lng: Object.values(data.data.results[0].geocodes as object)[0]
-              .longitude,
-          };
-          if (isTown) {
-            for (const result of data.data.results) {
-              if (
-                result.location.post_town.toUpperCase() ==
-                queryName.toUpperCase()
-              ) {
-                ll = {
-                  lat: Object.values(result.geocodes as object)[0].latitude,
-                  lng: Object.values(result.geocodes as object)[0].longitude,
-                };
-                break;
-              }
-            }
-          }
-          res.json(ll);
-        } else {
-          res.status(404).json({ error: "ERROR: No Records Found" });
-        }
-      }
+      return result;
     } else {
-      res.status(404).json({ error: "ERROR: Country Not Found" });
+      res.status(404).json({ error: "ERROR: No Records Found" });
+      return null;
     }
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Failed to fetch country data" });
+    return null;
   }
 };
 
 // Function to handle search requests
 const handleSearch = async (req: any, res: any) => {
   try {
-    const { Geonames } = (req as CustomRequest).context.models;
-    const query = JSON.parse(req.headers.terms);
+    const { Geonames } = (req as CustomRequest).context
+      .models as mongoose.Models;
+    const query = JSON.parse(req.body.terms);
+    let result;
 
     if (query.postcode) {
-      await searchByPostcode(query.postcode, res);
-      return;
-    } else if (query.name) {
-      if (query.town) {
-        await searchByTown(
-          query.town,
-          query.country,
-          query.name,
-          Geonames,
-          res
-        );
-        return;
-      } else if (query.country) {
-        await searchByCountry(query.country, query.name, res, false);
-        return;
-      } else {
-        const data = await sdk.placeSearch({
-          query: query.name,
-          radius: 100000,
-        });
-        if (
-          data != null &&
-          data.data != null &&
-          data.data.results != null &&
-          data.data.results.length > 0
-        ) {
-          let ll = {
-            lat: Object.values(data.data.results[0].geocodes as object)[0]
-              .latitude,
-            lng: Object.values(data.data.results[0].geocodes as object)[0]
-              .longitude,
-          };
-          for (const result of data.data.results) {
-            if (
-              result.location.name
-                .toUpperCase()
-                .includes(query.name.toUpperCase())
-            ) {
-              ll = {
-                lat: Object.values(result.geocodes as object)[0].latitude,
-                lng: Object.values(result.geocodes as object)[0].longitude,
-              };
-              break;
-            }
-          }
-          res.json(ll);
-          return;
-        } else {
-          res.status(404).json({ error: "ERROR: No Records Found" });
-          return;
-        }
-      }
+      result = await searchByPostcode(query.postcode, res);
     } else if (query.town) {
-      if (query.country) {
-        await searchByCountry(query.country, query.town, res, true);
-        return;
-      } else {
-        const data = await sdk.placeSearch({
-          query: query.town,
-          radius: 100000,
-        });
-        if (
-          data != null &&
-          data.data != null &&
-          data.data.results != null &&
-          data.data.results.length > 0
-        ) {
-          let ll = {
-            lat: Object.values(data.data.results[0].geocodes as object)[0]
-              .latitude,
-            lng: Object.values(data.data.results[0].geocodes as object)[0]
-              .longitude,
-          };
-          for (const result of data.data.results) {
-            if (
-              result.location.post_town.toUpperCase() ==
-              query.town.toUpperCase()
-            ) {
-              ll = {
-                lat: Object.values(result.geocodes as object)[0].latitude,
-                lng: Object.values(result.geocodes as object)[0].longitude,
-              };
-              break;
-            }
-          }
-          res.json(ll);
-          return;
-        } else {
-          res.status(404).json({ error: "ERROR: No Records Found" });
-          return;
-        }
+      result = await searchByTown(query.town, query.country, Geonames, res);
+      if (query.name) {
+        // Search by name otherwise return result
       }
     } else if (query.country) {
-      await searchByCountry(query.country, "", res, false);
+      // No postcode, no town, maybe a name? check
+      result = await searchByCountry(query.country, res);
+      // if(query.name) {
+      //   const data = await sdk.placeSearch({
+      //     query: query.name,
+      //     radius: 100000,
+      //   });
+      // }
+
+      // // -------------------------------------------
+      // //
+      // //
+      // //
+      // //
+      // // TODO Figure out what to do here D:
+      // const data = await sdk.placeSearch({
+      //   query: query.name,
+      //   radius: 100000,
+      // });
+      // if (
+      //   data != null &&
+      //   data.data != null &&
+      //   data.data.results != null &&
+      //   data.data.results.length > 0
+      // ) {
+      //   let ll = {
+      //     lat: Object.values(data.data.results[0].geocodes as object)[0]
+      //       .latitude,
+      //     lng: Object.values(data.data.results[0].geocodes as object)[0]
+      //       .longitude,
+      //   };
+      //   for (const result of data.data.results) {
+      //     if (
+      //       result.location.name
+      //         .toUpperCase()
+      //         .includes(query.name.toUpperCase())
+      //     ) {
+      //       ll = {
+      //         lat: Object.values(result.geocodes as object)[0].latitude,
+      //         lng: Object.values(result.geocodes as object)[0].longitude,
+      //       };
+      //       break;
+      //     }
+      //   }
+      //   //
+      //   //
+      //   //
+      //   //
+      //   //
+      //   // -------------------------------------------
+    }
+
+    // Return result
+    if (result) {
+      res.json(result);
       return;
     } else {
-      res
-        .status(400)
-        .json({ error: "ERROR: Please Provide Valid Search Flags" });
+      res.status(404).json({ error: "ERROR: No Records Found" });
       return;
     }
   } catch (error) {
@@ -364,7 +278,7 @@ const handleSearch = async (req: any, res: any) => {
 
 // Create an Express router and define the search route
 const router = Router();
-router.get("/search", handleSearch);
+router.post("/search", handleSearch);
 
 // Export the router for use in the main application
 export default router;

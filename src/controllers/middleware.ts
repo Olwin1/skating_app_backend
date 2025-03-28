@@ -4,7 +4,6 @@ import { Response, NextFunction, RequestHandler } from "express";
 import CustomRequest from "./CustomRequest";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
-
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (
   req,
