@@ -1,7 +1,7 @@
 // Import necessary modules and libraries
 import api from "api";
 import dotenv from "dotenv";
-import { Router } from "express";
+import { Request, Router } from "express";
 import * as isoCountries from "i18n-iso-countries";
 
 import https from "https";
@@ -194,9 +194,9 @@ const searchByCountry = async (country: string, res: any) => {
 };
 
 // Function to handle search requests
-const handleSearch = async (req, res: any) => {
+const handleSearch = async (req: Request, res: any) => {
   try {
-    const { Geonames } = req.context
+    const { Geonames } = req.context!
       .models as mongoose.Models;
     const query = JSON.parse(req.body.terms);
     let result;
