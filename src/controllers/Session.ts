@@ -2,7 +2,7 @@
 require("dotenv").config();
 import { Router } from "express";
 import middleware from "./middleware";
-import CustomRequest from "./types/CustomRequest";
+
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 
@@ -17,10 +17,10 @@ const generator = new Worker(0, 1, {
 const router = Router();
 
 // POST endpoint for creating a new session
-router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/session", middleware.isLoggedIn, async (req, res) => {
   try {
     // Convert user ID to a BigInt
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Create a new session in the database
     const session = await prisma.sessions.create({
@@ -37,7 +37,7 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
         distance: parseFloat(req.body.distance),
         //latitude: req.body.latitude,
         //longitude: req.body.longitude,
-        author_id: _id, // Set the author ID to the user's ID
+        author_id: req.userId, // Set the author ID to the user's ID
       },
     });
     // Respond with a success message
@@ -49,7 +49,7 @@ router.post("/session", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // GET endpoint for retrieving a specific session
-router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/session", middleware.isLoggedIn, async (req, res) => {
   try {
     // Retrieve a session from the database using the session ID from the request headers
     const session = await prisma.sessions.findUnique({
@@ -64,10 +64,10 @@ router.get("/session", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // GET endpoint for retrieving a list of sessions for the user's friends
-router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/sessions", middleware.isLoggedIn, async (req, res) => {
   try {
     // Convert user ID to a BigInt
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Calculate a cutoff date (24 hours ago)
     let cutoffDate = new Date(
@@ -84,15 +84,15 @@ router.get("/sessions", middleware.isLoggedIn, async (req: any, res) => {
         "author_id"
         FROM "sessions"
         WHERE "author_id" IN (
-            SELECT "user1_id" FROM "friends" WHERE "user2_id" = ${_id}
+            SELECT "user1_id" FROM "friends" WHERE "user2_id" = ${req.userId}
             UNION
-            SELECT "user2_id" FROM "friends" WHERE "user1_id" = ${_id}
+            SELECT "user2_id" FROM "friends" WHERE "user1_id" = ${req.userId}
         )
         AND "end_timestamp" > ${cutoffDate}::timestamp
         AND "author_id" NOT IN (
-            SELECT "blocked_user_id" FROM "blocked_users" WHERE "blocking_user_id" = ${_id}
+            SELECT "blocked_user_id" FROM "blocked_users" WHERE "blocking_user_id" = ${req.userId}
             UNION
-            SELECT "blocking_user_id" FROM "blocked_users" WHERE "blocked_user_id" = ${_id}
+            SELECT "blocking_user_id" FROM "blocked_users" WHERE "blocked_user_id" = ${req.userId}
         );
       `;
 

@@ -10,24 +10,24 @@ import * as fs from "fs";
 const router = Router(); // create router to create route bundle
 
 // Route to create a new channel with the specified participants
-router.get("/:image", async (req: any, res) => {
+router.get("/:image", async (req, res) => {
   return await getImage(req, res, false);
 });
-router.get("/thumbnail/:image", async (req: any, res) => {
+router.get("/thumbnail/:image", async (req, res) => {
   return await getImage(req, res, true);
 });
 
-const getImage = async (req: any, res: any, thumbnail: boolean) => {
+const getImage = async (req, res: any, thumbnail: boolean) => {
   try {
     // Convert the request parameter to a MongoDB ObjectId
     const id = new mongoose.Types.ObjectId(req.params.image);
 
     // Find the file with the specified ID in the "files" collection
-    const file = await files.findOne({ _id: id });
+    const file = await files.findOne({ req.userId: id });
 
     // Retrieve the chunks of the file from the "filesChunks" collection
     let chunks = await filesChunks
-      .find({ files_id: file!._id })
+      .find({ files_id: file!.req.userId })
       .sort({ n: 1 })
       .toArray();
 
@@ -120,7 +120,7 @@ const getImage = async (req: any, res: any, thumbnail: boolean) => {
   }
 };
 
-router.get("/background/:image", async (req: any, res) => {
+router.get("/background/:image", async (req, res) => {
   fs.readFile("./src/assets/" + req.params.image, async function (err, data) {
     if (err) throw err;
     var ia: Buffer = await sharp(data) // create a new instance of the Sharp image processing library with the provided "img"

@@ -1,7 +1,6 @@
 require("dotenv").config(); // load .env variables
 import { Router } from "express"; // import router from express
 import middleware from "./middleware";
-import CustomRequest from "./types/CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import HandleBlocks from "../utils/handleBlocks";
@@ -16,10 +15,9 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route that allows a user to follow another user
-router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/follow", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId)
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -29,10 +27,10 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
       where: { user_id: target },
       include: {
         follow_requests_follow_requests_requester_idTousers: {
-          where: { requester_id: _id, requestee_id: target },
+          where: { requester_id: req.userId, requestee_id: target },
         },
         // Get Info on blocked user data
-        ...HandleBlocks.getIncludeBlockInfo(_id),
+        ...HandleBlocks.getIncludeBlockInfo(req.userId!),
       },
     });
     // Check if the user is blocked or the other way round
@@ -54,7 +52,7 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         const newFollowRequest = await prisma.follow_requests.create({
           data: {
             request_id: generator.nextId(),
-            requester_id: _id,
+            requester_id: req.userId!,
             requestee_id: target,
             timestamp: new Date().toISOString(),
           },
@@ -66,12 +64,12 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
         const followingData = {
           following_id: generator.nextId(),
           following_user_id: target,
-          user_id: _id,
+          user_id: req.userId!,
           timestamp: new Date().toISOString(),
         };
         const followerData = {
           follower_id: generator.nextId(),
-          follower_user_id: _id,
+          follower_user_id: req.userId!,
           user_id: target,
           timestamp: new Date().toISOString(),
         };
@@ -89,13 +87,13 @@ router.post("/follow", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for sending a friend request
-router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/friend", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
     const targetUser = await prisma.users.findFirst({
       where: { user_id: req.body.user },
-      include: HandleBlocks.getIncludeBlockInfo(_id),
+      include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
@@ -107,7 +105,7 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
     const friendRequest = await prisma.friend_requests.create({
       data: {
         request_id: generator.nextId(),
-        requester_id: _id,
+        requester_id: req.userId!,
         requestee_id: BigInt(req.body.user),
         timestamp: new Date().toISOString(),
       },
@@ -122,8 +120,8 @@ router.post("/friend", middleware.isLoggedIn, async (req: any, res) => {
 // Define a route for unfollowing a user
 router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -133,7 +131,7 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
       where: { user_id: target },
       include: {
         follow_requests_follow_requests_requester_idTousers: {
-          where: { requester_id: _id, requestee_id: target },
+          where: { requester_id: req.userId, requestee_id: target },
         },
       },
     });
@@ -156,10 +154,10 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
       // If no follow request exists, remove the follower-following relationship
       const result = await prisma.$transaction([
         prisma.following.deleteMany({
-          where: { following_user_id: target, user_id: _id },
+          where: { following_user_id: target, user_id: req.userId },
         }),
         prisma.followers.deleteMany({
-          where: { follower_user_id: _id, user_id: target },
+          where: { follower_user_id: req.userId, user_id: target },
         }),
       ]);
       return res.status(200).json({ success: true, requested: false });
@@ -173,8 +171,8 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 // Define a route for unfollowing a user as the follower
 router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -184,7 +182,7 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
       where: { user_id: target },
       include: {
         follow_requests_follow_requests_requester_idTousers: {
-          where: { requester_id: target, requestee_id: _id },
+          where: { requester_id: target, requestee_id: req.userId },
         },
       },
     });
@@ -207,10 +205,10 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
       // If no follow request exists, remove the follower-following relationship
       const result = await prisma.$transaction([
         prisma.following.deleteMany({
-          where: { following_user_id: _id, user_id: target },
+          where: { following_user_id: req.userId, user_id: target },
         }),
         prisma.followers.deleteMany({
-          where: { follower_user_id: target, user_id: _id },
+          where: { follower_user_id: target, user_id: req.userId },
         }),
       ]);
       return res.status(200).json({ success: true, request: false });
@@ -222,10 +220,10 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for unfriending a user
-router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/unfriend", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -235,13 +233,13 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
       where: { user_id: target },
       include: {
         friend_requests_friend_requests_requestee_idTousers: {
-          where: { requester_id: _id, requestee_id: target },
+          where: { requester_id: req.userId, requestee_id: target },
         },
         friends_friends_user1_idTousers: {
           where: {
             OR: [
-              { user1_id: _id, user2_id: target },
-              { user1_id: target, user2_id: _id },
+              { user1_id: req.userId, user2_id: target },
+              { user1_id: target, user2_id: req.userId },
             ],
           },
         },
@@ -281,20 +279,24 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route to retrieve a user's followers
-router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/followers", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
-    const target = BigInt(req.headers.user ?? _id);
+    let target = req.userId!;
+    if(req.headers.user && req.headers.user instanceof String) {
+      target = BigInt(req.headers.user as string);
+    }
     // Retrieve the list of follower users for the target user
     const followerUsersRaw = await prisma.users
       .findUnique({
         where: { user_id: target },
         include: {followers_followers_user_idTousers: {
           take: 20,
-          skip: req.headers.page * 20,
+          skip: page * 20,
           include: {
             users_followers_follower_user_idTousers: true,
           },
@@ -302,7 +304,7 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
       })
 
     // If the user is blocked then don't get anything for them
-    if (target != _id) {
+    if (target != req.userId) {
       // Check if the user is blocked or the other way round
       const isBlocked = HandleBlocks.checkIsBlocked(followerUsersRaw);
       if (isBlocked) {
@@ -342,20 +344,25 @@ router.get("/followers", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route to retrieve a user's following users
-router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/following", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
+    const page = CheckNulls.checkNullPage(req.headers.page);
+
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
-    const target = BigInt(req.headers.user ?? _id);
+    let target = req.userId!;
+    if(req.headers.user && req.headers.user instanceof String) {
+      target = BigInt(req.headers.user as string);
+    }
     // Retrieve the list of followed users for the target user
     const followedUsersRaw = await prisma.users.findUnique({
       where: { user_id: target },
       include: {
         following_following_user_idTousers: {
           take: 20,
-          skip: req.headers.page * 20,
+          skip: page * 20,
           include: {
             users_following_following_user_idTousers: true,
           },
@@ -365,7 +372,7 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
     });
 
     // If the user is blocked then don't get anything for them
-    if (target != _id) {
+    if (target != req.userId) {
       // Check if the user is blocked or the other way round
       const isBlocked = HandleBlocks.checkIsBlocked(followedUsersRaw);
       if (isBlocked) {
@@ -404,13 +411,17 @@ router.get("/following", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route to retrieve a user's friends
-router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/friends", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined
+    CheckNulls.checkNullUser(req.userId);
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
-    const target = BigInt(req.headers.user ?? _id);
+    let target = req.userId!;
+    if(req.headers.user && req.headers.user instanceof String) {
+      target = BigInt(req.headers.user as string);
+    }
     const pageSize = 20;
 
     // Use a transaction to retrieve a combined list of user1's and user2's friends
@@ -421,7 +432,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
           include: {
             friends_friends_user1_idTousers: {
               take: pageSize,
-              skip: req.headers.page * pageSize,
+              skip: page * pageSize,
               include: {
                 users_friends_user2_idTousers: true,
               },
@@ -438,7 +449,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
           include: {
             friends_friends_user2_idTousers: {
               take: pageSize - len,
-              skip: Math.max(0, req.headers.page * pageSize - len),
+              skip: Math.max(0, page * pageSize - len),
               include: {
                 users_friends_user1_idTousers: true,
               },
@@ -447,10 +458,10 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
         });
 
         // If the user is blocked then don't get anything for them
-        if (target != _id) {
+        if (target != req.userId) {
           const targetUser = await tx.users.findFirst({
             where: { user_id: target },
-            include: HandleBlocks.getIncludeBlockInfo(_id),
+            include: HandleBlocks.getIncludeBlockInfo(req.userId!),
           });
           // Check if the user is blocked or the other way round
           const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
@@ -506,16 +517,16 @@ router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 
-router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
+router.patch("/follow", middleware.isLoggedIn, async (req, res) => {
   try {
     // Convert user IDs to BigInt
-    const _id = BigInt((req as CustomRequest).user._id); // Current user's ID
+    CheckNulls.checkNullUser(req.userId); // Current user's ID
     const target = BigInt(req.body.user); // Target user's ID
     const accepted = req.body.accepted; // Whether the follow request is accepted
 
     // Find the follow request in the database
     const followRequest = await prisma.follow_requests.findFirst({
-      where: { requester_id: target, requestee_id: _id },
+      where: { requester_id: target, requestee_id: req.userId },
     });
 
     if (!followRequest) {
@@ -533,14 +544,14 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
         data: {
           following_id: generator.nextId(),
           following_user_id: target,
-          user_id: _id,
+          user_id: req.userId!,
           timestamp: new Date().toISOString(),
         },
       });
       const followers = await prisma.followers.create({
         data: {
           follower_id: generator.nextId(),
-          follower_user_id: _id,
+          follower_user_id: req.userId!,
           user_id: target,
           timestamp: new Date().toISOString(),
         },
@@ -560,17 +571,17 @@ router.patch("/follow", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // This is a route handler for a PATCH request to "/friend".
-router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
+router.patch("/friend", middleware.isLoggedIn, async (req, res) => {
   try {
-    // Extract the user's ID from the request object.
-    const _id = BigInt((req as CustomRequest).user._id);
+    // Ensure userId is defined object.
+    CheckNulls.checkNullUser(req.userId);
 
     // Extract the target user's ID from the request body.
     const target = BigInt(req.body.user);
 
     // Delete any existing friend requests between the current user and the target user.
     const request = await prisma.friend_requests.deleteMany({
-      where: { requestee_id: _id, requester_id: target },
+      where: { requestee_id: req.userId, requester_id: target },
     });
 
     // Check if no friend request was found to delete.
@@ -584,7 +595,7 @@ router.patch("/friend", middleware.isLoggedIn, async (req: any, res) => {
       const friendObject = await prisma.friends.create({
         data: {
           friendship_id: generator.nextId(),
-          user1_id: _id,
+          user1_id: req.userId!,
           user2_id: target,
           timestamp: new Date().toISOString(),
         },

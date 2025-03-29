@@ -93,7 +93,7 @@ app.use(
   })
 );
 app.use(bodyParser.json());
-app.use(middleware.createContext); // create (req as CustomRequest).context for each request
+app.use(middleware.createContext); // create req.context for each request
 // Define routes
 app.get("/", (req: Request, res: Response) => {
   res.send("This is the test route to make sure server is working");

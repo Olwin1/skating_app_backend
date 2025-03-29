@@ -13,10 +13,10 @@ const generator = new Worker(0, 1, {
 // Define a function to handle a new connection to the socket
 const handleConnection = (socket: Socket, payload: any) => {
   console.log("Connecting new client to socket.");
-  const { _id } = payload;
+  const { req.userId } = payload;
 
   // Call the sendEvent function when a new connection is established
-  sendEvent(socket, _id);
+  sendEvent(socket, req.userId);
 };
 
 // Define a function to send a new event over the socket

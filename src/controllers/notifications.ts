@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from "express";
 import middleware from "./middleware";
 import mongoose from "../db/connection";
-import CustomRequest from "./types/CustomRequest";
+
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 
@@ -19,15 +19,15 @@ router.post(
   middleware.isLoggedIn,
   async (req: Request, res: Response) => {
     try {
-      // Extract the user's _id from the request
-      const _id = BigInt((req as CustomRequest).user._id);
+      // Extract the user's req.userId from the request
+      CheckNulls.checkNullUser(req.userId);
 
       // Try to upsert an FCM token record in the database
       const fcmToken = await prisma.fcm_tokens.upsert({
-        where: { user_id: _id, token: req.body.fcm_token as string },
+        where: { user_id: req.userId, token: req.body.fcm_token as string },
         create: {
           token_id: generator.nextId(),
-          user_id: _id,
+          user_id: req.userId,
           token: req.body.fcm_token,
         },
         update: {}, // This is empty because it's an upsert operation

@@ -3,7 +3,7 @@ import { Router } from "express"; // Import router from express
 import bcrypt from "bcryptjs"; // Import bcrypt to hash passwords
 import jwt from "jsonwebtoken"; // Import jwt to sign tokens
 import middleware from "./middleware"; // Import custom middleware
-import CustomRequest from "./types/CustomRequest"; // Import a custom request type
+ // Import a custom request type
 import prisma from "../db/postgres"; // Import Prisma ORM for database operations
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import validator from "validator";
@@ -26,7 +26,7 @@ const generator = new Worker(0, 1, {
 // User Authentication Endpoints
 // These endpoints are used to authorize and authenticate users
 
-router.post("/signup", async (req: any, res) => {
+router.post("/signup", async (req, res) => {
   try {
     // Check if the email is valid
     const isEmail = validator.isEmail(req.body.email);
@@ -86,7 +86,7 @@ router.post("/signup", async (req: any, res) => {
   }
 });
 
-router.post("/login", async (req: any, res) => {
+router.post("/login", async (req, res) => {
   try {
     // Check if the password meets length requirements
     const isValidPassword = validator.isLength(req.body.password, {
@@ -126,7 +126,7 @@ router.post("/login", async (req: any, res) => {
 
         // If the passwords match, generate a JWT token and return it in the response
         const token = jwt.sign(
-          { username: user.username, _id: user.user_id },
+          { username: user.username, req.userId: user.user_id },
           SECRET
         );
         return res.status(200).json({ token: token, verified: isVerified });
@@ -149,14 +149,14 @@ router.post("/login", async (req: any, res) => {
 // Define route handlers for various user-related operations
 
 // Define a route for updating user descriptions
-router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/description", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Update the user's description in the database using Prisma
     const updatedUser = await prisma.users.update({
-      where: { user_id: _id },
+      where: { user_id: req.userId },
       data: { description: req.body.description },
     });
 
@@ -169,14 +169,14 @@ router.post("/description", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for updating user avatars
-router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/avatar", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the request
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Update the user's avatar in the database using Prisma
     const updatedUser = await prisma.users.update({
-      where: { user_id: _id },
+      where: { user_id: req.userId },
       data: { avatar_id: req.body.avatar },
     });
 
@@ -189,18 +189,18 @@ router.post("/avatar", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Route handler to update user's email
-router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/email", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Update the user's email in the database
     //TODO: Redo Email Verification
     const updatedUser = await prisma.users.update({
-      where: { user_id: _id },
+      where: { user_id: req.userId },
       data: { email: req.body.description },
     });
-    await prisma.email_verifications.deleteMany({ where: { user_id: _id } });
+    await prisma.email_verifications.deleteMany({ where: { user_id: req.userId } });
 
     // Return the response from the database update
     res.status(200).json({ success: true, verified: false });
@@ -211,15 +211,15 @@ router.post("/email", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Route handler to update user's email verification
-router.post("/verify_email", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/verify_email", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Update the user's email in the database
     const emailVerification = await prisma.email_verifications.findFirst({
       where: {
-        user_id: _id,
+        user_id: req.userId,
         expiry_timestamp: { gt: new Date() },
         verification_code: req.body.code,
       },
@@ -240,14 +240,14 @@ router.post("/verify_email", middleware.isLoggedIn, async (req: any, res) => {
   }
 });
 // Route handler to update user's email
-router.get("/is_verified", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/is_verified", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Update the user's email in the database
     const verified = await prisma.email_verifications.findFirst({
-      where: { user_id: _id, is_verified: true },
+      where: { user_id: req.userId, is_verified: true },
     });
 
     // Return the response from the database update
@@ -261,14 +261,14 @@ router.get("/is_verified", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Route handler to check if user is allowed to access app
-router.get("/is_restricted", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/is_restricted", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     const isRestrictedData = await prisma.user_actions.findMany({
       where: {
-        user_id: _id,
+        user_id: req.userId,
         AND: [
           {
             OR: [
@@ -328,14 +328,14 @@ router.get("/is_restricted", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Retrieves user information.
-router.get("/", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/", middleware.isLoggedIn, async (req, res) => {
   try {
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
       where: {
-        user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : _id,
+        user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : req.userId,
       },
       include: {
         _count: {
@@ -348,7 +348,7 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           },
         },
         blocked_users_blocked_users_blocked_user_idTousers: {
-          where: { blocking_user_id: _id },
+          where: { blocking_user_id: req.userId },
         },
       },
     });
@@ -358,7 +358,7 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 
       // Depending on the user_id, construct a response object with different fields.
       // If it is logged in user return more data
-      if (user.user_id == _id) {
+      if (user.user_id == req.userId) {
         returnUser = {
           user_id: user.user_id,
           avatar_id: user.avatar_id,
@@ -382,8 +382,8 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
           posts: user._count.posts,
         };
       } else {
-        const follows = await checkUserFollows(_id, user.user_id);
-        const friends = await checkUserFriends(_id, user.user_id);
+        const follows = await checkUserFollows(req.userId, user.user_id);
+        const friends = await checkUserFriends(req.userId, user.user_id);
         returnUser = {
           user_id: user.user_id,
           avatar_id: user.avatar_id,
@@ -422,13 +422,13 @@ router.get("/", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // This is another route handler for "/follows" that checks if a user is following another user.
-router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/follows", middleware.isLoggedIn, async (req, res) => {
   try {
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     return res
       .status(200)
-      .json(await checkUserFollows(_id, BigInt(req.headers.user)));
+      .json(await checkUserFollows(req.userId, BigInt(req.headers.user)));
   } catch (error) {
     // Handle and respond to any errors that occur during the process.
     res.status(400).json({ error });
@@ -436,13 +436,13 @@ router.get("/follows", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Similar to the previous route handlers, this one checks if users are friends.
-router.get("/friends", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/friends", middleware.isLoggedIn, async (req, res) => {
   try {
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     return res
       .status(200)
-      .json(await checkUserFollows(_id, BigInt(req.headers.user)));
+      .json(await checkUserFollows(req.userId, BigInt(req.headers.user)));
   } catch (error) {
     res.status(400).json({ error });
   }
@@ -503,9 +503,9 @@ async function checkUserFriends(userId: bigint, targetUser: bigint) {
 }
 
 // Another route handler for user search based on a query.
-router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/search", middleware.isLoggedIn, async (req, res) => {
   try {
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Search for users whose usernames contain the query specified in the request headers.
     const results = await prisma.users.findMany({
@@ -514,7 +514,7 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
           contains: req.headers.query,
         },
       },
-      include: HandleBlocks.getIncludeBlockInfo(_id),
+      include: HandleBlocks.getIncludeBlockInfo(req.userId),
       take: 10,
     });
 
@@ -541,22 +541,22 @@ router.get("/search", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Route handler to block user
-router.post("/block", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/block", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     const isAlreadyBlocked = await prisma.blocked_users.findFirst({
       where: {
         blocked_user_id: req.body.user,
-        blocking_user_id: _id,
+        blocking_user_id: req.userId,
       },
     });
     if (!isAlreadyBlocked) {
       const blockedRecord = await prisma.blocked_users.create({
         data: {
           blocked_id: generator.nextId(),
-          blocking_user_id: _id,
+          blocking_user_id: req.userId,
           blocked_user_id: req.body.user,
           timestamp: new Date(Date.now()),
         },
@@ -575,14 +575,14 @@ router.post("/block", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Route handler to unblock user
-router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/unblock", middleware.isLoggedIn, async (req, res) => {
   try {
     // Get the user ID from the request object
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     const blockedRecord = await prisma.blocked_users.deleteMany({
       where: {
-        blocking_user_id: _id,
+        blocking_user_id: req.userId,
         blocked_user_id: req.body.user,
       },
     });
@@ -594,14 +594,14 @@ router.post("/unblock", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Another route handler for user search based on a query.
-router.get("/blocked_users", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/blocked_users", middleware.isLoggedIn, async (req, res) => {
   try {
-    const _id = BigInt((req as CustomRequest).user._id);
+    CheckNulls.checkNullUser(req.userId);
 
     // Get all user records showing the users that the user has blocked
     const users = await prisma.blocked_users.findMany({
       where: {
-        blocking_user_id: _id,
+        blocking_user_id: req.userId,
       },
       include: {
         users_blocked_users_blocked_user_idTousers: {

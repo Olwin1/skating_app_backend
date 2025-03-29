@@ -13,7 +13,7 @@ const getMessaging = firebase.messaging; // Initialize Firebase Messaging
 
 // Create an asynchronous function to send a message
 const createMessage = async (
-  _id: bigint,
+  req.userId: bigint,
   channel: bigint,
   content: string,
   img: string
@@ -40,7 +40,7 @@ const createMessage = async (
     const result = await prisma.messages.create({
       data: {
         message_id: generator.nextId(),
-        sender_id: _id,
+        sender_id: req.userId,
         date_sent: new Date().toISOString(),
         content: content as string,
         //img: img,
@@ -52,7 +52,7 @@ const createMessage = async (
     // Create an array to store participant IDs (excluding the sender's ID)
     let participants = [] as bigint[];
     for (let i = 0; i < userChannel.participants.length; i++) {
-      if (userChannel.participants[i].user_id != _id) {
+      if (userChannel.participants[i].user_id != req.userId) {
         participants.push(userChannel.participants[i].user_id!);
       }
     }
@@ -61,7 +61,7 @@ const createMessage = async (
     const fcmTokens = await prisma.fcm_tokens.findMany({
       where: { user_id: { in: participants } },
     });
-    const user = await prisma.users.findUnique({ where: { user_id: _id } });
+    const user = await prisma.users.findUnique({ where: { user_id: req.userId } });
 
     if (userChannel != null) {
       console.log(2);

@@ -1,17 +1,16 @@
 require("dotenv").config(); // loading env variables
-import jwt, { Secret, JwtPayload } from "jsonwebtoken";
+import jwt, { Secret } from "jsonwebtoken";
 import { Response, NextFunction, RequestHandler } from "express";
-import CustomRequest from "./types/CustomRequest";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
-import User from "./types/User";
+import User from "User";
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (
   req,
   res: Response,
   next: NextFunction
 ) => {
-  (req as CustomRequest).context = {
+  req.context = {
     models: {
       Geonames,
       Altnames,
@@ -34,9 +33,9 @@ const isLoggedIn: RequestHandler = async (req, res, next) => {
             throw TypeError("Expected JWT Payload Not String.");
           }
           // store user data in request object
-          (req as CustomRequest).user = payload as User;
+          req.user = payload as User;
           // Store their id 
-          (req as CustomRequest).userId = BigInt((req as CustomRequest).user._id);
+          req.userId = BigInt(req.user.userId);
           next();
         } else {
           res.status(400).json({ error: "token verification failed" });

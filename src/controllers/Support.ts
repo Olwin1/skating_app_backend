@@ -4,7 +4,7 @@ require("dotenv").config();
 // Import necessary modules and libraries
 import { Router } from "express";
 import middleware from "./middleware";
-import CustomRequest from "./types/CustomRequest";
+
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Unique ID generator library
 import { $Enums, Prisma } from "@prisma/client";
@@ -33,10 +33,10 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route for submitting bug reports
-router.post("/bug", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/bug", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     await createSupportReport(
       userId,
       req.body.subject,
@@ -51,10 +51,10 @@ router.post("/bug", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for submitting support requests
-router.post("/support", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/support", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     await createSupportReport(
       userId,
       req.body.subject,
@@ -69,10 +69,10 @@ router.post("/support", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for submitting general feedback
-router.post("/feedback", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/feedback", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     await createSupportReport(
       userId,
       req.body.subject,
@@ -87,14 +87,14 @@ router.post("/feedback", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for retrieving bug reports
-router.get("/bug", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/bug", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     let resp = await getReports(
       userId,
       $Enums.feedback_type.bug_report,
-      req.headers.page
+      page
     );
     return res.status(200).json(resp);
   } catch (error) {
@@ -104,14 +104,14 @@ router.get("/bug", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for retrieving support requests
-router.get("/support", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/support", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     let resp = await getReports(
       userId,
       $Enums.feedback_type.support_request,
-      req.headers.page
+      page
     );
     return res.status(200).json(resp);
   } catch (error) {
@@ -121,14 +121,14 @@ router.get("/support", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for retrieving general feedback
-router.get("/feedback", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/feedback", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     let resp = await getReports(
       userId,
       $Enums.feedback_type.feedback,
-      req.headers.page
+      page
     );
     return res.status(200).json(resp);
   } catch (error) {
@@ -258,10 +258,10 @@ async function getReports(
 }
 
 // Define a route to handle the creation of a new support message
-router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/message", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the authenticated request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
@@ -283,10 +283,10 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Handle GET requests to "/support/messages" endpoint with user authentication middleware
-router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/messages", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the authenticated request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const messages = await prisma.user_feedback_and_support.findFirst({
@@ -295,7 +295,7 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
         // Fetch user support messages with pagination and ordering by timestamp
         user_support_messages: {
           take: 20,
-          skip: 20 * req.headers.page,
+          skip: 20 * page,
           orderBy: { timestamp: Prisma.SortOrder.desc },
         },
       },
@@ -315,10 +315,10 @@ router.get("/messages", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route to handle the creation of a new support message
-router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/message", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the authenticated request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
@@ -340,10 +340,10 @@ router.post("/message", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Define a route for submitting general feedback
-router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/report", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     let reportedContent;
     switch (req.body.reported_content) {
@@ -384,10 +384,10 @@ router.post("/report", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Handle GET requests to "/support/report" endpoint with user authentication middleware
-router.get("/report", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/report", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the authenticated request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
@@ -425,10 +425,10 @@ router.get("/report", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Handle GET requests to "/support/report_data" endpoint with user authentication middleware
-router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/report_data", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract the user ID from the authenticated request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
@@ -528,10 +528,10 @@ router.get("/report_data", middleware.isLoggedIn, async (req: any, res) => {
 
 //TODO: Add duration for tempbans and handle creation of tempbans/whatever other punishment.
 // Modify Report Status
-router.post("/report/modify", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/report/modify", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
 
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: userId },
@@ -600,16 +600,16 @@ router.post("/report/modify", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Get list of active reports
-router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/report/list", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: userId },
     });
 
     if (
-      req.headers.page &&
+      page &&
       moderatorUser &&
       req.headers.is_self == "false" &&
       (moderatorUser.user_role == $Enums.user_role.moderator ||
@@ -619,7 +619,7 @@ router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
         orderBy: {
           timestamp: "desc",
         },
-        skip: parseInt(req.headers.page) * 20,
+        skip: parseInt(page) * 20,
         take: 20,
       });
       return res.status(200).json(reports);
@@ -629,7 +629,7 @@ router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
         orderBy: {
           timestamp: "desc",
         },
-        skip: parseInt(req.headers.page) * 20,
+        skip: parseInt(page) * 20,
         take: 20,
       });
       return res.status(200).json(reports);
@@ -644,10 +644,10 @@ router.get("/report/list", middleware.isLoggedIn, async (req: any, res) => {
 router.get(
   "/report/list/from",
   middleware.isLoggedIn,
-  async (req: any, res) => {
+  async (req, res) => {
     try {
       // Extract user ID from the request
-      const userId = BigInt((req as CustomRequest).user._id);
+      const userId = BigInt(req.user.req.userId);
       const moderatorUser = await prisma.users.findFirst({
         where: { user_id: userId },
       });
@@ -656,7 +656,7 @@ router.get(
         req.headers.user == "" ||
         req.headers.user == null ||
         req.headers.user == userId ||
-        (req.headers.page &&
+        (page &&
           moderatorUser &&
           (moderatorUser.user_role == $Enums.user_role.moderator ||
             moderatorUser.user_role == $Enums.user_role.administrator))
@@ -668,7 +668,7 @@ router.get(
           orderBy: {
             timestamp: "asc",
           },
-          skip: parseInt(req.headers.page) * 20,
+          skip: parseInt(page) * 20,
           take: 20,
         });
         return res.status(200).json(reports);
@@ -684,17 +684,17 @@ router.get(
 router.get(
   "/report/list/against",
   middleware.isLoggedIn,
-  async (req: any, res) => {
+  async (req, res) => {
     try {
       // Extract user ID from the request
-      const userId = BigInt((req as CustomRequest).user._id);
+      const userId = BigInt(req.user.req.userId);
       const moderatorUser = await prisma.users.findFirst({
         where: { user_id: userId },
       });
 
       if (
         req.headers.user &&
-        req.headers.page &&
+        page &&
         moderatorUser &&
         (moderatorUser.user_role == $Enums.user_role.moderator ||
           moderatorUser.user_role == $Enums.user_role.administrator)
@@ -706,7 +706,7 @@ router.get(
           orderBy: {
             timestamp: "asc",
           },
-          skip: parseInt(req.headers.page) * 20,
+          skip: parseInt(page) * 20,
           take: 20,
         });
         return res.status(200).json(reports);
@@ -719,10 +719,10 @@ router.get(
 );
 
 // Get a list of reports against a specific user
-router.get("/report/messages", middleware.isLoggedIn, async (req: any, res) => {
+router.get("/report/messages", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     const user = await prisma.users.findFirst({ where: { user_id: userId } });
     const report = await prisma.reports.findFirst({
       where: {
@@ -731,7 +731,7 @@ router.get("/report/messages", middleware.isLoggedIn, async (req: any, res) => {
       include: {
         user_report_messages: { orderBy: { timestamp: "asc" } },
       },
-      skip: parseInt(req.headers.page) * 20,
+      skip: parseInt(page) * 20,
       take: 20,
     });
 
@@ -753,10 +753,10 @@ router.get("/report/messages", middleware.isLoggedIn, async (req: any, res) => {
 });
 
 // Get a list of reports against a specific user
-router.post("/report/message", middleware.isLoggedIn, async (req: any, res) => {
+router.post("/report/message", middleware.isLoggedIn, async (req, res) => {
   try {
     // Extract user ID from the request
-    const userId = BigInt((req as CustomRequest).user._id);
+    const userId = BigInt(req.user.req.userId);
     const user = await prisma.users.findFirst({ where: { user_id: userId } });
     const report = await prisma.reports.findFirst({
       where: {
