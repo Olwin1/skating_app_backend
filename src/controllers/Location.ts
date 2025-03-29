@@ -3,7 +3,7 @@ import api from "api";
 import dotenv from "dotenv";
 import { Router } from "express";
 import * as isoCountries from "i18n-iso-countries";
-import CustomRequest from "./CustomRequest";
+import CustomRequest from "./types/CustomRequest";
 import https from "https";
 import fs from "fs";
 import csv from "csv-parser";
@@ -194,9 +194,9 @@ const searchByCountry = async (country: string, res: any) => {
 };
 
 // Function to handle search requests
-const handleSearch = async (req: any, res: any) => {
+const handleSearch = async (req: CustomRequest, res: any) => {
   try {
-    const { Geonames } = (req as CustomRequest).context
+    const { Geonames } = req.context
       .models as mongoose.Models;
     const query = JSON.parse(req.body.terms);
     let result;

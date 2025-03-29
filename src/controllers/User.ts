@@ -3,7 +3,7 @@ import { Router } from "express"; // Import router from express
 import bcrypt from "bcryptjs"; // Import bcrypt to hash passwords
 import jwt from "jsonwebtoken"; // Import jwt to sign tokens
 import middleware from "./middleware"; // Import custom middleware
-import CustomRequest from "./CustomRequest"; // Import a custom request type
+import CustomRequest from "./types/CustomRequest"; // Import a custom request type
 import prisma from "../db/postgres"; // Import Prisma ORM for database operations
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import validator from "validator";

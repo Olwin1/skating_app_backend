@@ -4,7 +4,7 @@ require("dotenv").config();
 // Import necessary modules and libraries
 import { Router } from "express";
 import middleware from "./middleware";
-import CustomRequest from "./CustomRequest";
+import CustomRequest from "./types/CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Unique ID generator library
 import { $Enums, Prisma } from "@prisma/client";

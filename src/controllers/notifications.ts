@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from "express";
 import middleware from "./middleware";
 import mongoose from "../db/connection";
-import CustomRequest from "./CustomRequest";
+import CustomRequest from "./types/CustomRequest";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 
