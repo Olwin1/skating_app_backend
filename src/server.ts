@@ -2,7 +2,7 @@
 require("dotenv").config();
 
 // Import required modules
-import express from "express";
+import express, { Request, Response } from "express";
 import morgan from "morgan";
 import log from "./logger";
 import cors from "cors";
@@ -26,8 +26,9 @@ import MessagesSocket from "./messages.socket";
 import jwt, { Secret } from "jsonwebtoken";
 import mongoose from "mongoose";
 import initFirebase from "./initFirebase";
-import { Request, Response } from "express";
+
 import fs from "fs";
+
 
 // Destructure environment variables with default values
 const { PORT = 3000, sHTTPS = false, SSL_KEY, SSL_CERT } = process.env;

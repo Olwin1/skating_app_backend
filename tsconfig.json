@@ -1,18 +1,19 @@
 {
-    "compilerOptions": {
-      "module": "commonjs",
-      "baseUrl": "./",
-      "outDir": "./built",
-      "allowJs": true,
-      "target": "ES2022",
-      "sourceMap": true,
-      "esModuleInterop": true,
-      "resolveJsonModule": true,
-      "strict": true,
-      "typeRoots": ["./src/typings", "./**/*.d.ts", "./node_modules/@types"],
-      "paths": {
-        "*" : ["src/typings/*"]
-      }
-    },
-    "include": ["./src/**/*"]
-  }
+  "compilerOptions": {
+    "module": "commonjs",
+    "baseUrl": "./",
+    "outDir": "./built",
+    "allowJs": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "typeRoots": ["./src/typings", "./node_modules/@types"],
+    "types": ["node", "express"],
+    "paths": {
+      "*": ["src/typings/*"]
+    }
+  },
+  "include": ["./src/**/*"]
+}

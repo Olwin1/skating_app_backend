@@ -126,7 +126,7 @@ router.post("/login", async (req, res) => {
 
         // If the passwords match, generate a JWT token and return it in the response
         const token = jwt.sign(
-          { username: user.username, req.userId: user.user_id },
+          { username: user.username, userId: user.user_id },
           SECRET
         );
         return res.status(200).json({ token: token, verified: isVerified });
@@ -331,6 +331,11 @@ router.get("/is_restricted", middleware.isLoggedIn, async (req, res) => {
 router.get("/", middleware.isLoggedIn, async (req, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
+    if(Array.isArray(req.headers.id)) {
+      throw TypeError("Expected id to be of type `string` not `string[]`");
+    } else if (!req.headers.id) {
+      throw new NullUserException("Expected an id argument");
+    }
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
@@ -382,8 +387,8 @@ router.get("/", middleware.isLoggedIn, async (req, res) => {
           posts: user._count.posts,
         };
       } else {
-        const follows = await checkUserFollows(req.userId, user.user_id);
-        const friends = await checkUserFriends(req.userId, user.user_id);
+        const follows = await checkUserFollows(req.userId!, user.user_id);
+        const friends = await checkUserFriends(req.userId!, user.user_id);
         returnUser = {
           user_id: user.user_id,
           avatar_id: user.avatar_id,
@@ -425,10 +430,14 @@ router.get("/", middleware.isLoggedIn, async (req, res) => {
 router.get("/follows", middleware.isLoggedIn, async (req, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
-
+    if(Array.isArray(req.headers.user)) {
+      throw TypeError("Expected user to be of type `string` not `string[]`");
+    } else if (!req.headers.user) {
+      throw new NullUserException("Expected a user argument");
+    }
     return res
       .status(200)
-      .json(await checkUserFollows(req.userId, BigInt(req.headers.user)));
+      .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
   } catch (error) {
     // Handle and respond to any errors that occur during the process.
     res.status(400).json({ error });
@@ -439,10 +448,14 @@ router.get("/follows", middleware.isLoggedIn, async (req, res) => {
 router.get("/friends", middleware.isLoggedIn, async (req, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
-
+    if(Array.isArray(req.headers.user)) {
+      throw TypeError("Expected user to be of type `string` not `string[]`");
+    } else if (!req.headers.user) {
+      throw new NullUserException("Expected a user argument");
+    }
     return res
       .status(200)
-      .json(await checkUserFollows(req.userId, BigInt(req.headers.user)));
+      .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
   } catch (error) {
     res.status(400).json({ error });
   }
@@ -506,7 +519,11 @@ async function checkUserFriends(userId: bigint, targetUser: bigint) {
 router.get("/search", middleware.isLoggedIn, async (req, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
-
+    if(Array.isArray(req.headers.query)) {
+      throw TypeError("Expected user to be of type `string` not `string[]`");
+    } else if (!req.headers.query) {
+      throw new Error("Expected a query argument");
+    }
     // Search for users whose usernames contain the query specified in the request headers.
     const results = await prisma.users.findMany({
       where: {
@@ -514,7 +531,7 @@ router.get("/search", middleware.isLoggedIn, async (req, res) => {
           contains: req.headers.query,
         },
       },
-      include: HandleBlocks.getIncludeBlockInfo(req.userId),
+      include: HandleBlocks.getIncludeBlockInfo(req.userId!),
       take: 10,
     });
 
@@ -556,7 +573,7 @@ router.post("/block", middleware.isLoggedIn, async (req, res) => {
       const blockedRecord = await prisma.blocked_users.create({
         data: {
           blocked_id: generator.nextId(),
-          blocking_user_id: req.userId,
+          blocking_user_id: req.userId!,
           blocked_user_id: req.body.user,
           timestamp: new Date(Date.now()),
         },
