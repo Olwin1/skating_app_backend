@@ -1,11 +1,9 @@
-import express, { Router, Request, Response } from "express";
-import middleware from "./middleware";
-import mongoose from "../db/connection";
+import { Router } from "express";
 
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
-import { CustomRequest } from "express-override";
 import CheckNulls from "../utils/checkNulls";
+import RouteBuilder from "../utils/RouteBuilder";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -18,9 +16,7 @@ const router = Router();
 // This is an HTTP POST request handler for the '/token' endpoint
 router.post(
   "/token",
-  middleware.isLoggedIn,
-  async (req: CustomRequest, res: Response) => {
-    try {
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
       // Extract the user's req.userId from the request
       CheckNulls.checkNullUser(req.userId);
 
@@ -37,11 +33,7 @@ router.post(
 
       // Send a JSON response with the upserted FCM token
       return res.json(fcmToken);
-    } catch (error) {
-      // If an error occurs, send a JSON response with a 400 Bad Request status and the error message
-      res.status(400).json({ error });
-    }
   }
-);
+));
 
 export default router;

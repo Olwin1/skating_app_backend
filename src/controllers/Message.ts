@@ -9,6 +9,7 @@ import { $Enums, Prisma } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 import CheckNulls from "../utils/checkNulls";
+import RouteBuilder from "../utils/RouteBuilder";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -45,11 +46,9 @@ interface IChannelData {
   last_message: IMessageData;
 }
 
+
 // This route handles creating a new message channel.
-router.post("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined.
-    CheckNulls.checkNullUser(req.userId);
+router.post("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Parse the list of participants from the request and add the user's ID.
     let participants = JSON.parse(req.body.participants).concat([req.userId]);
@@ -75,17 +74,10 @@ router.post("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) =
     return res
       .status(200)
       .json({ channel: channel, participants: participantRows });
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles creating a new message in a channel.
-router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined.
-    CheckNulls.checkNullUser(req.userId);
+router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Call the createMessage function to add a new message to the channel.
     let retval = await createMessage(
       req.userId!,
@@ -95,17 +87,11 @@ router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) =
     );
     // Return a success response.
     res.status(200).json({ success: true });
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles fetching a single message by ID.
-router.get("/messages", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      CheckNulls.checkNullUser(req.userId);
 
     // Retrieve the channel details by its ID.
     const channel = await prisma.message_channels.findUnique({
@@ -160,17 +146,10 @@ router.get("/messages", middleware.isLoggedIn, async (req: CustomRequest, res) =
 
     // Return the list of messages as a JSON response.
     res.status(200).json(messages);
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles fetching a list of channels for the authenticated user.
-router.get("/channels", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
-
+router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve a list of channels associated with the user.
     const channels = await prisma.participants.findMany({
       where: {
@@ -255,33 +234,22 @@ router.get("/channels", middleware.isLoggedIn, async (req: CustomRequest, res) =
       retVals.push(retVal);
     }
     return res.status(200).json(retVals);
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles fetching details of a single channel.
-router.get("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve details of a channel by its ID.
     const channel = await prisma.message_channels.findUnique({
       where: { channel_id: BigInt(req.headers.channel as string) },
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles fetching a list of users for the authenticated user.
 // Used for creating message channels.
-router.get("/users", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/users", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      CheckNulls.checkNullUser(req.userId);
 
     // Retrieve a list of user IDs associated with the authenticated user's channels.
     let channelIds = [];
@@ -388,15 +356,10 @@ router.get("/users", middleware.isLoggedIn, async (req: CustomRequest, res) => {
       });
     });
     res.status(200).json(retvals);
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 // This route handles fetching details of a single channel.
-router.delete("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.delete("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve details of a channel by its ID.
     const participants = await prisma.participants.deleteMany({
       where: { channel_id: BigInt(req.headers.channel as string) },
@@ -409,10 +372,6 @@ router.delete("/channel", middleware.isLoggedIn, async (req: CustomRequest, res)
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);
-  } catch (error) {
-    // Handle any errors and return a 500 Internal Server Error response.
-    res.status(500).json({ success: false, error: error });
-  }
-});
+}));
 
 export default router;

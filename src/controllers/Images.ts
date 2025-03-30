@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { Buffer } from "buffer";
 import * as fs from "fs";
 import { CustomRequest } from "express-override";
-
+// TODO Handle LoggedIn / Not Logged in check access
 
 const router = Router(); // create router to create route bundle
 

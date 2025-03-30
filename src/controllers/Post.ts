@@ -10,6 +10,7 @@ import { ErrorCode } from "../ErrorCodes";
 import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 import CheckNulls from "../utils/checkNulls";
+import RouteBuilder from "../utils/RouteBuilder";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -52,10 +53,7 @@ const getInfluencers = () => {
 };
 
 // Create an API endpoint for handling a POST request related to creating a new post.
-router.post("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request.
-    CheckNulls.checkNullUser(req.userId);
+router.post("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Create a new post using the Prisma ORM.
     const post = await prisma.posts.create({
@@ -71,20 +69,12 @@ router.post("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
 
     // Respond with the newly created post.
     res.json(post);
-  } catch (error) {
-    // Handle errors by sending a 400 (Bad Request) response with the error message.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route that listens for HTTP GET requests at the "/post" endpoint.
-router.get("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  // Extract the user ID from the request.
-  CheckNulls.checkNullUser(req.userId);
-
+router.get("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
   // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
 
-  try {
     // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
     const postId = BigInt(req.headers.post as string);
     const post = await prisma.posts.findUnique({
@@ -117,17 +107,9 @@ router.get("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
 
     // Send a JSON response containing the retrieved post to the client.
     return res.json(post);
-  } catch (error) {
-    // Set the response status code to 400 (Bad Request) to indicate an error.
-    return res.status(400).json({ error });
-  }
-});
+}));
 
-router.post("/like", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user's ID from the request
-    CheckNulls.checkNullUser(req.userId);
-
+router.post("/like", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
       where: { post_id: BigInt(req.body.post), user_id: req.userId },
@@ -162,18 +144,10 @@ router.post("/like", middleware.isLoggedIn, async (req: CustomRequest, res) => {
       // If the user has already liked the post, return an error
       return res.status(409).json({ error: "Post already liked" });
     }
-  } catch (error) {
-    // Handle any other errors with a 400 status code
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for unliking a post
-router.post("/unlike", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user's ID from the request
-    CheckNulls.checkNullUser(req.userId);
-
+router.post("/unlike", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
       where: { post_id: BigInt(req.body.post), user_id: req.userId },
@@ -205,15 +179,9 @@ router.post("/unlike", middleware.isLoggedIn, async (req: CustomRequest, res) =>
       // If the user hasn't liked the post, return an error
       return res.status(409).json({ error: "Post isn't liked" });
     }
-  } catch (error) {
-    // Handle any other errors with a 400 status code
-    res.status(400).json({ error });
-  }
-});
+}));
 
-router.post("/save", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  CheckNulls.checkNullUser(req.userId); // Extract user ID from request object
-  try {
+router.post("/save", ...RouteBuilder.createRouteHandler(async (req, res) => {
     await prisma.saved_posts.create({
       data: {
         saved_post_id: generator.nextId(),
@@ -223,15 +191,11 @@ router.post("/save", middleware.isLoggedIn, async (req: CustomRequest, res) => {
       },
     });
     return res.status(201).json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error }); // Send a 400 response with the error message
-  }
-});
+
+}));
 
 // Route for removing a post from a user's saved_posts array
-router.post("/unsave", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  CheckNulls.checkNullUser(req.userId); // Extract user ID from request object
-  try {
+router.post("/unsave", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const postLikeNew = await prisma.saved_posts.deleteMany({
       where: {
         post_id: req.body.post,
@@ -239,16 +203,11 @@ router.post("/unsave", middleware.isLoggedIn, async (req: CustomRequest, res) =>
       },
     });
     return res.status(200).json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error }); // Send a 400 response with the error message
-  }
-});
+
+}));
 
 // This route is used to retrieve a page of saved posts
-router.get("/saved", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
-
+router.get("/saved", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find the post with the provided ID from the request header
     const posts = await prisma.saved_posts.findMany({
       where: { user_id: req.userId },
@@ -260,17 +219,10 @@ router.get("/saved", middleware.isLoggedIn, async (req: CustomRequest, res) => {
     } else {
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // If there's an error, return an error response
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to create a new comment
-router.post("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Create a new comment using Prisma
     const comment = await prisma.comments.create({
@@ -287,17 +239,10 @@ router.post("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) =
 
     // Send the created comment as a JSON response
     res.json(comment);
-  } catch (error) {
-    // Handle errors by sending a 400 status and an error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to delete a comment
-router.delete("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.delete("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Delete a comment by its comment_id
     const comment = await prisma.comments.delete({
@@ -308,15 +253,10 @@ router.delete("/comment", middleware.isLoggedIn, async (req: CustomRequest, res)
 
     // Send a success message as a JSON response
     res.status(200).json({ success: true });
-  } catch (error) {
-    // Handle errors by sending a 400 status and an error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to like a comment
-router.post("/like_comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.post("/like_comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
 
@@ -355,17 +295,10 @@ router.post("/like_comment", middleware.isLoggedIn, async (req: CustomRequest, r
       // Send an error message if the comment is already liked
       return res.json({ error: "Comment already liked" });
     }
-  } catch (error) {
-    // Handle errors by sending a 400 status and an error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to unlike a comment
-router.post("/unlike_comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/unlike_comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Check if the user has already liked the comment
     const commentLike = await prisma.comment_likes.findFirst({
@@ -399,20 +332,12 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req: CustomRequest,
       // Send an error message if the comment is not liked
       return res.json({ error: "Comment isn't liked" });
     }
-  } catch (error) {
-    // Handle errors by sending a 400 status and an error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to like a comment
 router.post(
   "/dislike_comment",
-  middleware.isLoggedIn,
-  async (req: CustomRequest, res) => {
-    try {
-      // Extract the user ID from the request
-      CheckNulls.checkNullUser(req.userId);
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
 
       // Check if the user has already liked the comment
       const commentDislike = await prisma.comment_dislikes.findFirst({
@@ -449,21 +374,13 @@ router.post(
         // Send an error message if the comment is already liked
         return res.json({ error: "Comment already liked" });
       }
-    } catch (error) {
-      // Handle errors by sending a 400 status and an error message
-      res.status(400).json({ error });
-    }
   }
-);
+));
 
 // Define a route to unlike a comment
 router.post(
   "/undislike_comment",
-  middleware.isLoggedIn,
-  async (req: CustomRequest, res) => {
-    try {
-      // Extract the user ID from the request
-      CheckNulls.checkNullUser(req.userId);
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
 
       // Check if the user has already liked the comment
       const commentDislike = await prisma.comment_dislikes.findFirst({
@@ -497,18 +414,11 @@ router.post(
         // Send an error message if the comment is not liked
         return res.json({ error: "Comment isn't liked" });
       }
-    } catch (error) {
-      // Handle errors by sending a 400 status and an error message
-      res.status(400).json({ error });
-    }
   }
-);
+));
 
 // This route is used to retrieve a single comment by its ID
-router.get("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
-
+router.get("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find the comment with the provided ID from the request header
     const comment = prisma.comments.findFirst({
       where: { comment_id: BigInt(req.headers.comment as string) },
@@ -517,17 +427,11 @@ router.get("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) =>
 
     // Return the comment object as a response
     res.json(comment);
-  } catch (error) {
-    // If there's an error, return an error response
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // This route is used to retrieve a page of comments for a single post
-router.get("/comments", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/comments", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      CheckNulls.checkNullUser(req.userId);
 
     // Find the post with the provided ID from the request header
     const comments = await prisma.posts.findFirst({
@@ -584,15 +488,9 @@ router.get("/comments", middleware.isLoggedIn, async (req: CustomRequest, res) =
     } else {
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // If there's an error, return an error response
-    res.status(400).json({ error });
-  }
-});
+}));
 // Route for removing a post
-router.delete("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId); // Get the user ID from the request object
+router.delete("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     const post = await prisma.posts.delete({
       where: {
@@ -602,18 +500,11 @@ router.delete("/post", middleware.isLoggedIn, async (req: CustomRequest, res) =>
     });
 
     res.status(200).json({ success: true }); // Send a JSON response to the client indicating success
-  } catch (error) {
-    // Send a 400 response with the error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // This route is used to retrieve a page of posts
-router.post("/posts", middleware.isLoggedIn, async (req: CustomRequest, res) => {
+router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
   //! NEEDS TESTING
-
-  try {
-    CheckNulls.checkNullUser(req.userId);
     //let seen = JSON.parse(req.body.seen);
     const take = 20;
     const skip = 20 * parseInt(req.body.page);
@@ -908,18 +799,11 @@ router.post("/posts", middleware.isLoggedIn, async (req: CustomRequest, res) => 
       returnPosts.push(e);
     }
     return res.json(returnPosts);
-  } catch (error) {
-    //     // If there's an error, return an error response
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // This is a route handler for GET requests to "/user_posts"
-router.get("/user_posts", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/user_posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
-    // Extract the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
 
     const targetUser = await prisma.users.findFirst({
       where: { user_id: BigInt(req.headers.user as string) },
@@ -954,10 +838,6 @@ router.get("/user_posts", middleware.isLoggedIn, async (req: CustomRequest, res)
 
     // Send the posts data as a JSON response
     res.json(posts);
-  } catch (error) {
-    // Send a 400 Bad Request response if there was an error
-    res.status(400).json({ error });
-  }
-});
+}));
 
 export default router;

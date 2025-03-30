@@ -6,6 +6,7 @@ import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 
+import RouteBuilder from "../utils/RouteBuilder";
 import CheckNulls from "../utils/checkNulls";
 
 const router = Router(); // create router to create route bundle
@@ -18,9 +19,7 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route that allows a user to follow another user
-router.post("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId)
+router.post("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -83,17 +82,10 @@ router.post("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) =>
         return res.status(200).json({ success: true, requested: false });
       }
     }
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for sending a friend request
-router.post("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.post("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const targetUser = await prisma.users.findFirst({
       where: { user_id: req.body.user },
       include: HandleBlocks.getIncludeBlockInfo(req.userId!),
@@ -114,17 +106,10 @@ router.post("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) =>
       },
     });
     return res.status(200).json({ success: true });
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for unfollowing a user
-router.post("/unfollow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.post("/unfollow", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -165,17 +150,10 @@ router.post("/unfollow", middleware.isLoggedIn, async (req: CustomRequest, res) 
       ]);
       return res.status(200).json({ success: true, requested: false });
     }
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for unfollowing a user as the follower
-router.post("/unfollower", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.post("/unfollower", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -216,17 +194,10 @@ router.post("/unfollower", middleware.isLoggedIn, async (req: CustomRequest, res
       ]);
       return res.status(200).json({ success: true, request: false });
     }
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for unfriending a user
-router.post("/unfriend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.post("/unfriend", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
@@ -275,17 +246,11 @@ router.post("/unfriend", middleware.isLoggedIn, async (req: CustomRequest, res) 
     } else {
       return res.status(400).json({ success: false });
     }
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to retrieve a user's followers
-router.get("/followers", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.get("/followers", ...RouteBuilder.createRouteHandler(async (req, res) => {
+
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
@@ -340,17 +305,10 @@ router.get("/followers", middleware.isLoggedIn, async (req: CustomRequest, res) 
       });
     }
     return res.status(200).json(returningUsers);
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to retrieve a user's following users
-router.get("/following", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.get("/following", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
 
@@ -407,17 +365,10 @@ router.get("/following", middleware.isLoggedIn, async (req: CustomRequest, res) 
       });
     }
     return res.status(200).json(returningUsers);
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to retrieve a user's friends
-router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined
-    CheckNulls.checkNullUser(req.userId);
+router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
@@ -514,16 +465,9 @@ router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) =>
         res.status(400).json({ error });
       }
     });
-  } catch (error) {
-    // Handle any errors that occur during this process
-    res.status(400).json({ error });
-  }
-});
+}));
 
-router.patch("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Convert user IDs to BigInt
-    CheckNulls.checkNullUser(req.userId); // Current user's ID
+router.patch("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => { // Current user's ID
     const target = BigInt(req.body.user); // Target user's ID
     const accepted = req.body.accepted; // Whether the follow request is accepted
 
@@ -567,17 +511,10 @@ router.patch("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) =
 
     // If the request is not accepted, respond with success and rejection status
     return res.status(200).json({ success: true, accepted: false });
-  } catch (error) {
-    // Handle any errors and respond with a 400 Bad Request status
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // This is a route handler for a PATCH request to "/friend".
-router.patch("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Ensure userId is defined object.
-    CheckNulls.checkNullUser(req.userId);
+router.patch("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Extract the target user's ID from the request body.
     const target = BigInt(req.body.user);
@@ -608,10 +545,6 @@ router.patch("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) =
       // If the "accepted" flag is not set, return a response indicating that the request was not accepted.
       return res.status(200).json({ success: true, accepted: false });
     }
-  } catch (error) {
-    // Handle any errors that may occur during the execution of this code.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 export default router;

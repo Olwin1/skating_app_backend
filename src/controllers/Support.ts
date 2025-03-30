@@ -11,6 +11,7 @@ import { $Enums, Prisma } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
 import { CustomRequest } from "express-override";
 import CheckNulls from "../utils/checkNulls";
+import RouteBuilder from "../utils/RouteBuilder";
 
 interface ReportType {
   feedback_id: bigint;
@@ -36,10 +37,7 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route for submitting bug reports
-router.post("/bug", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -47,17 +45,10 @@ router.post("/bug", middleware.isLoggedIn, async (req: CustomRequest, res) => {
       $Enums.feedback_type.bug_report
     );
     return res.status(201).json({ success: true });
-  } catch (error) {
-    // Handle errors during the bug report submission
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for submitting support requests
-router.post("/support", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -65,17 +56,10 @@ router.post("/support", middleware.isLoggedIn, async (req: CustomRequest, res) =
       $Enums.feedback_type.support_request
     );
     return res.status(201).json({ success: true });
-  } catch (error) {
-    // Handle errors during the support request submission
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for submitting general feedback
-router.post("/feedback", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/feedback", ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -83,65 +67,42 @@ router.post("/feedback", middleware.isLoggedIn, async (req: CustomRequest, res) 
       $Enums.feedback_type.feedback
     );
     return res.status(201).json({ success: true });
-  } catch (error) {
-    // Handle errors during the general feedback submission
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for retrieving bug reports
-router.get("/bug", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+
     let resp = await getReports(
       req.userId!,
       $Enums.feedback_type.bug_report,
       page
     );
     return res.status(200).json(resp);
-  } catch (error) {
-    // Handle errors during bug report retrieval
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for retrieving support requests
-router.get("/support", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+
     let resp = await getReports(
       req.userId!,
       $Enums.feedback_type.support_request,
       page
     );
     return res.status(200).json(resp);
-  } catch (error) {
-    // Handle errors during support request retrieval
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for retrieving general feedback
-router.get("/feedback", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/feedback", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
     let resp = await getReports(
       req.userId!,
       $Enums.feedback_type.feedback,
       page
     );
     return res.status(200).json(resp);
-  } catch (error) {
-    // Handle errors during general feedback retrieval
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Function to create a new user feedback or support record
 async function createSupportReport(
@@ -264,10 +225,7 @@ async function getReports(
 }
 
 // Define a route to handle the creation of a new support message
-router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the authenticated request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
@@ -282,17 +240,10 @@ router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) =
 
     // Respond with the created support message in JSON format
     res.json(newMessage);
-  } catch (error) {
-    // Handle errors by sending a 400 status along with an error message in JSON format
-    res.status(400).json({ error: "Failed to create a new support message." });
-  }
-});
+}));
 
 // Handle GET requests to "/support/messages" endpoint with user authentication middleware
-router.get("/messages", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the authenticated request
-    CheckNulls.checkNullUser(req.userId);
+router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Find user feedback and support information based on the provided feedback ID from the request header
@@ -315,17 +266,10 @@ router.get("/messages", middleware.isLoggedIn, async (req: CustomRequest, res) =
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // Handle any errors and respond with a 400 status along with the error details
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route to handle the creation of a new support message
-router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the authenticated request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
@@ -340,17 +284,10 @@ router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) =
 
     // Respond with the created support message in JSON format
     res.json(newMessage);
-  } catch (error) {
-    // Handle errors by sending a 400 status along with an error message in JSON format
-    res.status(400).json({ error: "Failed to create a new support message." });
-  }
-});
+}));
 
 // Define a route for submitting general feedback
-router.post("/report", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     let reportedContent;
     switch (req.body.reported_content) {
@@ -384,17 +321,10 @@ router.post("/report", middleware.isLoggedIn, async (req: CustomRequest, res) =>
     });
 
     return res.status(201).json({ success: true });
-  } catch (error) {
-    // Handle errors during the general feedback submission
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Handle GET requests to "/support/report" endpoint with user authentication middleware
-router.get("/report", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the authenticated request
-    CheckNulls.checkNullUser(req.userId);
+router.get("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
@@ -425,17 +355,10 @@ router.get("/report", middleware.isLoggedIn, async (req: CustomRequest, res) => 
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // Handle any errors and respond with a 400 status along with the error details
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Handle GET requests to "/support/report_data" endpoint with user authentication middleware
-router.get("/report_data", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the authenticated request
-    CheckNulls.checkNullUser(req.userId);
+router.get("/report_data", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
@@ -527,18 +450,11 @@ router.get("/report_data", middleware.isLoggedIn, async (req: CustomRequest, res
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // Handle any errors and respond with a 400 status along with the error details
-    res.status(400).json({ error });
-  }
-});
+}));
 
 //TODO: Add duration for tempbans and handle creation of tempbans/whatever other punishment.
 // Modify Report Status
-router.post("/report/modify", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/report/modify", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: req.userId },
@@ -600,18 +516,12 @@ router.post("/report/modify", middleware.isLoggedIn, async (req: CustomRequest, 
     });
 
     return res.status(201).json({ success: true });
-  } catch (error) {
-    // Handle errors during the general feedback submission
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Get list of active reports
-router.get("/report/list", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/report/list", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = CheckNulls.checkNullPage(req.headers.page);
-      // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: req.userId },
     });
@@ -642,18 +552,12 @@ router.get("/report/list", middleware.isLoggedIn, async (req: CustomRequest, res
       });
       return res.status(200).json(reports);
     }
-  } catch (error) {
-    // Handle errors during request
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Get list of reports made by a specific user
 router.get(
   "/report/list/from",
-  middleware.isLoggedIn,
-  async (req: CustomRequest, res) => {
-    try {
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
       // Extract user ID from the request
       CheckNulls.checkNullUser(req.userId);
       const page = CheckNulls.checkNullPage(req.headers.page);
@@ -683,22 +587,15 @@ router.get(
         });
         return res.status(200).json(reports);
       }
-    } catch (error) {
-      // Handle errors during request
-      res.status(400).json({ error });
-    }
   }
-);
+));
 
 // Get a list of reports against a specific user
 router.get(
   "/report/list/against",
-  middleware.isLoggedIn,
-  async (req: CustomRequest, res) => {
-    try {
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = req.headers.page as string;
-      // Extract user ID from the request
-      CheckNulls.checkNullUser(req.userId);
+
       const moderatorUser = await prisma.users.findFirst({
         where: { user_id: req.userId },
       });
@@ -722,19 +619,13 @@ router.get(
         });
         return res.status(200).json(reports);
       }
-    } catch (error) {
-      // Handle errors during request
-      res.status(400).json({ error });
-    }
   }
-);
+));
 
 // Get a list of reports against a specific user
-router.get("/report/messages", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
+router.get("/report/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const page = req.headers.page as string;
-      // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+
     const user = await prisma.users.findFirst({ where: { user_id: req.userId } });
     const report = await prisma.reports.findFirst({
       where: {
@@ -758,17 +649,10 @@ router.get("/report/messages", middleware.isLoggedIn, async (req: CustomRequest,
     } else {
       return res.status(401).json({ Error: "Unauthorised" });
     }
-  } catch (error) {
-    // Handle errors during request
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Get a list of reports against a specific user
-router.post("/report/message", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/report/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const user = await prisma.users.findFirst({ where: { user_id: req.userId } });
     const report = await prisma.reports.findFirst({
       where: {
@@ -796,11 +680,7 @@ router.post("/report/message", middleware.isLoggedIn, async (req: CustomRequest,
     } else {
       return res.status(401).json({ Error: "Unauthorised" });
     }
-  } catch (error) {
-    // Handle errors during request
-    res.status(400).json({ error });
-  }
-});
+}));
 
 //       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? I.E DO THEY HAVE A HISTORY?
 

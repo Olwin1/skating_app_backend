@@ -1,7 +1,7 @@
 // Import necessary modules and libraries
 import api from "api";
 import dotenv from "dotenv";
-import { Request, Router } from "express";
+import { Request, Response, Router } from "express";
 import * as isoCountries from "i18n-iso-countries";
 
 import https from "https";
@@ -121,7 +121,7 @@ const getCountry = (country: string): string => {
 };
 
 // Function to search by postcode and return coordinates
-const searchByPostcode = async (postcode: string, res: any) => {
+const searchByPostcode = async (postcode: string, res: Response) => {
   try {
     const data = await getPostcodeData(postcode);
     return res.json({ lng: data.lng, lat: data.lat });
@@ -177,7 +177,7 @@ const searchByTown = async (
 };
 
 // Function to search by country and return data
-const searchByCountry = async (country: string, res: any) => {
+const searchByCountry = async (country: string, res: Response) => {
   try {
     await loadCSV("./src/assets/country-coord.csv");
     const result = getLatLong(getCountry(country));
@@ -195,7 +195,7 @@ const searchByCountry = async (country: string, res: any) => {
 };
 
 // Function to handle search requests
-const handleSearch = async (req: CustomRequest, res: any) => {
+const handleSearch = async (req: CustomRequest, res: Response) => {
   try {
     const { Geonames } = req.context!
       .models as mongoose.Models;

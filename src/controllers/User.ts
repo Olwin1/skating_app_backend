@@ -14,7 +14,7 @@ import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 import NullUserException from "../Exceptions/NullUserException";
 import NullPageException from "../Exceptions/NullPageException";
-import CheckNulls from "../utils/checkNulls";
+import RouteBuilder from "../utils/RouteBuilder";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -153,10 +153,7 @@ router.post("/login", async (req: CustomRequest, res) => {
 // Define route handlers for various user-related operations
 
 // Define a route for updating user descriptions
-router.post("/description", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/description", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Update the user's description in the database using Prisma
     const updatedUser = await prisma.users.update({
@@ -166,17 +163,10 @@ router.post("/description", middleware.isLoggedIn, async (req: CustomRequest, re
 
     // Send a success response with a JSON object
     res.status(200).json({ success: true });
-  } catch (error) {
-    // Send an error response with the error object
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Define a route for updating user avatars
-router.post("/avatar", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Extract the user ID from the request
-    CheckNulls.checkNullUser(req.userId);
+router.post("/avatar", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Update the user's avatar in the database using Prisma
     const updatedUser = await prisma.users.update({
@@ -186,17 +176,10 @@ router.post("/avatar", middleware.isLoggedIn, async (req: CustomRequest, res) =>
 
     // Send a success response with a JSON object
     res.status(200).json({ success: true });
-  } catch (error) {
-    // Send an error response with the error object
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Route handler to update user's email
-router.post("/email", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
+router.post("/email", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Update the user's email in the database
     //TODO: Redo Email Verification
@@ -208,17 +191,10 @@ router.post("/email", middleware.isLoggedIn, async (req: CustomRequest, res) => 
 
     // Return the response from the database update
     res.status(200).json({ success: true, verified: false });
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Route handler to update user's email verification
-router.post("/verify_email", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
+router.post("/verify_email", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Update the user's email in the database
     const emailVerification = await prisma.email_verifications.findFirst({
@@ -238,17 +214,9 @@ router.post("/verify_email", middleware.isLoggedIn, async (req: CustomRequest, r
     } else {
       res.status(400).json({ success: false, verified: false });
     }
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+}));
 // Route handler to update user's email
-router.get("/is_verified", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
-
+router.get("/is_verified", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's email in the database
     const verified = await prisma.email_verifications.findFirst({
       where: { user_id: req.userId, is_verified: true },
@@ -258,17 +226,10 @@ router.get("/is_verified", middleware.isLoggedIn, async (req: CustomRequest, res
     res
       .status(200)
       .json({ success: true, verified: verified?.is_verified ?? false });
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Route handler to check if user is allowed to access app
-router.get("/is_restricted", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
+router.get("/is_restricted", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     const isRestrictedData = await prisma.user_actions.findMany({
       where: {
@@ -325,16 +286,10 @@ router.get("/is_restricted", middleware.isLoggedIn, async (req: CustomRequest, r
       is_muted: true,
       end_timestamp: endTimestamp,
     });
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Retrieves user information.
-router.get("/", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
+router.get("/", ...RouteBuilder.createRouteHandler(async (req, res) => {
     if(Array.isArray(req.headers.id)) {
       throw TypeError("Expected id to be of type `string` not `string[]`");
     } else if (!req.headers.id) {
@@ -424,16 +379,10 @@ router.get("/", middleware.isLoggedIn, async (req: CustomRequest, res) => {
       // If the user is not found, send a JSON response with an error code.
       res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-  } catch (error) {
-    // If an error occurs during the database query or processing, send an error response.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // This is another route handler for "/follows" that checks if a user is following another user.
-router.get("/follows", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
+router.get("/follows", ...RouteBuilder.createRouteHandler(async (req, res) => {
     if(Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
@@ -442,16 +391,10 @@ router.get("/follows", middleware.isLoggedIn, async (req: CustomRequest, res) =>
     return res
       .status(200)
       .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
-  } catch (error) {
-    // Handle and respond to any errors that occur during the process.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Similar to the previous route handlers, this one checks if users are friends.
-router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
+router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
     if(Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
@@ -460,10 +403,7 @@ router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) =>
     return res
       .status(200)
       .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
-  } catch (error) {
-    res.status(400).json({ error });
-  }
-});
+}));
 
 async function checkUserFollows(userId: bigint, targetUser: bigint) {
   // Check if the user is following the user specified in the request headers.
@@ -520,9 +460,7 @@ async function checkUserFriends(userId: bigint, targetUser: bigint) {
 }
 
 // Another route handler for user search based on a query.
-router.get("/search", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
+router.get("/search", ...RouteBuilder.createRouteHandler(async (req, res) => {
     if(Array.isArray(req.headers.query)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.query) {
@@ -555,17 +493,10 @@ router.get("/search", middleware.isLoggedIn, async (req: CustomRequest, res) => 
 
     // Send a JSON response with the search results.
     return res.json(returns);
-  } catch (error) {
-    // Handle and respond to any errors that occur during the search.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 // Route handler to block user
-router.post("/block", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
+router.post("/block", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     const isAlreadyBlocked = await prisma.blocked_users.findFirst({
       where: {
@@ -589,17 +520,11 @@ router.post("/block", middleware.isLoggedIn, async (req: CustomRequest, res) => 
       // TODO: Change to error later and add handler on client side
       return res.status(200).json({ success: true });
     }
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+
+}));
 
 // Route handler to unblock user
-router.post("/unblock", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    // Get the user ID from the request object
-    CheckNulls.checkNullUser(req.userId);
+router.post("/unblock", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     const blockedRecord = await prisma.blocked_users.deleteMany({
       where: {
@@ -608,16 +533,11 @@ router.post("/unblock", middleware.isLoggedIn, async (req: CustomRequest, res) =
       },
     });
     return res.status(200).json({ success: true, count: blockedRecord.count });
-  } catch (error) {
-    // If there is an error, return a 400 status code and the error message
-    res.status(400).json({ error });
-  }
-});
+
+}));
 
 // Another route handler for user search based on a query.
-router.get("/blocked_users", middleware.isLoggedIn, async (req: CustomRequest, res) => {
-  try {
-    CheckNulls.checkNullUser(req.userId);
+router.get("/blocked_users", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Get all user records showing the users that the user has blocked
     const users = await prisma.blocked_users.findMany({
@@ -650,10 +570,6 @@ router.get("/blocked_users", middleware.isLoggedIn, async (req: CustomRequest, r
 
     // Send a JSON response with the search results.
     return res.json(returns);
-  } catch (error) {
-    // Handle and respond to any errors that occur during the search.
-    res.status(400).json({ error });
-  }
-});
+}));
 
 export default router;
