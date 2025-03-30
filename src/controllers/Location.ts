@@ -1,7 +1,7 @@
 // Import necessary modules and libraries
 import api from "api";
 import dotenv from "dotenv";
-import { Request, Response, Router } from "express";
+import { Response, Router } from "express";
 import * as isoCountries from "i18n-iso-countries";
 
 import https from "https";

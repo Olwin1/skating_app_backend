@@ -1,7 +1,7 @@
 require("dotenv").config(); // loading env variables
 import jwt, { Secret } from "jsonwebtoken";
 import { Response, NextFunction, RequestHandler } from "express";
-import { CustomRequest }  from "../typings/express-override";
+import { CustomRequest } from "../typings/express-override";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
 import User from "User";

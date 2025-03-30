@@ -1,9 +1,7 @@
 require("dotenv").config(); // Load .env variables
-import { Request, Router } from "express"; // Import router from express
+import { Router } from "express"; // Import router from express
 import bcrypt from "bcryptjs"; // Import bcrypt to hash passwords
 import jwt from "jsonwebtoken"; // Import jwt to sign tokens
-import middleware from "./middleware"; // Import custom middleware
- // Import a custom request type
 import prisma from "../db/postgres"; // Import Prisma ORM for database operations
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import validator from "validator";
@@ -13,7 +11,6 @@ import { $Enums } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 import NullUserException from "../Exceptions/NullUserException";
-import NullPageException from "../Exceptions/NullPageException";
 import RouteBuilder from "../utils/RouteBuilder";
 const router = Router(); // Create a router to create a route bundle
 

@@ -1,13 +1,10 @@
 require("dotenv").config(); // load .env variables
 import { Router } from "express"; // import router from express
-import middleware from "./middleware";
 import createMessage from "./MessageCreate";
 
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
-import { $Enums, Prisma } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
-import { CustomRequest } from "express-override";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 

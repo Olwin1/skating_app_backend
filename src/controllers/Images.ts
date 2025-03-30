@@ -1,5 +1,5 @@
 require("dotenv").config(); // load .env variables
-import { Router, Request } from "express"; // import router from express
+import { Router } from "express"; // import router from express
 import mongoose from "../db/connection";
 import { files, filesChunks } from "../db/bucket"; // Import upload utility from bucket.ts
 import isAnimated from "is-animated";

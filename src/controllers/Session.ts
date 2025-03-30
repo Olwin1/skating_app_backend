@@ -1,12 +1,9 @@
 // Import required modules
 require("dotenv").config();
 import { Router } from "express";
-import middleware from "./middleware";
 
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
-import { CustomRequest } from "express-override";
-import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 
 // Create a unique ID generator instance

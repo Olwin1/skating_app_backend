@@ -2,7 +2,7 @@
 require("dotenv").config();
 
 // Import required modules
-import express, { Request, Response } from "express";
+import express, { Response } from "express";
 import morgan from "morgan";
 import log from "./logger";
 import cors from "cors";
