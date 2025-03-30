@@ -34,7 +34,7 @@ const isLoggedIn: RequestHandler = async (req: CustomRequest, res, next) => {
             throw TypeError("Expected JWT Payload Not String.");
           }
           // store user data in request object
-          req.user = payload as User;
+          req.user = {userId: payload._id, username: payload.username, iat: payload.iat} as User;
           // Store their id 
           req.userId = BigInt(req.user.userId);
           next();
