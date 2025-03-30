@@ -25,11 +25,11 @@ const getImage = async (req: CustomRequest, res: any, thumbnail: boolean) => {
     const id = new mongoose.Types.ObjectId(req.params.image);
 
     // Find the file with the specified ID in the "files" collection
-    const file = await files.findOne({ userId: id });
+    const file = await files.findOne({ _id: id });
 
     // Retrieve the chunks of the file from the "filesChunks" collection
     let chunks = await filesChunks
-      .find({ files_id: file!.req.userId })
+      .find({ files_id: file!._id })
       .sort({ n: 1 })
       .toArray();
 
@@ -114,7 +114,7 @@ const getImage = async (req: CustomRequest, res: any, thumbnail: boolean) => {
     }
   } catch (err) {
     // If an error occurs while retrieving the file chunks, return an error message
-    return res.json({
+    return res.status(500).json({
       title: "Download Error",
       message: "Error retrieving chunks",
       error: err,
