@@ -4,6 +4,8 @@ import CheckNulls from "./checkNulls";
 
 // Import authentication middleware
 import middleware from "../controllers/middleware";
+import ClientError from "../Exceptions/Client/ClientError";
+import ServerError from "../Exceptions/Server/ServerError";
 
 /**
  * RouteBuilder: A utility class for constructing Express route handlers with common behaviors.
@@ -31,7 +33,10 @@ class RouteBuilder {
    * }));
    */
   public static createRouteHandler(
-    handler: (req: CustomRequest, res: Response) => Promise<Response<any, Record<string, any>> | undefined | void>
+    handler: (
+      req: CustomRequest,
+      res: Response
+    ) => Promise<Response<any, Record<string, any>> | undefined | void>
   ) {
     return [
       /**
@@ -51,10 +56,25 @@ class RouteBuilder {
           // Execute the provided route handler function.
           await handler(req, res);
         } catch (error) {
-          // Handle any unexpected errors and respond with a 400 status.
-          res
-            .status(400)
-            .json({ error: error instanceof Error ? error.message : error });
+          if (!(error instanceof Error)) {
+            return res.status(500).json({ error: error });
+          }
+
+          if (error instanceof ClientError) {
+            // Handle any unexpected errors and respond with a 400 status.
+            return res
+              .status(400)
+              .json({ error: error instanceof Error ? error.message : error });
+          } else if (error instanceof ServerError) {
+            // Handle any unexpected errors and respond with a 500 status.
+            return res
+              .status(500)
+              .json({ error: error instanceof Error ? error.message : error });
+          } else {
+            console.log("An unhandled exception has occured.")
+            console.error(error.message);
+            return res.status(500).json({error: error})
+          }
         }
       },
     ];
