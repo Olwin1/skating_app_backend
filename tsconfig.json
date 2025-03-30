@@ -12,7 +12,7 @@
     "typeRoots": ["./src/typings", "./node_modules/@types"],
     "types": ["node", "express"],
     "paths": {
-      "*": ["src/typings/*"]
+      "*": ["src/typings/*"],
     }
   },
   "include": ["./src/**/*"]

@@ -1,5 +1,5 @@
 require("dotenv").config(); // Load .env variables
-import { Router } from "express"; // Import router from express
+import { Request, Router } from "express"; // Import router from express
 import bcrypt from "bcryptjs"; // Import bcrypt to hash passwords
 import jwt from "jsonwebtoken"; // Import jwt to sign tokens
 import middleware from "./middleware"; // Import custom middleware
@@ -11,6 +11,10 @@ import { ErrorCode } from "../ErrorCodes";
 import * as securePin from "secure-pin";
 import { $Enums } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
+import { CustomRequest } from "express-override";
+import NullUserException from "../Exceptions/NullUserException";
+import NullPageException from "../Exceptions/NullPageException";
+import CheckNulls from "../utils/checkNulls";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -26,7 +30,7 @@ const generator = new Worker(0, 1, {
 // User Authentication Endpoints
 // These endpoints are used to authorize and authenticate users
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", async (req: CustomRequest, res) => {
   try {
     // Check if the email is valid
     const isEmail = validator.isEmail(req.body.email);
@@ -86,7 +90,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", async (req: CustomRequest, res) => {
   try {
     // Check if the password meets length requirements
     const isValidPassword = validator.isLength(req.body.password, {
@@ -149,7 +153,7 @@ router.post("/login", async (req, res) => {
 // Define route handlers for various user-related operations
 
 // Define a route for updating user descriptions
-router.post("/description", middleware.isLoggedIn, async (req, res) => {
+router.post("/description", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -169,7 +173,7 @@ router.post("/description", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for updating user avatars
-router.post("/avatar", middleware.isLoggedIn, async (req, res) => {
+router.post("/avatar", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -189,7 +193,7 @@ router.post("/avatar", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route handler to update user's email
-router.post("/email", middleware.isLoggedIn, async (req, res) => {
+router.post("/email", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -211,7 +215,7 @@ router.post("/email", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route handler to update user's email verification
-router.post("/verify_email", middleware.isLoggedIn, async (req, res) => {
+router.post("/verify_email", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -240,7 +244,7 @@ router.post("/verify_email", middleware.isLoggedIn, async (req, res) => {
   }
 });
 // Route handler to update user's email
-router.get("/is_verified", middleware.isLoggedIn, async (req, res) => {
+router.get("/is_verified", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -261,7 +265,7 @@ router.get("/is_verified", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route handler to check if user is allowed to access app
-router.get("/is_restricted", middleware.isLoggedIn, async (req, res) => {
+router.get("/is_restricted", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -328,7 +332,7 @@ router.get("/is_restricted", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Retrieves user information.
-router.get("/", middleware.isLoggedIn, async (req, res) => {
+router.get("/", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
     if(Array.isArray(req.headers.id)) {
@@ -427,7 +431,7 @@ router.get("/", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This is another route handler for "/follows" that checks if a user is following another user.
-router.get("/follows", middleware.isLoggedIn, async (req, res) => {
+router.get("/follows", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
     if(Array.isArray(req.headers.user)) {
@@ -445,7 +449,7 @@ router.get("/follows", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Similar to the previous route handlers, this one checks if users are friends.
-router.get("/friends", middleware.isLoggedIn, async (req, res) => {
+router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
     if(Array.isArray(req.headers.user)) {
@@ -516,7 +520,7 @@ async function checkUserFriends(userId: bigint, targetUser: bigint) {
 }
 
 // Another route handler for user search based on a query.
-router.get("/search", middleware.isLoggedIn, async (req, res) => {
+router.get("/search", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
     if(Array.isArray(req.headers.query)) {
@@ -558,7 +562,7 @@ router.get("/search", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route handler to block user
-router.post("/block", middleware.isLoggedIn, async (req, res) => {
+router.post("/block", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -592,7 +596,7 @@ router.post("/block", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route handler to unblock user
-router.post("/unblock", middleware.isLoggedIn, async (req, res) => {
+router.post("/unblock", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
@@ -611,7 +615,7 @@ router.post("/unblock", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Another route handler for user search based on a query.
-router.get("/blocked_users", middleware.isLoggedIn, async (req, res) => {
+router.get("/blocked_users", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
 

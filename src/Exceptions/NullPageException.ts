@@ -3,6 +3,7 @@ class NullPageException extends Error {
         super(message); // Call the constructor of the base class `Error`
         this.name = "NullPageException"; // Set the error name to your custom error class name
 // Set the prototype explicitly to maintain the correct prototype chain
-        Object.setPrototypeOf(this, NullUserException.prototype);
+        Object.setPrototypeOf(this, NullPageException.prototype);
     }
 }
+export default NullPageException;

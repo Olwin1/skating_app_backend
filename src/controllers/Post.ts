@@ -8,6 +8,8 @@ import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import { Prisma, posts } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
 import HandleBlocks from "../utils/handleBlocks";
+import { CustomRequest } from "express-override";
+import CheckNulls from "../utils/checkNulls";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -50,7 +52,7 @@ const getInfluencers = () => {
 };
 
 // Create an API endpoint for handling a POST request related to creating a new post.
-router.post("/post", middleware.isLoggedIn, async (req, res) => {
+router.post("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request.
     CheckNulls.checkNullUser(req.userId);
@@ -59,7 +61,7 @@ router.post("/post", middleware.isLoggedIn, async (req, res) => {
     const post = await prisma.posts.create({
       data: {
         post_id: generator.nextId(), // Generate a unique post ID.
-        author_id: BigInt(req.userId), // Set the author's ID.
+        author_id: req.userId!, // Set the author's ID.
         description: req.body.description, // Extract post description from the request.
         image: req.body.image, // Extract post image hash from the request.
         like_count: 0, // Initialize the like count to 0.
@@ -76,7 +78,7 @@ router.post("/post", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route that listens for HTTP GET requests at the "/post" endpoint.
-router.get("/post", middleware.isLoggedIn, async (req, res) => {
+router.get("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   // Extract the user ID from the request.
   CheckNulls.checkNullUser(req.userId);
 
@@ -84,7 +86,7 @@ router.get("/post", middleware.isLoggedIn, async (req, res) => {
 
   try {
     // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
-    const postId = BigInt(req.headers.post);
+    const postId = BigInt(req.headers.post as string);
     const post = await prisma.posts.findUnique({
       where: { post_id: postId },
       include: {
@@ -121,7 +123,7 @@ router.get("/post", middleware.isLoggedIn, async (req, res) => {
   }
 });
 
-router.post("/like", middleware.isLoggedIn, async (req, res) => {
+router.post("/like", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user's ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -147,7 +149,7 @@ router.post("/like", middleware.isLoggedIn, async (req, res) => {
             data: {
               like_id: generator.nextId(),
               post_id: post.post_id,
-              user_id: req.userId,
+              user_id: req.userId!,
               timestamp: new Date().toISOString(),
             },
           });
@@ -167,7 +169,7 @@ router.post("/like", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for unliking a post
-router.post("/unlike", middleware.isLoggedIn, async (req, res) => {
+router.post("/unlike", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Get the user's ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -209,14 +211,14 @@ router.post("/unlike", middleware.isLoggedIn, async (req, res) => {
   }
 });
 
-router.post("/save", middleware.isLoggedIn, async (req, res) => {
+router.post("/save", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   CheckNulls.checkNullUser(req.userId); // Extract user ID from request object
   try {
     await prisma.saved_posts.create({
       data: {
         saved_post_id: generator.nextId(),
         post_id: req.body.post,
-        user_id: req.userId,
+        user_id: req.userId!,
         timestamp: new Date().toISOString(),
       },
     });
@@ -227,7 +229,7 @@ router.post("/save", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Route for removing a post from a user's saved_posts array
-router.post("/unsave", middleware.isLoggedIn, async (req, res) => {
+router.post("/unsave", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   CheckNulls.checkNullUser(req.userId); // Extract user ID from request object
   try {
     const postLikeNew = await prisma.saved_posts.deleteMany({
@@ -243,7 +245,7 @@ router.post("/unsave", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route is used to retrieve a page of saved posts
-router.get("/saved", middleware.isLoggedIn, async (req, res) => {
+router.get("/saved", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
 
@@ -265,7 +267,7 @@ router.get("/saved", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to create a new comment
-router.post("/comment", middleware.isLoggedIn, async (req, res) => {
+router.post("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -275,7 +277,7 @@ router.post("/comment", middleware.isLoggedIn, async (req, res) => {
       data: {
         comment_id: generator.nextId(), // Generate a unique comment ID
         post_id: BigInt(req.body.post), // Extract the post ID from the request
-        sender_id: req.userId, // Set the sender's user ID
+        sender_id: req.userId!, // Set the sender's user ID
         content: req.body.content, // Extract the comment content from the request
         timestamp: new Date().toISOString(), // Set the current timestamp
         like_count: 0, // Initialize the like count to 0
@@ -292,7 +294,7 @@ router.post("/comment", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to delete a comment
-router.delete("/comment", middleware.isLoggedIn, async (req, res) => {
+router.delete("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -313,7 +315,7 @@ router.delete("/comment", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to like a comment
-router.post("/like_comment", middleware.isLoggedIn, async (req, res) => {
+router.post("/like_comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -338,7 +340,7 @@ router.post("/like_comment", middleware.isLoggedIn, async (req, res) => {
             data: {
               like_id: generator.nextId(), // Generate a unique like ID
               comment_id: comment.post_id, // Set the comment ID
-              user_id: req.userId, // Set the user ID
+              user_id: req.userId!, // Set the user ID
               timestamp: new Date().toISOString(),
             },
           });
@@ -360,7 +362,7 @@ router.post("/like_comment", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to unlike a comment
-router.post("/unlike_comment", middleware.isLoggedIn, async (req, res) => {
+router.post("/unlike_comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
@@ -407,7 +409,7 @@ router.post("/unlike_comment", middleware.isLoggedIn, async (req, res) => {
 router.post(
   "/dislike_comment",
   middleware.isLoggedIn,
-  async (req, res) => {
+  async (req: CustomRequest, res) => {
     try {
       // Extract the user ID from the request
       CheckNulls.checkNullUser(req.userId);
@@ -432,7 +434,7 @@ router.post(
               data: {
                 like_id: generator.nextId(), // Generate a unique like ID
                 comment_id: comment.post_id, // Set the comment ID
-                user_id: req.userId, // Set the user ID
+                user_id: req.userId!, // Set the user ID
                 timestamp: new Date().toISOString(),
               },
             });
@@ -458,7 +460,7 @@ router.post(
 router.post(
   "/undislike_comment",
   middleware.isLoggedIn,
-  async (req, res) => {
+  async (req: CustomRequest, res) => {
     try {
       // Extract the user ID from the request
       CheckNulls.checkNullUser(req.userId);
@@ -503,13 +505,13 @@ router.post(
 );
 
 // This route is used to retrieve a single comment by its ID
-router.get("/comment", middleware.isLoggedIn, async (req, res) => {
+router.get("/comment", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
 
     // Find the comment with the provided ID from the request header
     const comment = prisma.comments.findFirst({
-      where: { comment_id: BigInt(req.headers.comment) },
+      where: { comment_id: BigInt(req.headers.comment as string) },
       include: { comment_likes: { where: { user_id: req.userId } } },
     });
 
@@ -522,14 +524,15 @@ router.get("/comment", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route is used to retrieve a page of comments for a single post
-router.get("/comments", middleware.isLoggedIn, async (req, res) => {
+router.get("/comments", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
-    CheckNulls.checkNullUser(req.userId);
+      const page = CheckNulls.checkNullPage(req.headers.page);
+      CheckNulls.checkNullUser(req.userId);
 
     // Find the post with the provided ID from the request header
     const comments = await prisma.posts.findFirst({
       where: {
-        post_id: BigInt(req.headers.post),
+        post_id: BigInt(req.headers.post as string),
         NOT: {},
       },
       include: {
@@ -587,7 +590,7 @@ router.get("/comments", middleware.isLoggedIn, async (req, res) => {
   }
 });
 // Route for removing a post
-router.delete("/post", middleware.isLoggedIn, async (req, res) => {
+router.delete("/post", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId); // Get the user ID from the request object
 
@@ -606,7 +609,7 @@ router.delete("/post", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route is used to retrieve a page of posts
-router.post("/posts", middleware.isLoggedIn, async (req, res) => {
+router.post("/posts", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   //! NEEDS TESTING
 
   try {
@@ -912,14 +915,15 @@ router.post("/posts", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This is a route handler for GET requests to "/user_posts"
-router.get("/user_posts", middleware.isLoggedIn, async (req, res) => {
+router.get("/user_posts", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
+    const page = CheckNulls.checkNullPage(req.headers.page);
     // Extract the user ID from the request object
     CheckNulls.checkNullUser(req.userId);
 
     const targetUser = await prisma.users.findFirst({
-      where: { user_id: req.headers.user },
-      include: HandleBlocks.getIncludeBlockInfo(req.userId),
+      where: { user_id: BigInt(req.headers.user as string) },
+      include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
@@ -930,7 +934,7 @@ router.get("/user_posts", middleware.isLoggedIn, async (req, res) => {
     // Query the database for posts authored by the current user, sorted by date in descending order
     // The "skip" and "limit" options are used for pagination
     const posts = await prisma.posts.findMany({
-      where: { author_id: BigInt(req.headers.user) },
+      where: { author_id: BigInt(req.headers.user as string) },
       orderBy: { timestamp: Prisma.SortOrder.desc },
       skip: 20 * page,
       take: 20,

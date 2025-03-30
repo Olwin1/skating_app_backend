@@ -1,3 +1,6 @@
+import NullPageException from "../Exceptions/NullPageException";
+import NullUserException from "../Exceptions/NullUserException";
+
 class CheckNulls {
     public static checkNullUser(userId: bigint | undefined) {
         if(userId == null){
@@ -16,3 +19,4 @@ class CheckNulls {
           }
     }
 }
+export default CheckNulls;

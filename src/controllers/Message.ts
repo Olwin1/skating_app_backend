@@ -7,6 +7,8 @@ import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import { $Enums, Prisma } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
+import { CustomRequest } from "express-override";
+import CheckNulls from "../utils/checkNulls";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -44,7 +46,7 @@ interface IChannelData {
 }
 
 // This route handles creating a new message channel.
-router.post("/channel", middleware.isLoggedIn, async (req, res) => {
+router.post("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined.
     CheckNulls.checkNullUser(req.userId);
@@ -80,13 +82,13 @@ router.post("/channel", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route handles creating a new message in a channel.
-router.post("/message", middleware.isLoggedIn, async (req, res) => {
+router.post("/message", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined.
     CheckNulls.checkNullUser(req.userId);
     // Call the createMessage function to add a new message to the channel.
     let retval = await createMessage(
-      req.userId,
+      req.userId!,
       BigInt(req.body.channel),
       req.body.content,
       req.body.img
@@ -100,13 +102,14 @@ router.post("/message", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route handles fetching a single message by ID.
-router.get("/messages", middleware.isLoggedIn, async (req, res) => {
+router.get("/messages", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
-    CheckNulls.checkNullUser(req.userId);
+      const page = CheckNulls.checkNullPage(req.headers.page);
+      CheckNulls.checkNullUser(req.userId);
 
     // Retrieve the channel details by its ID.
     const channel = await prisma.message_channels.findUnique({
-      where: { channel_id: BigInt(req.headers.channel) },
+      where: { channel_id: BigInt(req.headers.channel as string) },
       include: { participants: true },
     });
 
@@ -164,7 +167,7 @@ router.get("/messages", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route handles fetching a list of channels for the authenticated user.
-router.get("/channels", middleware.isLoggedIn, async (req, res) => {
+router.get("/channels", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId);
 
@@ -184,7 +187,7 @@ router.get("/channels", middleware.isLoggedIn, async (req, res) => {
                     avatar_id: true,
                     username: true,
                     display_name: true,
-                    ...HandleBlocks.getIncludeBlockInfo(req.userId)
+                    ...HandleBlocks.getIncludeBlockInfo(req.userId!)
                   },
                 },
               },
@@ -259,11 +262,11 @@ router.get("/channels", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route handles fetching details of a single channel.
-router.get("/channel", middleware.isLoggedIn, async (req, res) => {
+router.get("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Retrieve details of a channel by its ID.
     const channel = await prisma.message_channels.findUnique({
-      where: { channel_id: BigInt(req.headers.channel) },
+      where: { channel_id: BigInt(req.headers.channel as string) },
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);
@@ -275,9 +278,10 @@ router.get("/channel", middleware.isLoggedIn, async (req, res) => {
 
 // This route handles fetching a list of users for the authenticated user.
 // Used for creating message channels.
-router.get("/users", middleware.isLoggedIn, async (req, res) => {
+router.get("/users", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
-    CheckNulls.checkNullUser(req.userId);
+      const page = CheckNulls.checkNullPage(req.headers.page);
+      CheckNulls.checkNullUser(req.userId);
 
     // Retrieve a list of user IDs associated with the authenticated user's channels.
     let channelIds = [];
@@ -355,7 +359,7 @@ router.get("/users", middleware.isLoggedIn, async (req, res) => {
           where: {
             NOT: {
               user_id: {
-                in: [...exclusionUsers, ...friendUserIds, req.userId],
+                in: [...exclusionUsers, ...friendUserIds, req.userId!],
               },
             },
             followers_followers_user_idTousers: {
@@ -391,17 +395,17 @@ router.get("/users", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This route handles fetching details of a single channel.
-router.delete("/channel", middleware.isLoggedIn, async (req, res) => {
+router.delete("/channel", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Retrieve details of a channel by its ID.
     const participants = await prisma.participants.deleteMany({
-      where: { channel_id: BigInt(req.headers.channel) },
+      where: { channel_id: BigInt(req.headers.channel as string) },
     });
     const messages = await prisma.messages.deleteMany({
-      where: { channel_id: BigInt(req.headers.channel) },
+      where: { channel_id: BigInt(req.headers.channel as string) },
     });
     const channel = await prisma.message_channels.delete({
-      where: { channel_id: BigInt(req.headers.channel) },
+      where: { channel_id: BigInt(req.headers.channel as string) },
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);

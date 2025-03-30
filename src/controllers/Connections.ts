@@ -4,6 +4,9 @@ import middleware from "./middleware";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import HandleBlocks from "../utils/handleBlocks";
+import { CustomRequest } from "express-override";
+
+import CheckNulls from "../utils/checkNulls";
 
 const router = Router(); // create router to create route bundle
 
@@ -15,7 +18,7 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route that allows a user to follow another user
-router.post("/follow", middleware.isLoggedIn, async (req, res) => {
+router.post("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     CheckNulls.checkNullUser(req.userId)
 
@@ -87,7 +90,7 @@ router.post("/follow", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for sending a friend request
-router.post("/friend", middleware.isLoggedIn, async (req, res) => {
+router.post("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -118,7 +121,7 @@ router.post("/friend", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for unfollowing a user
-router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
+router.post("/unfollow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -169,7 +172,7 @@ router.post("/unfollow", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for unfollowing a user as the follower
-router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
+router.post("/unfollower", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -220,7 +223,7 @@ router.post("/unfollower", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route for unfriending a user
-router.post("/unfriend", middleware.isLoggedIn, async (req, res) => {
+router.post("/unfriend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -279,7 +282,7 @@ router.post("/unfriend", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to retrieve a user's followers
-router.get("/followers", middleware.isLoggedIn, async (req, res) => {
+router.get("/followers", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -344,7 +347,7 @@ router.get("/followers", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to retrieve a user's following users
-router.get("/following", middleware.isLoggedIn, async (req, res) => {
+router.get("/following", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -411,7 +414,7 @@ router.get("/following", middleware.isLoggedIn, async (req, res) => {
 });
 
 // Define a route to retrieve a user's friends
-router.get("/friends", middleware.isLoggedIn, async (req, res) => {
+router.get("/friends", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined
     CheckNulls.checkNullUser(req.userId);
@@ -517,7 +520,7 @@ router.get("/friends", middleware.isLoggedIn, async (req, res) => {
   }
 });
 
-router.patch("/follow", middleware.isLoggedIn, async (req, res) => {
+router.patch("/follow", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Convert user IDs to BigInt
     CheckNulls.checkNullUser(req.userId); // Current user's ID
@@ -571,7 +574,7 @@ router.patch("/follow", middleware.isLoggedIn, async (req, res) => {
 });
 
 // This is a route handler for a PATCH request to "/friend".
-router.patch("/friend", middleware.isLoggedIn, async (req, res) => {
+router.patch("/friend", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Ensure userId is defined object.
     CheckNulls.checkNullUser(req.userId);

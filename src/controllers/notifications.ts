@@ -4,6 +4,8 @@ import mongoose from "../db/connection";
 
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import { CustomRequest } from "express-override";
+import CheckNulls from "../utils/checkNulls";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -17,7 +19,7 @@ const router = Router();
 router.post(
   "/token",
   middleware.isLoggedIn,
-  async (req: Request, res: Response) => {
+  async (req: CustomRequest, res: Response) => {
     try {
       // Extract the user's req.userId from the request
       CheckNulls.checkNullUser(req.userId);
@@ -27,7 +29,7 @@ router.post(
         where: { user_id: req.userId, token: req.body.fcm_token as string },
         create: {
           token_id: generator.nextId(),
-          user_id: req.userId,
+          user_id: req.userId!,
           token: req.body.fcm_token,
         },
         update: {}, // This is empty because it's an upsert operation

@@ -6,3 +6,4 @@ class NullUserException extends Error {
         Object.setPrototypeOf(this, NullUserException.prototype);
     }
 }
+export default NullUserException;

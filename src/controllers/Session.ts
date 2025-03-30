@@ -5,6 +5,8 @@ import middleware from "./middleware";
 
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import { CustomRequest } from "express-override";
+import CheckNulls from "../utils/checkNulls";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -17,7 +19,7 @@ const generator = new Worker(0, 1, {
 const router = Router();
 
 // POST endpoint for creating a new session
-router.post("/session", middleware.isLoggedIn, async (req, res) => {
+router.post("/session", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Convert user ID to a BigInt
     CheckNulls.checkNullUser(req.userId);
@@ -37,7 +39,7 @@ router.post("/session", middleware.isLoggedIn, async (req, res) => {
         distance: parseFloat(req.body.distance),
         //latitude: req.body.latitude,
         //longitude: req.body.longitude,
-        author_id: req.userId, // Set the author ID to the user's ID
+        author_id: req.userId!, // Set the author ID to the user's ID
       },
     });
     // Respond with a success message
@@ -49,11 +51,11 @@ router.post("/session", middleware.isLoggedIn, async (req, res) => {
 });
 
 // GET endpoint for retrieving a specific session
-router.get("/session", middleware.isLoggedIn, async (req, res) => {
+router.get("/session", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Retrieve a session from the database using the session ID from the request headers
     const session = await prisma.sessions.findUnique({
-      where: { session_id: BigInt(req.headers.session) },
+      where: { session_id: BigInt(req.headers.session as string) },
     });
     // Respond with the retrieved session
     res.json(session);
@@ -64,7 +66,7 @@ router.get("/session", middleware.isLoggedIn, async (req, res) => {
 });
 
 // GET endpoint for retrieving a list of sessions for the user's friends
-router.get("/sessions", middleware.isLoggedIn, async (req, res) => {
+router.get("/sessions", middleware.isLoggedIn, async (req: CustomRequest, res) => {
   try {
     // Convert user ID to a BigInt
     CheckNulls.checkNullUser(req.userId);

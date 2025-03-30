@@ -8,6 +8,7 @@ import https from "https";
 import fs from "fs";
 import csv from "csv-parser";
 import mongoose from "../db/connection";
+import { CustomRequest } from "express-override";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -194,7 +195,7 @@ const searchByCountry = async (country: string, res: any) => {
 };
 
 // Function to handle search requests
-const handleSearch = async (req: Request, res: any) => {
+const handleSearch = async (req: CustomRequest, res: any) => {
   try {
     const { Geonames } = req.context!
       .models as mongoose.Models;

@@ -28,6 +28,7 @@ import mongoose from "mongoose";
 import initFirebase from "./initFirebase";
 
 import fs from "fs";
+import { CustomRequest } from "express-override";
 
 
 // Destructure environment variables with default values
@@ -96,7 +97,7 @@ app.use(
 app.use(bodyParser.json());
 app.use(middleware.createContext); // create req.context for each request
 // Define routes
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (req: CustomRequest, res: Response) => {
   res.send("This is the test route to make sure server is working");
 });
 app.use("/user", UserRouter); // route all "/user" requests to UserRouter for further processing
@@ -114,7 +115,7 @@ app.post(
   "/upload",
   middleware.isLoggedIn,
   upload.single("file"),
-  (req: Request, res: Response) => {
+  (req: CustomRequest, res: Response) => {
     const fileInfo = req.file as any;
     const id = fileInfo["id"] as mongoose.Schema.Types.ObjectId;
     res.json(id.toString());
@@ -122,7 +123,7 @@ app.post(
   }
 );
 
-app.post("/ping", middleware.isLoggedIn, (req: Request, res: Response) => {
+app.post("/ping", middleware.isLoggedIn, (req: CustomRequest, res: Response) => {
   const clientTime = req.body.timestamp;
   const serverTime = new Date();
   console.log("Client Heardbeat");

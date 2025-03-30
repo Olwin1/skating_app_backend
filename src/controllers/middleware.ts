@@ -1,15 +1,16 @@
 require("dotenv").config(); // loading env variables
 import jwt, { Secret } from "jsonwebtoken";
 import { Response, NextFunction, RequestHandler } from "express";
+import { CustomRequest }  from "../typings/express-override";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
 import User from "User";
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (
-  req,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
-) => {
+)  => {
   req.context = {
     models: {
       Geonames,
@@ -20,7 +21,7 @@ const createContext: RequestHandler = (
 };
 
 // MIDDLEWARE FOR AUTHORIZATION (MAKING SURE THEY ARE LOGGED IN)
-const isLoggedIn: RequestHandler = async (req, res, next) => {
+const isLoggedIn: RequestHandler = async (req: CustomRequest, res, next) => {
   try {
     // check if auth header exists
     if (req.headers.authorization) {

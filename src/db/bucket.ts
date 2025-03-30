@@ -3,6 +3,7 @@ import multer from "multer";
 import * as GridFSStorage from "multer-gridfs-storage";
 import mongoose from "./connection";
 import dotenv from "dotenv";
+import { CustomRequest } from "express-override";
 // Loading environment variables from .env file
 dotenv.config();
 const { DATABASE_URI } = process.env;
@@ -24,7 +25,7 @@ conn.once("open", () => {
 // Configuring GridFS storage engine for Multer
 const storage = new GridFSStorage.GridFsStorage({
   url: DATABASE_URI!,
-  file: (req, file) => {
+  file: (req: CustomRequest, file) => {
     // Return a promise that resolves with an object containing the filename and bucketName of the uploaded file
     return new Promise((resolve, reject) => {
       const fileInfo = {
