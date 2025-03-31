@@ -11,6 +11,7 @@ import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import UserBlockedError from "../Exceptions/Client/UserBlockedError";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -80,7 +81,7 @@ router.get(
     // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
 
     // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
-    const postId = BigInt(req.headers.post as string);
+    const postId = InvalidIdError.convertToBigInt(req.headers.post);
     const post = await prisma.posts.findUnique({
       where: { post_id: postId },
       include: {
@@ -119,7 +120,10 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
-      where: { post_id: BigInt(req.body.post), user_id: req.userId },
+      where: {
+        post_id: InvalidIdError.convertToBigInt(req.body.post),
+        user_id: req.userId,
+      },
     });
     if (!postLike) {
       try {
@@ -127,7 +131,7 @@ router.post(
         await prisma.$transaction(async (tx) => {
           // Increment the like count of the post and create a new like record
           const post = await tx.posts.update({
-            where: { post_id: BigInt(req.body.post) },
+            where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
             data: {
               like_count: { increment: 1 },
               post_likes: {},
@@ -160,7 +164,10 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
-      where: { post_id: BigInt(req.body.post), user_id: req.userId },
+      where: {
+        post_id: InvalidIdError.convertToBigInt(req.body.post),
+        user_id: req.userId,
+      },
     });
     if (postLike) {
       try {
@@ -168,7 +175,7 @@ router.post(
         await prisma.$transaction(async (tx) => {
           // Decrement the like count of the post and delete the like record
           const post = await tx.posts.update({
-            where: { post_id: BigInt(req.body.post) },
+            where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
             data: {
               like_count: { decrement: 1 },
               post_likes: {},
@@ -247,7 +254,7 @@ router.post(
     const comment = await prisma.comments.create({
       data: {
         comment_id: generator.nextId(), // Generate a unique comment ID
-        post_id: BigInt(req.body.post), // Extract the post ID from the request
+        post_id: InvalidIdError.convertToBigInt(req.body.post), // Extract the post ID from the request
         sender_id: req.userId!, // Set the sender's user ID
         content: req.body.content, // Extract the comment content from the request
         timestamp: new Date().toISOString(), // Set the current timestamp
@@ -268,7 +275,7 @@ router.delete(
     // Delete a comment by its comment_id
     const comment = await prisma.comments.delete({
       where: {
-        comment_id: BigInt(req.body.comment), // Extract the comment ID from the request
+        comment_id: InvalidIdError.convertToBigInt(req.body.comment), // Extract the comment ID from the request
       },
     });
 
@@ -286,7 +293,10 @@ router.post(
 
     // Check if the user has already liked the comment
     const commentLike = await prisma.comment_likes.findFirst({
-      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+      where: {
+        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        user_id: req.userId,
+      },
     });
 
     if (!commentLike) {
@@ -294,7 +304,9 @@ router.post(
         // Use a transaction to update the comment's like count and create a new comment_like entry
         await prisma.$transaction(async (tx) => {
           const comment = await tx.comments.update({
-            where: { comment_id: BigInt(req.body.comment) },
+            where: {
+              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+            },
             data: {
               like_count: { increment: 1 }, // Increment the like count by 1
             },
@@ -328,7 +340,10 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the comment
     const commentLike = await prisma.comment_likes.findFirst({
-      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+      where: {
+        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        user_id: req.userId,
+      },
     });
 
     if (commentLike) {
@@ -336,7 +351,9 @@ router.post(
         // Use a transaction to update the comment's like count and delete the comment_like entry
         await prisma.$transaction(async (tx) => {
           const comment = await tx.comments.update({
-            where: { comment_id: BigInt(req.body.comment) },
+            where: {
+              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+            },
             data: {
               like_count: { decrement: 1 }, // Decrement the like count by 1
             },
@@ -367,7 +384,10 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the comment
     const commentDislike = await prisma.comment_dislikes.findFirst({
-      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+      where: {
+        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        user_id: req.userId,
+      },
     });
 
     if (!commentDislike) {
@@ -375,7 +395,9 @@ router.post(
         // Use a transaction to update the comment's like count and create a new comment_like entry
         await prisma.$transaction(async (tx) => {
           const comment = await tx.comments.update({
-            where: { comment_id: BigInt(req.body.comment) },
+            where: {
+              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+            },
             data: {
               dislike_count: { increment: 1 }, // Increment the like count by 1
             },
@@ -409,7 +431,10 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the comment
     const commentDislike = await prisma.comment_dislikes.findFirst({
-      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+      where: {
+        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        user_id: req.userId,
+      },
     });
 
     if (commentDislike) {
@@ -417,7 +442,9 @@ router.post(
         // Use a transaction to update the comment's like count and delete the comment_like entry
         await prisma.$transaction(async (tx) => {
           const comment = await tx.comments.update({
-            where: { comment_id: BigInt(req.body.comment) },
+            where: {
+              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+            },
             data: {
               like_count: { decrement: 1 }, // Decrement the like count by 1
             },
@@ -448,7 +475,9 @@ router.get(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find the comment with the provided ID from the request header
     const comment = prisma.comments.findFirst({
-      where: { comment_id: BigInt(req.headers.comment as string) },
+      where: {
+        comment_id: InvalidIdError.convertToBigInt(req.headers.comment),
+      },
       include: { comment_likes: { where: { user_id: req.userId } } },
     });
 
@@ -466,7 +495,7 @@ router.get(
     // Find the post with the provided ID from the request header
     const comments = await prisma.posts.findFirst({
       where: {
-        post_id: BigInt(req.headers.post as string),
+        post_id: InvalidIdError.convertToBigInt(req.headers.post),
         NOT: {},
       },
       include: {
@@ -526,7 +555,7 @@ router.delete(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     const post = await prisma.posts.delete({
       where: {
-        post_id: BigInt(req.body.post),
+        post_id: InvalidIdError.convertToBigInt(req.body.post),
         author_id: req.userId,
       },
     });
@@ -634,7 +663,7 @@ router.post(
                   finalPostIds.length > 0
                     ? Prisma.sql`
                   AND p.post_id NOT IN (SELECT * FROM UNNEST(ARRAY[${Prisma.join(
-                    finalPostIds.map((id) => BigInt(id))
+                    finalPostIds.map((id) => InvalidIdError.convertToBigInt(id))
                   )}]::bigint[]))
                   `
                     : Prisma.sql``
@@ -758,8 +787,8 @@ router.post(
           friends_only: post.friends_only,
           location: "",
           liked: post.post_likes.length > 0,
-          total_likes: BigInt(post._count.post_likes),
-          comment_count: BigInt(post._count.comments),
+          total_likes: InvalidIdError.convertToBigInt(post._count.post_likes),
+          comment_count: InvalidIdError.convertToBigInt(post._count.comments),
           influencer: true,
           timestamp: post.timestamp,
           saved: post.saved_posts.length > 0 ? true : false,
@@ -825,8 +854,12 @@ router.post(
           friends_only: post.posts.friends_only,
           location: "",
           liked: true,
-          total_likes: BigInt(post.posts._count.post_likes),
-          comment_count: BigInt(post.posts._count.comments),
+          total_likes: InvalidIdError.convertToBigInt(
+            post.posts._count.post_likes
+          ),
+          comment_count: InvalidIdError.convertToBigInt(
+            post.posts._count.comments
+          ),
           timestamp: post.timestamp,
           saved: post.posts.saved_posts.length > 0 ? true : false,
         });
@@ -850,7 +883,7 @@ router.get(
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     const targetUser = await prisma.users.findFirst({
-      where: { user_id: BigInt(req.headers.user as string) },
+      where: { user_id: InvalidIdError.convertToBigInt(req.headers.user) },
       include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
 
@@ -866,7 +899,7 @@ router.get(
     // Query the database for posts authored by the current user, sorted by date in descending order
     // The "skip" and "limit" options are used for pagination
     const posts = await prisma.posts.findMany({
-      where: { author_id: BigInt(req.headers.user as string) },
+      where: { author_id: InvalidIdError.convertToBigInt(req.headers.user) },
       orderBy: { timestamp: Prisma.SortOrder.desc },
       skip: 20 * page,
       take: 20,

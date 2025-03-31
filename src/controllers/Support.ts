@@ -11,6 +11,7 @@ import { ErrorCode } from "../ErrorCodes";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 
 interface ReportType {
   feedback_id: bigint;
@@ -150,10 +151,7 @@ async function getReports(
   const user = await prisma.users.findUnique({ where: { user_id: userId } });
 
   // Check if the target user was found.  If not then throw an error to reflect that.
-  UserNotFoundError.throwIfNull(
-    user,
-    UserNotFoundError.targetUserMessage
-  );
+  UserNotFoundError.throwIfNull(user, UserNotFoundError.targetUserMessage);
 
   if (
     user!.user_role == $Enums.user_role.moderator ||
@@ -253,7 +251,7 @@ router.post(
     const newMessage = await prisma.user_support_messages.create({
       data: {
         message_id: generator.nextId(), // Generate a unique message ID
-        feedback_id: BigInt(req.body.feedback_id), // Extract the feedback ID from the request
+        feedback_id: InvalidIdError.convertToBigInt(req.body.feedback_id), // Extract the feedback ID from the request
         sender_id: req.userId!, // Set the sender's user ID
         content: req.body.content, // Extract the message content from the request
         timestamp: new Date().toISOString(), // Set the current timestamp
@@ -273,7 +271,9 @@ router.get(
 
     // Find user feedback and support information based on the provided feedback ID from the request header
     const messages = await prisma.user_feedback_and_support.findFirst({
-      where: { feedback_id: BigInt(req.headers.feedback_id as string) },
+      where: {
+        feedback_id: InvalidIdError.convertToBigInt(req.headers.feedback_id),
+      },
       include: {
         // Fetch user support messages with pagination and ordering by timestamp
         user_support_messages: {
@@ -302,7 +302,7 @@ router.post(
     const newMessage = await prisma.user_support_messages.create({
       data: {
         message_id: generator.nextId(), // Generate a unique message ID
-        feedback_id: BigInt(req.body.feedback_id), // Extract the feedback ID from the request
+        feedback_id: InvalidIdError.convertToBigInt(req.body.feedback_id), // Extract the feedback ID from the request
         sender_id: req.userId!, // Set the sender's user ID
         content: req.body.content, // Extract the message content from the request
         timestamp: new Date().toISOString(), // Set the current timestamp
@@ -359,7 +359,9 @@ router.get(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
-      where: { report_id: BigInt(req.headers.report_id as string) },
+      where: {
+        report_id: InvalidIdError.convertToBigInt(req.headers.report_id),
+      },
     });
 
     if (report) {
@@ -396,7 +398,9 @@ router.get(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
-      where: { report_id: BigInt(req.headers.report_id as string) },
+      where: {
+        report_id: InvalidIdError.convertToBigInt(req.headers.report_id),
+      },
     });
 
     if (report) {
@@ -618,16 +622,20 @@ router.get(
     );
 
     // TODO handle null user
+    let targetUser: bigint;
+    try {
+      targetUser = InvalidIdError.convertToBigInt(req.headers.user);
+    } catch (e) {
+      targetUser = req.userId!;
+    }
     if (
-      req.headers.user == "" ||
-      req.headers.user == null ||
-      req.headers.user == req.user!.userId! ||
+      targetUser == req.userId! ||
       moderatorUser!.user_role == $Enums.user_role.moderator ||
       moderatorUser!.user_role == $Enums.user_role.administrator
     ) {
       const reports = await prisma.reports.findMany({
         where: {
-          reporter_id: BigInt(req.headers.user as string) ?? req.userId!,
+          reporter_id: targetUser,
         },
         orderBy: {
           timestamp: "asc",

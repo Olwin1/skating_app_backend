@@ -5,12 +5,13 @@ import { CustomRequest } from "../typings/express-override";
 import Geonames from "../models/Geonames";
 import Altnames from "../models/Altnames";
 import User from "User";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 // CREATE CONTEXT MIDDLEWARE
 const createContext: RequestHandler = (
   req: CustomRequest,
   res: Response,
   next: NextFunction
-)  => {
+) => {
   req.context = {
     models: {
       Geonames,
@@ -30,13 +31,23 @@ const isLoggedIn: RequestHandler = async (req: CustomRequest, res, next) => {
       if (token) {
         const payload = jwt.verify(token, process.env.SECRET as Secret);
         if (payload) {
-          if(!(typeof payload === "object" && payload !== null && "iat" in payload)) {
+          if (
+            !(
+              typeof payload === "object" &&
+              payload !== null &&
+              "iat" in payload
+            )
+          ) {
             throw TypeError("Expected JWT Payload Not String.");
           }
           // store user data in request object
-          req.user = {userId: payload._id, username: payload.username, iat: payload.iat} as User;
-          // Store their id 
-          req.userId = BigInt(req.user.userId);
+          req.user = {
+            userId: payload._id,
+            username: payload.username,
+            iat: payload.iat,
+          } as User;
+          // Store their id
+          req.userId = InvalidIdError.convertToBigInt(req.user.userId);
           next();
         } else {
           res.status(400).json({ error: "token verification failed" });

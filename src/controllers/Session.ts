@@ -5,6 +5,7 @@ import { Router } from "express";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import RouteBuilder from "../utils/RouteBuilder";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -17,8 +18,9 @@ const generator = new Worker(0, 1, {
 const router = Router();
 
 // POST endpoint for creating a new session
-router.post("/session", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/session",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Create a new session in the database
     const session = await prisma.sessions.create({
       data: {
@@ -39,21 +41,28 @@ router.post("/session", ...RouteBuilder.createRouteHandler(async (req, res) => {
     });
     // Respond with a success message
     res.json({ success: true });
-}));
+  })
+);
 
 // GET endpoint for retrieving a specific session
-router.get("/session", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/session",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve a session from the database using the session ID from the request headers
     const session = await prisma.sessions.findUnique({
-      where: { session_id: BigInt(req.headers.session as string) },
+      where: {
+        session_id: InvalidIdError.convertToBigInt(req.headers.session),
+      },
     });
     // Respond with the retrieved session
     res.json(session);
-}));
+  })
+);
 
 // GET endpoint for retrieving a list of sessions for the user's friends
-router.get("/sessions", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/sessions",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Calculate a cutoff date (24 hours ago)
     let cutoffDate = new Date(
       new Date().getTime() - 24 * 60 * 60 * 1000
@@ -83,7 +92,8 @@ router.get("/sessions", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Respond with the retrieved sessions
     res.json(sessions);
-}));
+  })
+);
 
 // Export the router for use in other files
 export default router;

@@ -8,6 +8,7 @@ import RouteBuilder from "../utils/RouteBuilder";
 import CheckNulls from "../utils/checkNulls";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import UserBlockedError from "../Exceptions/Client/UserBlockedError";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 
 const router = Router(); // create router to create route bundle
 
@@ -23,7 +24,7 @@ router.post(
   "/follow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = BigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -113,7 +114,7 @@ router.post(
       data: {
         request_id: generator.nextId(),
         requester_id: req.userId!,
-        requestee_id: BigInt(req.body.user),
+        requestee_id: InvalidIdError.convertToBigInt(req.body.user),
         timestamp: new Date().toISOString(),
       },
     });
@@ -126,7 +127,7 @@ router.post(
   "/unfollow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = BigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -178,7 +179,7 @@ router.post(
   "/unfollower",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = BigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -230,7 +231,7 @@ router.post(
   "/unfriend",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = BigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user);
 
     // Retrieve information about the target user, including friend requests and friend relationships
     const friendInfo = await prisma.users.findUnique({
@@ -295,7 +296,7 @@ router.get(
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
     if (req.headers.user && req.headers.user instanceof String) {
-      target = BigInt(req.headers.user as string);
+      target = InvalidIdError.convertToBigInt(req.headers.user);
     }
     // Retrieve the list of follower users for the target user
     const followerUsersRaw = await prisma.users.findUnique({
@@ -361,8 +362,8 @@ router.get(
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
-    if (req.headers.user && req.headers.user instanceof String) {
-      target = BigInt(req.headers.user as string);
+    if (req.headers.user) {
+      target = InvalidIdError.convertToBigInt(req.headers.user);
     }
     // Retrieve the list of followed users for the target user
     const followedUsersRaw = await prisma.users.findUnique({
@@ -426,8 +427,8 @@ router.get(
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
-    if (req.headers.user && req.headers.user instanceof String) {
-      target = BigInt(req.headers.user as string);
+    if (req.headers.user) {
+      target = InvalidIdError.convertToBigInt(req.headers.user);
     }
     const pageSize = 20;
 
@@ -532,7 +533,7 @@ router.patch(
   "/follow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Current user's ID
-    const target = BigInt(req.body.user); // Target user's ID
+    const target = InvalidIdError.convertToBigInt(req.body.user); // Target user's ID
     const accepted = req.body.accepted; // Whether the follow request is accepted
 
     // Find the follow request in the database
@@ -584,7 +585,7 @@ router.patch(
   "/friend",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request body.
-    const target = BigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user);
 
     // Delete any existing friend requests between the current user and the target user.
     const request = await prisma.friend_requests.deleteMany({

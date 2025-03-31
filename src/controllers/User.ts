@@ -13,6 +13,7 @@ import { CustomRequest } from "express-override";
 import NullUserException from "../Exceptions/NullUserException";
 import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -315,7 +316,9 @@ router.get(
     const user = await prisma.users.findUnique({
       where: {
         user_id:
-          (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : req.userId,
+          (req.headers.id ?? "0") != "0"
+            ? InvalidIdError.convertToBigInt(req.headers.id)
+            : req.userId,
       },
       include: {
         _count: {
@@ -407,7 +410,12 @@ router.get(
     }
     return res
       .status(200)
-      .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
+      .json(
+        await checkUserFollows(
+          req.userId!,
+          InvalidIdError.convertToBigInt(req.headers.user)
+        )
+      );
   })
 );
 
@@ -422,7 +430,12 @@ router.get(
     }
     return res
       .status(200)
-      .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
+      .json(
+        await checkUserFollows(
+          req.userId!,
+          InvalidIdError.convertToBigInt(req.headers.user)
+        )
+      );
   })
 );
 

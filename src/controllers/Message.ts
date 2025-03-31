@@ -7,6 +7,7 @@ import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import HandleBlocks from "../utils/handleBlocks";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
+import InvalidIdError from "../Exceptions/Client/InvalidIdError";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -43,10 +44,10 @@ interface IChannelData {
   last_message: IMessageData;
 }
 
-
 // This route handles creating a new message channel.
-router.post("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/channel",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Parse the list of participants from the request and add the user's ID.
     let participants = JSON.parse(req.body.participants).concat([req.userId]);
     // Generate a unique channel ID.
@@ -71,28 +72,36 @@ router.post("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
     return res
       .status(200)
       .json({ channel: channel, participants: participantRows });
-}));
+  })
+);
 
 // This route handles creating a new message in a channel.
-router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/message",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Call the createMessage function to add a new message to the channel.
     let retval = await createMessage(
       req.userId!,
-      BigInt(req.body.channel),
+      InvalidIdError.convertToBigInt(req.body.channel),
       req.body.content,
       req.body.img
     );
     // Return a success response.
     res.status(200).json({ success: true });
-}));
+  })
+);
 
 // This route handles fetching a single message by ID.
-router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/messages",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Retrieve the channel details by its ID.
     const channel = await prisma.message_channels.findUnique({
-      where: { channel_id: BigInt(req.headers.channel as string) },
+      where: {
+        channel_id: InvalidIdError.convertToBigInt(req.headers.channel),
+      },
       include: { participants: true },
     });
 
@@ -143,10 +152,13 @@ router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Return the list of messages as a JSON response.
     res.status(200).json(messages);
-}));
+  })
+);
 
 // This route handles fetching a list of channels for the authenticated user.
-router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/channels",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve a list of channels associated with the user.
     const channels = await prisma.participants.findMany({
       where: {
@@ -163,7 +175,7 @@ router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
                     avatar_id: true,
                     username: true,
                     display_name: true,
-                    ...HandleBlocks.getIncludeBlockInfo(req.userId!)
+                    ...HandleBlocks.getIncludeBlockInfo(req.userId!),
                   },
                 },
               },
@@ -175,11 +187,9 @@ router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
     let channelIds: bigint[] = [];
     let channelLastMessageNumber: number[] = [];
     for (const channel of channels) {
-      const currentChannel = channel.message_channels
+      const currentChannel = channel.message_channels;
       channelIds.push(currentChannel.channel_id);
-      channelLastMessageNumber.push(
-        currentChannel.last_message_count
-      );
+      channelLastMessageNumber.push(currentChannel.last_message_count);
     }
     let lastMessageContent: { [channelId: string]: IMessageData } = {};
 
@@ -191,9 +201,12 @@ router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
     });
     for (const channel of channels) {
       const lastMessage = lastMessages
-        .filter((message: { channel_id: bigint }) => message.channel_id === channel.channel_id)
+        .filter(
+          (message: { channel_id: bigint }) =>
+            message.channel_id === channel.channel_id
+        )
         .at(-1); // Get the most recent message
-    
+
       if (lastMessage) {
         lastMessageContent[channel.channel_id.toString()] = {
           message_id: lastMessage.message_id,
@@ -203,16 +216,19 @@ router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
         };
       }
     }
-    
 
     let retVals = [] as IChannelData[];
     // Loop through each possible channel
     for (let i = 0; i < channels.length; i++) {
-
       // Go through every participant of a channel and check if they are blocked
       let participants = [] as IParticipantData[];
-      for(let j = 0; j < channels[i].message_channels.participants.length; j++) {
-        let currentParticipant = channels[i].message_channels.participants[j].users;
+      for (
+        let j = 0;
+        j < channels[i].message_channels.participants.length;
+        j++
+      ) {
+        let currentParticipant =
+          channels[i].message_channels.participants[j].users;
         participants[j] = {
           user_id: currentParticipant.user_id,
           avatar_id: currentParticipant.avatar_id,
@@ -231,22 +247,30 @@ router.get("/channels", ...RouteBuilder.createRouteHandler(async (req, res) => {
       retVals.push(retVal);
     }
     return res.status(200).json(retVals);
-}));
+  })
+);
 
 // This route handles fetching details of a single channel.
-router.get("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/channel",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve details of a channel by its ID.
     const channel = await prisma.message_channels.findUnique({
-      where: { channel_id: BigInt(req.headers.channel as string) },
+      where: {
+        channel_id: InvalidIdError.convertToBigInt(req.headers.channel),
+      },
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);
-}));
+  })
+);
 
 // This route handles fetching a list of users for the authenticated user.
 // Used for creating message channels.
-router.get("/users", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/users",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Retrieve a list of user IDs associated with the authenticated user's channels.
     let channelIds = [];
@@ -260,7 +284,10 @@ router.get("/users", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve a list of participants in the user's channels who are not the authenticated user.
     const participants = await prisma.participants.findMany({
       where: {
-        AND: [{ channel_id: { in: channelIds } }, { user_id: { not: req.userId } }],
+        AND: [
+          { channel_id: { in: channelIds } },
+          { user_id: { not: req.userId } },
+        ],
       },
     });
 
@@ -353,22 +380,27 @@ router.get("/users", ...RouteBuilder.createRouteHandler(async (req, res) => {
       });
     });
     res.status(200).json(retvals);
-}));
+  })
+);
 
 // This route handles fetching details of a single channel.
-router.delete("/channel", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.delete(
+  "/channel",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const channelId = InvalidIdError.convertToBigInt(req.headers.channel);
     // Retrieve details of a channel by its ID.
     const participants = await prisma.participants.deleteMany({
-      where: { channel_id: BigInt(req.headers.channel as string) },
+      where: { channel_id: channelId },
     });
     const messages = await prisma.messages.deleteMany({
-      where: { channel_id: BigInt(req.headers.channel as string) },
+      where: { channel_id: channelId },
     });
     const channel = await prisma.message_channels.delete({
-      where: { channel_id: BigInt(req.headers.channel as string) },
+      where: { channel_id: channelId },
     });
     // Return the channel details as a JSON response.
     res.status(200).json(channel);
-}));
+  })
+);
 
 export default router;
