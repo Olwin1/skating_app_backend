@@ -1,9 +1,19 @@
-class ClientError extends Error {
-    constructor(message: string) {
-        super(message); // Call the constructor of the base class `Error`
-        this.name = "ClientError"; // Set the error name to your custom error class name
-// Set the prototype explicitly to maintain the correct prototype chain
-        Object.setPrototypeOf(this, ClientError.prototype);
+import BaseError from "../baseError";
+
+
+/**
+ * ClientError is used for errors caused by the client (4xx HTTP errors).
+ * Examples: Invalid input, unauthorised access, missing resources.
+ */
+class ClientError extends BaseError {
+    /**
+     * Creates an instance of ClientError.
+     * @param {string} message - The error message.
+     * @param {number} [statusCode=400] - The HTTP status code (defaults to 400).
+     */
+    constructor(message: string, statusCode: number = 400) {
+        super(message, statusCode, true); // 'true' indicates this is an expected error
     }
 }
+
 export default ClientError;

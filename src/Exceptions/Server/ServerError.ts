@@ -1,9 +1,18 @@
-class ServerError extends Error {
-    constructor(message: string) {
-        super(message); // Call the constructor of the base class `Error`
-        this.name = "ServerError"; // Set the error name to your custom error class name
-// Set the prototype explicitly to maintain the correct prototype chain
-        Object.setPrototypeOf(this, ServerError.prototype);
+import BaseError from "../baseError";
+
+/**
+ * ServerError is used for internal server errors (5xx HTTP errors).
+ * These represent unexpected issues that occur on the backend.
+ */
+class ServerError extends BaseError {
+    /**
+     * Creates an instance of ServerError.
+     * @param {string} message - The error message.
+     * @param {number} [statusCode=500] - The HTTP status code (defaults to 500).
+     */
+    constructor(message: string, statusCode: number = 500) {
+        super(message, statusCode, false); // 'false' indicates an unexpected error
     }
 }
+
 export default ServerError;
