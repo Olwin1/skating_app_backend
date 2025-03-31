@@ -7,6 +7,7 @@ import HandleBlocks from "../utils/handleBlocks";
 import RouteBuilder from "../utils/RouteBuilder";
 import CheckNulls from "../utils/checkNulls";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
+import UserBlockedError from "../Exceptions/Client/UserBlockedError";
 
 const router = Router(); // create router to create route bundle
 
@@ -37,25 +38,23 @@ router.post(
     });
 
     // Check if the target user was found.
-    if (!targetUser) {
-      throw new UserNotFoundError(UserNotFoundError.targetUserMessage);
-    }
+    UserNotFoundError.throwIfNull(
+      targetUser,
+      UserBlockedError.targetUserMessage
+    );
 
     // Check if the user is blocked or the other way round
-    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if (isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you");
-    }
+    UserBlockedError.throwIfBlocked(HandleBlocks.checkIsBlocked(targetUser));
 
     // Check if a follow request already exists
     if (
-      targetUser?.follow_requests_follow_requests_requester_idTousers.length !=
+      targetUser!.follow_requests_follow_requests_requester_idTousers.length !=
       0
     ) {
       console.log("Follow request already exists.");
     } else {
       // If no follow request exists, check if the target user's profile is public
-      if (targetUser.public_profile == false) {
+      if (targetUser!.public_profile == false) {
         // Create a new follow request
         const newFollowRequest = await prisma.follow_requests.create({
           data: {
@@ -107,10 +106,7 @@ router.post(
     );
 
     // Check if the user is blocked or the other way round
-    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if (isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you");
-    }
+    UserBlockedError.throwIfBlocked(HandleBlocks.checkIsBlocked(targetUser));
 
     // Create a friend request
     const friendRequest = await prisma.friend_requests.create({
@@ -325,13 +321,12 @@ router.get(
     // If the user is blocked then don't get anything for them
     if (target != req.userId) {
       // Check if the user is blocked or the other way round
-      const isBlocked = HandleBlocks.checkIsBlocked(followerUsersRaw);
-      if (isBlocked) {
-        throw Error("Target user has been blocked by you or has blocked you");
-      }
+      UserBlockedError.throwIfBlocked(
+        HandleBlocks.checkIsBlocked(followerUsersRaw)
+      );
     }
 
-    const followerUsers = followerUsersRaw?.followers_followers_user_idTousers;
+    const followerUsers = followerUsersRaw!.followers_followers_user_idTousers;
 
     let returningUsers = [];
     if (followerUsers == null) {
@@ -393,10 +388,9 @@ router.get(
     // If the user is blocked then don't get anything for them
     if (target != req.userId) {
       // Check if the user is blocked or the other way round
-      const isBlocked = HandleBlocks.checkIsBlocked(followedUsersRaw);
-      if (isBlocked) {
-        throw Error("Target user has been blocked by you or has blocked you");
-      }
+      UserBlockedError.throwIfBlocked(
+        HandleBlocks.checkIsBlocked(followedUsersRaw)
+      );
     }
     const followedUsers = followedUsersRaw!.following_following_user_idTousers;
 
@@ -491,13 +485,9 @@ router.get(
           );
 
           // Check if the user is blocked or the other way round
-          const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-          if (isBlocked) {
-            // TODO handle block error
-            throw Error(
-              "Target user has been blocked by you or has blocked you"
-            );
-          }
+          UserBlockedError.throwIfBlocked(
+            HandleBlocks.checkIsBlocked(targetUser)
+          );
         }
 
         let returningUsers = [];

@@ -10,6 +10,7 @@ import HandleBlocks from "../utils/handleBlocks";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
+import UserBlockedError from "../Exceptions/Client/UserBlockedError";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -860,10 +861,7 @@ router.get(
     );
 
     // Check if the user is blocked or the other way round
-    const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if (isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you");
-    }
+    UserBlockedError.throwIfBlocked(HandleBlocks.checkIsBlocked(targetUser));
 
     // Query the database for posts authored by the current user, sorted by date in descending order
     // The "skip" and "limit" options are used for pagination
