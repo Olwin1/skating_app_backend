@@ -5,8 +5,8 @@ import ClientError from "./ClientError";
  * Examples: page: "greenBin", userId: 32, etc...
  */
 class InvalidArgumentsError extends ClientError {
-  static throwIfNull(value: any, message: string) {
-    if (!value) throw new InvalidArgumentsError(this.default + message);
+  static throwIfNull(value: any) {
+    if (!value) throw new InvalidArgumentsError(this.default + value);
   }
   /**
    * Default message for when a argument is missing.
