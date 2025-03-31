@@ -10,7 +10,6 @@ import * as securePin from "secure-pin";
 import { $Enums } from "@prisma/client";
 import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
-import NullUserException from "../Exceptions/NullUserException";
 import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import InvalidIdError from "../Exceptions/Client/InvalidIdError";
@@ -309,7 +308,7 @@ router.get(
     if (Array.isArray(req.headers.id)) {
       throw TypeError("Expected id to be of type `string` not `string[]`");
     } else if (!req.headers.id) {
-      throw new NullUserException("Expected an id argument");
+      throw new InvalidIdError("Expected an id argument");
     }
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
@@ -406,7 +405,7 @@ router.get(
     if (Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
-      throw new NullUserException("Expected a user argument");
+      throw new InvalidIdError("Expected a user argument");
     }
     return res
       .status(200)
@@ -426,7 +425,7 @@ router.get(
     if (Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
-      throw new NullUserException("Expected a user argument");
+      throw new InvalidIdError("Expected a user argument");
     }
     return res
       .status(200)
