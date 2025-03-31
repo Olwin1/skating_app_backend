@@ -58,6 +58,7 @@ class RouteBuilder {
           await handler(req, res);
         } catch (error) {
           if (!(error instanceof Error)) {
+            Logger.instance.logger.error(`Error in Error Logging: ${error}`);
             return res.status(500).json({ error: error });
           }
 
