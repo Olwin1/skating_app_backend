@@ -12,6 +12,7 @@ import HandleBlocks from "../utils/handleBlocks";
 import { CustomRequest } from "express-override";
 import NullUserException from "../Exceptions/NullUserException";
 import RouteBuilder from "../utils/RouteBuilder";
+import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 const router = Router(); // Create a router to create a route bundle
 
 // Destructure environment variables with defaults
@@ -113,31 +114,31 @@ router.post("/login", async (req: CustomRequest, res) => {
       where: { username: req.body.username },
     });
 
-    if (user) {
-      // Compare the provided password with the hashed password stored in the database
-      const result = await bcrypt.compare(
-        req.body.password,
-        user.password_hash!
-      );
-      if (result) {
-        const verified = await prisma.email_verifications.findFirst({
-          where: { user_id: user.user_id, is_verified: true },
-        });
-        const isVerified = verified?.is_verified ?? false;
+    // TODO obscure this so username or password could be incorrect
 
-        // If the passwords match, generate a JWT token and return it in the response
-        const token = jwt.sign(
-          { username: user.username, userId: user.user_id },
-          SECRET
-        );
-        return res.status(200).json({ token: token, verified: isVerified });
-      } else {
-        // Return a 400 Bad Request response with an error code for an incorrect password
-        res.status(400).json({ ec: ErrorCode.IncorrectPassword });
-      }
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.selfUserMessage);
+
+    // Compare the provided password with the hashed password stored in the database
+    const result = await bcrypt.compare(
+      req.body.password,
+      user!.password_hash!
+    );
+    if (result) {
+      const verified = await prisma.email_verifications.findFirst({
+        where: { user_id: user!.user_id, is_verified: true },
+      });
+      const isVerified = verified?.is_verified ?? false;
+
+      // If the passwords match, generate a JWT token and return it in the response
+      const token = jwt.sign(
+        { username: user!.username, userId: user!.user_id },
+        SECRET
+      );
+      return res.status(200).json({ token: token, verified: isVerified });
     } else {
-      // Return a 400 Bad Request response with an error code for a user not found
-      res.status(400).json({ ec: ErrorCode.RecordNotFound });
+      // Return a 400 Bad Request response with an error code for an incorrect password
+      res.status(400).json({ ec: ErrorCode.IncorrectPassword });
     }
   } catch (error) {
     // Return a 400 Bad Request response with the error if something went wrong
@@ -150,8 +151,9 @@ router.post("/login", async (req: CustomRequest, res) => {
 // Define route handlers for various user-related operations
 
 // Define a route for updating user descriptions
-router.post("/description", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/description",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's description in the database using Prisma
     const updatedUser = await prisma.users.update({
       where: { user_id: req.userId },
@@ -160,11 +162,13 @@ router.post("/description", ...RouteBuilder.createRouteHandler(async (req, res) 
 
     // Send a success response with a JSON object
     res.status(200).json({ success: true });
-}));
+  })
+);
 
 // Define a route for updating user avatars
-router.post("/avatar", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/avatar",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's avatar in the database using Prisma
     const updatedUser = await prisma.users.update({
       where: { user_id: req.userId },
@@ -173,26 +177,32 @@ router.post("/avatar", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Send a success response with a JSON object
     res.status(200).json({ success: true });
-}));
+  })
+);
 
 // Route handler to update user's email
-router.post("/email", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/email",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's email in the database
     //TODO: Redo Email Verification
     const updatedUser = await prisma.users.update({
       where: { user_id: req.userId },
       data: { email: req.body.description },
     });
-    await prisma.email_verifications.deleteMany({ where: { user_id: req.userId } });
+    await prisma.email_verifications.deleteMany({
+      where: { user_id: req.userId },
+    });
 
     // Return the response from the database update
     res.status(200).json({ success: true, verified: false });
-}));
+  })
+);
 
 // Route handler to update user's email verification
-router.post("/verify_email", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/verify_email",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's email in the database
     const emailVerification = await prisma.email_verifications.findFirst({
       where: {
@@ -211,9 +221,12 @@ router.post("/verify_email", ...RouteBuilder.createRouteHandler(async (req, res)
     } else {
       res.status(400).json({ success: false, verified: false });
     }
-}));
+  })
+);
 // Route handler to update user's email
-router.get("/is_verified", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/is_verified",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Update the user's email in the database
     const verified = await prisma.email_verifications.findFirst({
       where: { user_id: req.userId, is_verified: true },
@@ -223,11 +236,13 @@ router.get("/is_verified", ...RouteBuilder.createRouteHandler(async (req, res) =
     res
       .status(200)
       .json({ success: true, verified: verified?.is_verified ?? false });
-}));
+  })
+);
 
 // Route handler to check if user is allowed to access app
-router.get("/is_restricted", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/is_restricted",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const isRestrictedData = await prisma.user_actions.findMany({
       where: {
         user_id: req.userId,
@@ -283,11 +298,14 @@ router.get("/is_restricted", ...RouteBuilder.createRouteHandler(async (req, res)
       is_muted: true,
       end_timestamp: endTimestamp,
     });
-}));
+  })
+);
 
 // Retrieves user information.
-router.get("/", ...RouteBuilder.createRouteHandler(async (req, res) => {
-    if(Array.isArray(req.headers.id)) {
+router.get(
+  "/",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    if (Array.isArray(req.headers.id)) {
       throw TypeError("Expected id to be of type `string` not `string[]`");
     } else if (!req.headers.id) {
       throw new NullUserException("Expected an id argument");
@@ -296,7 +314,8 @@ router.get("/", ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
       where: {
-        user_id: (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : req.userId,
+        user_id:
+          (req.headers.id ?? "0") != "0" ? BigInt(req.headers.id) : req.userId,
       },
       include: {
         _count: {
@@ -314,73 +333,74 @@ router.get("/", ...RouteBuilder.createRouteHandler(async (req, res) => {
       },
     });
 
-    if (user) {
-      let returnUser = {};
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.targetUserMessage);
 
-      // Depending on the user_id, construct a response object with different fields.
-      // If it is logged in user return more data
-      if (user.user_id == req.userId) {
-        returnUser = {
-          user_id: user.user_id,
-          avatar_id: user.avatar_id,
-          description: user.description,
-          email: user.email,
-          email_notifications: user.email_notifications,
-          dyslexia_font: user.dyslexia_font,
-          public_profile: user.public_profile,
-          hide_location: user.hide_location,
-          analytics_enabled: user.analytics_enabled,
-          background: user.background,
-          country: user.country,
-          username: user.username,
-          display_name: user.display_name,
-          user_role: user.user_role,
-          followers: user._count.followers_followers_user_idTousers,
-          following: user._count.following_following_user_idTousers,
-          friends:
-            user._count.friends_friends_user1_idTousers +
-            user._count.friends_friends_user2_idTousers,
-          posts: user._count.posts,
-        };
-      } else {
-        const follows = await checkUserFollows(req.userId!, user.user_id);
-        const friends = await checkUserFriends(req.userId!, user.user_id);
-        returnUser = {
-          user_id: user.user_id,
-          avatar_id: user.avatar_id,
-          description: user.description,
-          public_profile: user.public_profile,
-          country: user.country,
-          username: user.username,
-          display_name: user.display_name,
-          user_role: user.user_role,
-          followers: user._count.followers_followers_user_idTousers,
-          following: user._count.following_following_user_idTousers,
-          friends:
-            user._count.friends_friends_user1_idTousers +
-            user._count.friends_friends_user2_idTousers,
-          posts: user._count.posts,
-          user_follows: follows,
-          user_friends: friends,
-          // Check if user is blocked by requester or not
-          blocked:
-            user.blocked_users_blocked_users_blocked_user_idTousers.length > 0
-              ? true
-              : false,
-        };
-      }
+    let returnUser = {};
 
-      // Send a JSON response with the user information.
-      return res.status(200).json(returnUser);
+    // Depending on the user_id, construct a response object with different fields.
+    // If it is logged in user return more data
+    if (user!.user_id == req.userId) {
+      returnUser = {
+        user_id: user!.user_id,
+        avatar_id: user!.avatar_id,
+        description: user!.description,
+        email: user!.email,
+        email_notifications: user!.email_notifications,
+        dyslexia_font: user!.dyslexia_font,
+        public_profile: user!.public_profile,
+        hide_location: user!.hide_location,
+        analytics_enabled: user!.analytics_enabled,
+        background: user!.background,
+        country: user!.country,
+        username: user!.username,
+        display_name: user!.display_name,
+        user_role: user!.user_role,
+        followers: user!._count.followers_followers_user_idTousers,
+        following: user!._count.following_following_user_idTousers,
+        friends:
+          user!._count.friends_friends_user1_idTousers +
+          user!._count.friends_friends_user2_idTousers,
+        posts: user!._count.posts,
+      };
     } else {
-      // If the user is not found, send a JSON response with an error code.
-      res.status(400).json({ ec: ErrorCode.RecordNotFound });
+      const follows = await checkUserFollows(req.userId!, user!.user_id);
+      const friends = await checkUserFriends(req.userId!, user!.user_id);
+      returnUser = {
+        user_id: user!.user_id,
+        avatar_id: user!.avatar_id,
+        description: user!.description,
+        public_profile: user!.public_profile,
+        country: user!.country,
+        username: user!.username,
+        display_name: user!.display_name,
+        user_role: user!.user_role,
+        followers: user!._count.followers_followers_user_idTousers,
+        following: user!._count.following_following_user_idTousers,
+        friends:
+          user!._count.friends_friends_user1_idTousers +
+          user!._count.friends_friends_user2_idTousers,
+        posts: user!._count.posts,
+        user_follows: follows,
+        user_friends: friends,
+        // Check if user is blocked by requester or not
+        blocked:
+          user!.blocked_users_blocked_users_blocked_user_idTousers.length > 0
+            ? true
+            : false,
+      };
     }
-}));
+
+    // Send a JSON response with the user information.
+    return res.status(200).json(returnUser);
+  })
+);
 
 // This is another route handler for "/follows" that checks if a user is following another user.
-router.get("/follows", ...RouteBuilder.createRouteHandler(async (req, res) => {
-    if(Array.isArray(req.headers.user)) {
+router.get(
+  "/follows",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    if (Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
       throw new NullUserException("Expected a user argument");
@@ -388,11 +408,14 @@ router.get("/follows", ...RouteBuilder.createRouteHandler(async (req, res) => {
     return res
       .status(200)
       .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
-}));
+  })
+);
 
 // Similar to the previous route handlers, this one checks if users are friends.
-router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
-    if(Array.isArray(req.headers.user)) {
+router.get(
+  "/friends",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    if (Array.isArray(req.headers.user)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.user) {
       throw new NullUserException("Expected a user argument");
@@ -400,7 +423,8 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
     return res
       .status(200)
       .json(await checkUserFollows(req.userId!, BigInt(req.headers.user)));
-}));
+  })
+);
 
 async function checkUserFollows(userId: bigint, targetUser: bigint) {
   // Check if the user is following the user specified in the request headers.
@@ -457,8 +481,10 @@ async function checkUserFriends(userId: bigint, targetUser: bigint) {
 }
 
 // Another route handler for user search based on a query.
-router.get("/search", ...RouteBuilder.createRouteHandler(async (req, res) => {
-    if(Array.isArray(req.headers.query)) {
+router.get(
+  "/search",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    if (Array.isArray(req.headers.query)) {
       throw TypeError("Expected user to be of type `string` not `string[]`");
     } else if (!req.headers.query) {
       throw new Error("Expected a query argument");
@@ -477,8 +503,9 @@ router.get("/search", ...RouteBuilder.createRouteHandler(async (req, res) => {
     const returns = [];
     for (let i = 0; i < results.length; i++) {
       //If is blocked then skip
-      if(HandleBlocks.checkIsBlocked(results[i])) {continue;}
-
+      if (HandleBlocks.checkIsBlocked(results[i])) {
+        continue;
+      }
 
       const ret = {
         user_id: results[i].user_id,
@@ -490,11 +517,13 @@ router.get("/search", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Send a JSON response with the search results.
     return res.json(returns);
-}));
+  })
+);
 
 // Route handler to block user
-router.post("/block", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/block",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const isAlreadyBlocked = await prisma.blocked_users.findFirst({
       where: {
         blocked_user_id: req.body.user,
@@ -517,12 +546,13 @@ router.post("/block", ...RouteBuilder.createRouteHandler(async (req, res) => {
       // TODO: Change to error later and add handler on client side
       return res.status(200).json({ success: true });
     }
-
-}));
+  })
+);
 
 // Route handler to unblock user
-router.post("/unblock", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/unblock",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const blockedRecord = await prisma.blocked_users.deleteMany({
       where: {
         blocking_user_id: req.userId,
@@ -530,12 +560,13 @@ router.post("/unblock", ...RouteBuilder.createRouteHandler(async (req, res) => {
       },
     });
     return res.status(200).json({ success: true, count: blockedRecord.count });
-
-}));
+  })
+);
 
 // Another route handler for user search based on a query.
-router.get("/blocked_users", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/blocked_users",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Get all user records showing the users that the user has blocked
     const users = await prisma.blocked_users.findMany({
       where: {
@@ -567,6 +598,7 @@ router.get("/blocked_users", ...RouteBuilder.createRouteHandler(async (req, res)
 
     // Send a JSON response with the search results.
     return res.json(returns);
-}));
+  })
+);
 
 export default router;

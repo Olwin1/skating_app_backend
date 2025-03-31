@@ -9,6 +9,7 @@ import { ErrorCode } from "../ErrorCodes";
 import HandleBlocks from "../utils/handleBlocks";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
+import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -51,8 +52,9 @@ const getInfluencers = () => {
 };
 
 // Create an API endpoint for handling a POST request related to creating a new post.
-router.post("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/post",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Create a new post using the Prisma ORM.
     const post = await prisma.posts.create({
       data: {
@@ -67,11 +69,14 @@ router.post("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Respond with the newly created post.
     res.json(post);
-}));
+  })
+);
 
 // Define a route that listens for HTTP GET requests at the "/post" endpoint.
-router.get("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
-  // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
+router.get(
+  "/post",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // TODO: ADD PRIVATE POST OPTION & FOLLOWERS / FRIENDS ONLY
 
     // Use Prisma to query the database for a specific post based on the post_id provided in the request headers.
     const postId = BigInt(req.headers.post as string);
@@ -105,9 +110,12 @@ router.get("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Send a JSON response containing the retrieved post to the client.
     return res.json(post);
-}));
+  })
+);
 
-router.post("/like", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/like",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
       where: { post_id: BigInt(req.body.post), user_id: req.userId },
@@ -142,10 +150,13 @@ router.post("/like", ...RouteBuilder.createRouteHandler(async (req, res) => {
       // If the user has already liked the post, return an error
       return res.status(409).json({ error: "Post already liked" });
     }
-}));
+  })
+);
 
 // Define a route for unliking a post
-router.post("/unlike", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/unlike",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
       where: { post_id: BigInt(req.body.post), user_id: req.userId },
@@ -177,9 +188,12 @@ router.post("/unlike", ...RouteBuilder.createRouteHandler(async (req, res) => {
       // If the user hasn't liked the post, return an error
       return res.status(409).json({ error: "Post isn't liked" });
     }
-}));
+  })
+);
 
-router.post("/save", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/save",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     await prisma.saved_posts.create({
       data: {
         saved_post_id: generator.nextId(),
@@ -189,11 +203,13 @@ router.post("/save", ...RouteBuilder.createRouteHandler(async (req, res) => {
       },
     });
     return res.status(201).json({ success: true });
-
-}));
+  })
+);
 
 // Route for removing a post from a user's saved_posts array
-router.post("/unsave", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/unsave",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const postLikeNew = await prisma.saved_posts.deleteMany({
       where: {
         post_id: req.body.post,
@@ -201,11 +217,13 @@ router.post("/unsave", ...RouteBuilder.createRouteHandler(async (req, res) => {
       },
     });
     return res.status(200).json({ success: true });
-
-}));
+  })
+);
 
 // This route is used to retrieve a page of saved posts
-router.get("/saved", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/saved",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find the post with the provided ID from the request header
     const posts = await prisma.saved_posts.findMany({
       where: { user_id: req.userId },
@@ -217,11 +235,13 @@ router.get("/saved", ...RouteBuilder.createRouteHandler(async (req, res) => {
     } else {
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-}));
+  })
+);
 
 // Define a route to create a new comment
-router.post("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/comment",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Create a new comment using Prisma
     const comment = await prisma.comments.create({
       data: {
@@ -237,11 +257,13 @@ router.post("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Send the created comment as a JSON response
     res.json(comment);
-}));
+  })
+);
 
 // Define a route to delete a comment
-router.delete("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.delete(
+  "/comment",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Delete a comment by its comment_id
     const comment = await prisma.comments.delete({
       where: {
@@ -251,10 +273,13 @@ router.delete("/comment", ...RouteBuilder.createRouteHandler(async (req, res) =>
 
     // Send a success message as a JSON response
     res.status(200).json({ success: true });
-}));
+  })
+);
 
 // Define a route to like a comment
-router.post("/like_comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/like_comment",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
 
@@ -293,11 +318,13 @@ router.post("/like_comment", ...RouteBuilder.createRouteHandler(async (req, res)
       // Send an error message if the comment is already liked
       return res.json({ error: "Comment already liked" });
     }
-}));
+  })
+);
 
 // Define a route to unlike a comment
-router.post("/unlike_comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/unlike_comment",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the comment
     const commentLike = await prisma.comment_likes.findFirst({
       where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
@@ -330,93 +357,94 @@ router.post("/unlike_comment", ...RouteBuilder.createRouteHandler(async (req, re
       // Send an error message if the comment is not liked
       return res.json({ error: "Comment isn't liked" });
     }
-}));
+  })
+);
 
 // Define a route to like a comment
 router.post(
   "/dislike_comment",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // Check if the user has already liked the comment
+    const commentDislike = await prisma.comment_dislikes.findFirst({
+      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+    });
 
-      // Check if the user has already liked the comment
-      const commentDislike = await prisma.comment_dislikes.findFirst({
-        where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
-      });
-
-      if (!commentDislike) {
-        try {
-          // Use a transaction to update the comment's like count and create a new comment_like entry
-          await prisma.$transaction(async (tx) => {
-            const comment = await tx.comments.update({
-              where: { comment_id: BigInt(req.body.comment) },
-              data: {
-                dislike_count: { increment: 1 }, // Increment the like count by 1
-              },
-            });
-
-            const commentDislikeNew = await tx.comment_likes.create({
-              data: {
-                like_id: generator.nextId(), // Generate a unique like ID
-                comment_id: comment.post_id, // Set the comment ID
-                user_id: req.userId!, // Set the user ID
-                timestamp: new Date().toISOString(),
-              },
-            });
-
-            // Send a success message as a JSON response
-            return res.status(200).json({ success: true });
+    if (!commentDislike) {
+      try {
+        // Use a transaction to update the comment's like count and create a new comment_like entry
+        await prisma.$transaction(async (tx) => {
+          const comment = await tx.comments.update({
+            where: { comment_id: BigInt(req.body.comment) },
+            data: {
+              dislike_count: { increment: 1 }, // Increment the like count by 1
+            },
           });
-        } catch (error) {
-          console.error("Error in transaction:", error);
-        }
-      } else {
-        // Send an error message if the comment is already liked
-        return res.json({ error: "Comment already liked" });
+
+          const commentDislikeNew = await tx.comment_likes.create({
+            data: {
+              like_id: generator.nextId(), // Generate a unique like ID
+              comment_id: comment.post_id, // Set the comment ID
+              user_id: req.userId!, // Set the user ID
+              timestamp: new Date().toISOString(),
+            },
+          });
+
+          // Send a success message as a JSON response
+          return res.status(200).json({ success: true });
+        });
+      } catch (error) {
+        console.error("Error in transaction:", error);
       }
-  }
-));
+    } else {
+      // Send an error message if the comment is already liked
+      return res.json({ error: "Comment already liked" });
+    }
+  })
+);
 
 // Define a route to unlike a comment
 router.post(
   "/undislike_comment",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // Check if the user has already liked the comment
+    const commentDislike = await prisma.comment_dislikes.findFirst({
+      where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
+    });
 
-      // Check if the user has already liked the comment
-      const commentDislike = await prisma.comment_dislikes.findFirst({
-        where: { comment_id: BigInt(req.body.comment), user_id: req.userId },
-      });
-
-      if (commentDislike) {
-        try {
-          // Use a transaction to update the comment's like count and delete the comment_like entry
-          await prisma.$transaction(async (tx) => {
-            const comment = await tx.comments.update({
-              where: { comment_id: BigInt(req.body.comment) },
-              data: {
-                like_count: { decrement: 1 }, // Decrement the like count by 1
-              },
-            });
-
-            const commentDislikeNew = await tx.comment_likes.delete({
-              where: {
-                like_id: commentDislike.dislike_id, // Delete the comment_like entry using its ID
-              },
-            });
-
-            // Send a success message as a JSON response
-            return res.status(200).json({ success: true });
+    if (commentDislike) {
+      try {
+        // Use a transaction to update the comment's like count and delete the comment_like entry
+        await prisma.$transaction(async (tx) => {
+          const comment = await tx.comments.update({
+            where: { comment_id: BigInt(req.body.comment) },
+            data: {
+              like_count: { decrement: 1 }, // Decrement the like count by 1
+            },
           });
-        } catch (error) {
-          console.error("Error in transaction:", error);
-        }
-      } else {
-        // Send an error message if the comment is not liked
-        return res.json({ error: "Comment isn't liked" });
+
+          const commentDislikeNew = await tx.comment_likes.delete({
+            where: {
+              like_id: commentDislike.dislike_id, // Delete the comment_like entry using its ID
+            },
+          });
+
+          // Send a success message as a JSON response
+          return res.status(200).json({ success: true });
+        });
+      } catch (error) {
+        console.error("Error in transaction:", error);
       }
-  }
-));
+    } else {
+      // Send an error message if the comment is not liked
+      return res.json({ error: "Comment isn't liked" });
+    }
+  })
+);
 
 // This route is used to retrieve a single comment by its ID
-router.get("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/comment",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find the comment with the provided ID from the request header
     const comment = prisma.comments.findFirst({
       where: { comment_id: BigInt(req.headers.comment as string) },
@@ -425,11 +453,14 @@ router.get("/comment", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Return the comment object as a response
     res.json(comment);
-}));
+  })
+);
 
 // This route is used to retrieve a page of comments for a single post
-router.get("/comments", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/comments",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Find the post with the provided ID from the request header
     const comments = await prisma.posts.findFirst({
@@ -486,10 +517,12 @@ router.get("/comments", ...RouteBuilder.createRouteHandler(async (req, res) => {
     } else {
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-}));
+  })
+);
 // Route for removing a post
-router.delete("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.delete(
+  "/post",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const post = await prisma.posts.delete({
       where: {
         post_id: BigInt(req.body.post),
@@ -498,11 +531,14 @@ router.delete("/post", ...RouteBuilder.createRouteHandler(async (req, res) => {
     });
 
     res.status(200).json({ success: true }); // Send a JSON response to the client indicating success
-}));
+  })
+);
 
 // This route is used to retrieve a page of posts
-router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
-  //! NEEDS TESTING
+router.post(
+  "/posts",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    //! NEEDS TESTING
     //let seen = JSON.parse(req.body.seen);
     const take = 20;
     const skip = 20 * parseInt(req.body.page);
@@ -590,7 +626,9 @@ router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
                         WHERE pl.post_id = p.post_id
                     ) AS total_likes
                 FROM posts p
-                WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${req.userId})
+                WHERE p.author_id IN (SELECT friend_id FROM user_friends WHERE friend_id <> ${
+                  req.userId
+                })
                 ${
                   finalPostIds.length > 0
                     ? Prisma.sql`
@@ -610,7 +648,9 @@ router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
                       SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = p.author_id
                     )
                     AND p.author_id NOT IN (
-                      SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ${req.userId}
+                      SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ${
+                        req.userId
+                      }
                     )
             )
             SELECT
@@ -626,7 +666,9 @@ router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
                 pd.like_count AS total_likes,
                 CASE WHEN sp.saved_post_id IS NOT NULL THEN true ELSE false END AS saved
             FROM post_data pd
-            LEFT JOIN saved_posts sp ON pd.post_id = sp.post_id AND sp.user_id = ${req.userId}
+            LEFT JOIN saved_posts sp ON pd.post_id = sp.post_id AND sp.user_id = ${
+              req.userId
+            }
             LIMIT ${remaining} OFFSET ${skip};
           `) as postsE[];
       finalPosts = [...finalPosts, ...extraPosts];
@@ -797,20 +839,30 @@ router.post("/posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
       returnPosts.push(e);
     }
     return res.json(returnPosts);
-}));
+  })
+);
 
 // This is a route handler for GET requests to "/user_posts"
-router.get("/user_posts", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/user_posts",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     const targetUser = await prisma.users.findFirst({
       where: { user_id: BigInt(req.headers.user as string) },
       include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      targetUser,
+      UserNotFoundError.targetUserMessage
+    );
+
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
-    if(isBlocked) {
-      throw Error("Target user has been blocked by you or has blocked you")
+    if (isBlocked) {
+      throw Error("Target user has been blocked by you or has blocked you");
     }
 
     // Query the database for posts authored by the current user, sorted by date in descending order
@@ -836,6 +888,7 @@ router.get("/user_posts", ...RouteBuilder.createRouteHandler(async (req, res) =>
 
     // Send the posts data as a JSON response
     res.json(posts);
-}));
+  })
+);
 
 export default router;

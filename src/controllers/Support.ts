@@ -10,6 +10,7 @@ import { $Enums, Prisma } from "@prisma/client";
 import { ErrorCode } from "../ErrorCodes";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
+import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 
 interface ReportType {
   feedback_id: bigint;
@@ -35,7 +36,9 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route for submitting bug reports
-router.post("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/bug",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -43,10 +46,13 @@ router.post("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
       $Enums.feedback_type.bug_report
     );
     return res.status(201).json({ success: true });
-}));
+  })
+);
 
 // Define a route for submitting support requests
-router.post("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/support",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -54,10 +60,13 @@ router.post("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
       $Enums.feedback_type.support_request
     );
     return res.status(201).json({ success: true });
-}));
+  })
+);
 
 // Define a route for submitting general feedback
-router.post("/feedback", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/feedback",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     await createSupportReport(
       req.userId!,
       req.body.subject,
@@ -65,11 +74,14 @@ router.post("/feedback", ...RouteBuilder.createRouteHandler(async (req, res) => 
       $Enums.feedback_type.feedback
     );
     return res.status(201).json({ success: true });
-}));
+  })
+);
 
 // Define a route for retrieving bug reports
-router.get("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/bug",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     let resp = await getReports(
       req.userId!,
@@ -77,11 +89,14 @@ router.get("/bug", ...RouteBuilder.createRouteHandler(async (req, res) => {
       page
     );
     return res.status(200).json(resp);
-}));
+  })
+);
 
 // Define a route for retrieving support requests
-router.get("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/support",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     let resp = await getReports(
       req.userId!,
@@ -89,18 +104,22 @@ router.get("/support", ...RouteBuilder.createRouteHandler(async (req, res) => {
       page
     );
     return res.status(200).json(resp);
-}));
+  })
+);
 
 // Define a route for retrieving general feedback
-router.get("/feedback", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/feedback",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
     let resp = await getReports(
       req.userId!,
       $Enums.feedback_type.feedback,
       page
     );
     return res.status(200).json(resp);
-}));
+  })
+);
 
 // Function to create a new user feedback or support record
 async function createSupportReport(
@@ -129,9 +148,13 @@ async function getReports(
   page: number
 ) {
   const user = await prisma.users.findUnique({ where: { user_id: userId } });
-  if (user == null) {
-    return;
-  }
+
+  // Check if the target user was found.  If not then throw an error to reflect that.
+  UserNotFoundError.throwIfNull(
+    user,
+    UserNotFoundError.targetUserMessage
+  );
+
   if (
     user!.user_role == $Enums.user_role.moderator ||
     user!.user_role == $Enums.user_role.administrator
@@ -223,8 +246,9 @@ async function getReports(
 }
 
 // Define a route to handle the creation of a new support message
-router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/message",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
       data: {
@@ -238,10 +262,13 @@ router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Respond with the created support message in JSON format
     res.json(newMessage);
-}));
+  })
+);
 
 // Handle GET requests to "/support/messages" endpoint with user authentication middleware
-router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/messages",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Find user feedback and support information based on the provided feedback ID from the request header
@@ -264,11 +291,13 @@ router.get("/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-}));
+  })
+);
 
 // Define a route to handle the creation of a new support message
-router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/message",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Create a new support message using Prisma
     const newMessage = await prisma.user_support_messages.create({
       data: {
@@ -282,11 +311,13 @@ router.post("/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // Respond with the created support message in JSON format
     res.json(newMessage);
-}));
+  })
+);
 
 // Define a route for submitting general feedback
-router.post("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/report",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     let reportedContent;
     switch (req.body.reported_content) {
       case "comment":
@@ -319,11 +350,13 @@ router.post("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
     });
 
     return res.status(201).json({ success: true });
-}));
+  })
+);
 
 // Handle GET requests to "/support/report" endpoint with user authentication middleware
-router.get("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/report",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
       where: { report_id: BigInt(req.headers.report_id as string) },
@@ -333,31 +366,34 @@ router.get("/report", ...RouteBuilder.createRouteHandler(async (req, res) => {
       const moderatorUser = await prisma.users.findFirst({
         where: { user_id: req.userId },
       });
-      // Check if the user exists
-      if (moderatorUser) {
-        if (
-          moderatorUser.user_role == $Enums.user_role.moderator ||
-          moderatorUser.user_role == $Enums.user_role.administrator
-        ) {
-          // If they're authorised to access report data then return it back to them
-          return res.status(200).json(report);
-        } else {
-          return res.status(403).json({});
-        }
+
+      // Check if the target user was found.  If not then throw an error to reflect that.
+      UserNotFoundError.throwIfNull(
+        moderatorUser,
+        UserNotFoundError.selfUserMessage
+      );
+
+      if (
+        moderatorUser!.user_role == $Enums.user_role.moderator ||
+        moderatorUser!.user_role == $Enums.user_role.administrator
+      ) {
+        // If they're authorised to access report data then return it back to them
+        return res.status(200).json(report);
       } else {
-        // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
-        // Return a 400 status with an error code if no records are found
-        return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+        return res.status(403).json({});
       }
     } else {
+      // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-}));
+  })
+);
 
 // Handle GET requests to "/support/report_data" endpoint with user authentication middleware
-router.get("/report_data", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/report_data",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Find user feedback and support information based on the provided feedback ID from the request header
     const report = await prisma.reports.findFirst({
       where: { report_id: BigInt(req.headers.report_id as string) },
@@ -367,104 +403,107 @@ router.get("/report_data", ...RouteBuilder.createRouteHandler(async (req, res) =
       const moderatorUser = await prisma.users.findFirst({
         where: { user_id: req.userId },
       });
-      // Check if the user exists
-      if (moderatorUser) {
-        //BREA
-        if (
-          moderatorUser.user_role == $Enums.user_role.moderator ||
-          moderatorUser.user_role == $Enums.user_role.administrator
-        ) {
-          if (report.reported_content_id) {
-            // Is authorised to access this information
 
-            // If the type of data reported is messages
-            //---------------------------------------
-            if (report.reported_content == $Enums.reported_content.message) {
-              // Is authorised to see other users messages provided a report on those messages has been made
-              const rootMessage = await prisma.messages.findFirst({
-                where: { message_id: report.reported_content_id },
-              });
-              if (rootMessage) {
-                // If there is a root message attempt to get recent messages around the reported message
-                const surroundingMessages = await prisma.messages.findMany({
-                  where: {
-                    message_channels: { channel_id: rootMessage.channel_id },
-                    AND: [
-                      {
-                        message_number: {
-                          gte: rootMessage.message_number - 10,
-                        },
+      // Check if the target user was found.  If not then throw an error to reflect that.
+      UserNotFoundError.throwIfNull(
+        moderatorUser,
+        UserNotFoundError.selfUserMessage
+      );
+
+      if (
+        moderatorUser!.user_role == $Enums.user_role.moderator ||
+        moderatorUser!.user_role == $Enums.user_role.administrator
+      ) {
+        if (report.reported_content_id) {
+          // Is authorised to access this information
+
+          // If the type of data reported is messages
+          //---------------------------------------
+          if (report.reported_content == $Enums.reported_content.message) {
+            // Is authorised to see other users messages provided a report on those messages has been made
+            const rootMessage = await prisma.messages.findFirst({
+              where: { message_id: report.reported_content_id },
+            });
+            if (rootMessage) {
+              // If there is a root message attempt to get recent messages around the reported message
+              const surroundingMessages = await prisma.messages.findMany({
+                where: {
+                  message_channels: { channel_id: rootMessage.channel_id },
+                  AND: [
+                    {
+                      message_number: {
+                        gte: rootMessage.message_number - 10,
                       },
-                      {
-                        message_number: {
-                          lte: rootMessage.message_number + 10,
-                        },
+                    },
+                    {
+                      message_number: {
+                        lte: rootMessage.message_number + 10,
                       },
-                    ],
-                  },
-                });
-                return res.status(200).json(surroundingMessages);
-              } else {
-                // If original message not found
-              }
-            }
-            // --------------------------------------
-
-            // If the type of data is comment
-            // ---------------------------------------
-            else if (
-              report.reported_content == $Enums.reported_content.comment
-            ) {
-              const comment = await prisma.comments.findFirst({
-                where: { comment_id: report.reported_content_id },
-                include: { posts: true },
+                    },
+                  ],
+                },
               });
-              return res.status(200).json(comment);
+              return res.status(200).json(surroundingMessages);
+            } else {
+              // If original message not found
             }
-            // ---------------------------------------
-
-            // If the type of data is post
-            // ---------------------------------------
-            else if (report.reported_content == $Enums.reported_content.post) {
-              const post = await prisma.posts.findFirst({
-                where: { post_id: report.reported_content_id },
-              });
-              return res.status(200).json(post);
-            }
-            // ---------------------------------------
-
-            // This should never run.  Should probably change this to an actual descriptive error at some point
-            return res.status(500).json({});
           }
-        } else {
-          return res.status(403).json({});
+          // --------------------------------------
+
+          // If the type of data is comment
+          // ---------------------------------------
+          else if (report.reported_content == $Enums.reported_content.comment) {
+            const comment = await prisma.comments.findFirst({
+              where: { comment_id: report.reported_content_id },
+              include: { posts: true },
+            });
+            return res.status(200).json(comment);
+          }
+          // ---------------------------------------
+
+          // If the type of data is post
+          // ---------------------------------------
+          else if (report.reported_content == $Enums.reported_content.post) {
+            const post = await prisma.posts.findFirst({
+              where: { post_id: report.reported_content_id },
+            });
+            return res.status(200).json(post);
+          }
+          // ---------------------------------------
+
+          // This should never run.  Should probably change this to an actual descriptive error at some point
+          return res.status(500).json({});
         }
       } else {
-        // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
-        // Return a 400 status with an error code if no records are found
-        return res.status(400).json({ ec: ErrorCode.RecordNotFound });
+        return res.status(403).json({});
       }
     } else {
+      // TODO: CHANGE THIS TO DIFFER FROM NO REPORT
       // Return a 400 status with an error code if no records are found
       return res.status(400).json({ ec: ErrorCode.RecordNotFound });
     }
-}));
+  })
+);
 
 //TODO: Add duration for tempbans and handle creation of tempbans/whatever other punishment.
 // Modify Report Status
-router.post("/report/modify", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/report/modify",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: req.userId },
     });
-    // Check if the user exists
-    if (!moderatorUser) {
-      throw Error("No user with that id could be located.");
-    }
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      moderatorUser,
+      UserNotFoundError.selfUserMessage
+    );
+
     if (
       !(
-        moderatorUser.user_role == $Enums.user_role.moderator ||
-        moderatorUser.user_role == $Enums.user_role.administrator
+        moderatorUser!.user_role == $Enums.user_role.moderator ||
+        moderatorUser!.user_role == $Enums.user_role.administrator
       )
     ) {
       return res.status(403).json({});
@@ -514,22 +553,29 @@ router.post("/report/modify", ...RouteBuilder.createRouteHandler(async (req, res
     });
 
     return res.status(201).json({ success: true });
-}));
+  })
+);
 
 // Get list of active reports
-router.get("/report/list", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = CheckNulls.checkNullPage(req.headers.page);
+router.get(
+  "/report/list",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
     const moderatorUser = await prisma.users.findFirst({
       where: { user_id: req.userId },
     });
 
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      moderatorUser,
+      UserNotFoundError.selfUserMessage
+    );
+
     if (
-      page &&
-      moderatorUser &&
       req.headers.is_self == "false" &&
-      (moderatorUser.user_role == $Enums.user_role.moderator ||
-        moderatorUser.user_role == $Enums.user_role.administrator)
+      (moderatorUser!.user_role == $Enums.user_role.moderator ||
+        moderatorUser!.user_role == $Enums.user_role.administrator)
     ) {
       const reports = await prisma.reports.findMany({
         orderBy: {
@@ -550,81 +596,101 @@ router.get("/report/list", ...RouteBuilder.createRouteHandler(async (req, res) =
       });
       return res.status(200).json(reports);
     }
-}));
+  })
+);
 
 // Get list of reports made by a specific user
 router.get(
   "/report/list/from",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
-      // Extract user ID from the request
-      CheckNulls.checkNullUser(req.userId);
-      const page = CheckNulls.checkNullPage(req.headers.page);
+    // Extract user ID from the request
+    CheckNulls.checkNullUser(req.userId);
+    const page = CheckNulls.checkNullPage(req.headers.page);
 
-      const moderatorUser = await prisma.users.findFirst({
-        where: { user_id: req.userId },
+    const moderatorUser = await prisma.users.findFirst({
+      where: { user_id: req.userId },
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      moderatorUser,
+      UserNotFoundError.selfUserMessage
+    );
+
+    // TODO handle null user
+    if (
+      req.headers.user == "" ||
+      req.headers.user == null ||
+      req.headers.user == req.user!.userId! ||
+      moderatorUser!.user_role == $Enums.user_role.moderator ||
+      moderatorUser!.user_role == $Enums.user_role.administrator
+    ) {
+      const reports = await prisma.reports.findMany({
+        where: {
+          reporter_id: BigInt(req.headers.user as string) ?? req.userId!,
+        },
+        orderBy: {
+          timestamp: "asc",
+        },
+        skip: page * 20,
+        take: 20,
       });
-
-      if (
-        req.headers.user == "" ||
-        req.headers.user == null ||
-        req.headers.user == req.user?.userId! ||
-        (page &&
-          moderatorUser &&
-          (moderatorUser.user_role == $Enums.user_role.moderator ||
-            moderatorUser.user_role == $Enums.user_role.administrator))
-      ) {
-        const reports = await prisma.reports.findMany({
-          where: {
-            reporter_id: BigInt(req.headers.user as string) ?? req.userId!,
-          },
-          orderBy: {
-            timestamp: "asc",
-          },
-          skip: page * 20,
-          take: 20,
-        });
-        return res.status(200).json(reports);
-      }
-  }
-));
+      return res.status(200).json(reports);
+    }
+  })
+);
 
 // Get a list of reports against a specific user
 router.get(
   "/report/list/against",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = req.headers.page as string;
+    const page = req.headers.page as string;
 
-      const moderatorUser = await prisma.users.findFirst({
-        where: { user_id: req.userId },
+    const moderatorUser = await prisma.users.findFirst({
+      where: { user_id: req.userId },
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      moderatorUser,
+      UserNotFoundError.selfUserMessage
+    );
+
+    if (
+      req.headers.user &&
+      page &&
+      moderatorUser &&
+      (moderatorUser.user_role == $Enums.user_role.moderator ||
+        moderatorUser.user_role == $Enums.user_role.administrator)
+    ) {
+      const reports = await prisma.reports.findMany({
+        where: {
+          reported_user_id: req.headers.user as any,
+        },
+        orderBy: {
+          timestamp: "asc",
+        },
+        skip: parseInt(page) * 20,
+        take: 20,
       });
-
-      if (
-        req.headers.user &&
-        page &&
-        moderatorUser &&
-        (moderatorUser.user_role == $Enums.user_role.moderator ||
-          moderatorUser.user_role == $Enums.user_role.administrator)
-      ) {
-        const reports = await prisma.reports.findMany({
-          where: {
-            reported_user_id: req.headers.user as any,
-          },
-          orderBy: {
-            timestamp: "asc",
-          },
-          skip: parseInt(page) * 20,
-          take: 20,
-        });
-        return res.status(200).json(reports);
-      }
-  }
-));
+      return res.status(200).json(reports);
+    }
+  })
+);
 
 // Get a list of reports against a specific user
-router.get("/report/messages", ...RouteBuilder.createRouteHandler(async (req, res) => {
-      const page = req.headers.page as string;
+router.get(
+  "/report/messages",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const page = req.headers.page as string;
 
-    const user = await prisma.users.findFirst({ where: { user_id: req.userId } });
+    const user = await prisma.users.findFirst({
+      where: { user_id: req.userId },
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.selfUserMessage);
+
     const report = await prisma.reports.findFirst({
       where: {
         report_id: req.headers.report_id as any,
@@ -636,22 +702,31 @@ router.get("/report/messages", ...RouteBuilder.createRouteHandler(async (req, re
       take: 20,
     });
 
+    // TODO handle null reports
     if (
       report &&
-      user &&
-      (user.user_role == $Enums.user_role.moderator ||
-        user.user_role == $Enums.user_role.administrator ||
-        user.user_id == report.reporter_id)
+      (user!.user_role == $Enums.user_role.moderator ||
+        user!.user_role == $Enums.user_role.administrator ||
+        user!.user_id == report.reporter_id)
     ) {
       return res.status(200).json(report.user_report_messages);
     } else {
       return res.status(401).json({ Error: "Unauthorised" });
     }
-}));
+  })
+);
 
 // Get a list of reports against a specific user
-router.post("/report/message", ...RouteBuilder.createRouteHandler(async (req, res) => {
-    const user = await prisma.users.findFirst({ where: { user_id: req.userId } });
+router.post(
+  "/report/message",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const user = await prisma.users.findFirst({
+      where: { user_id: req.userId },
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.selfUserMessage);
+
     const report = await prisma.reports.findFirst({
       where: {
         report_id: req.body.report_id,
@@ -660,15 +735,14 @@ router.post("/report/message", ...RouteBuilder.createRouteHandler(async (req, re
 
     if (
       report &&
-      user &&
-      (user.user_role == $Enums.user_role.moderator ||
-        user.user_role == $Enums.user_role.administrator)
+      (user!.user_role == $Enums.user_role.moderator ||
+        user!.user_role == $Enums.user_role.administrator)
     ) {
       await prisma.user_report_messages.create({
         data: {
           message_id: generator.nextId(),
           report_id: report.report_id,
-          sender_id: user.user_id,
+          sender_id: user!.user_id,
           content: req.body.content,
           timestamp: new Date().toISOString(),
         },
@@ -676,9 +750,11 @@ router.post("/report/message", ...RouteBuilder.createRouteHandler(async (req, re
 
       return res.status(200).json({ Success: true });
     } else {
+      // TODO handle not authorised.
       return res.status(401).json({ Error: "Unauthorised" });
     }
-}));
+  })
+);
 
 //       WERE THEY EXHONOURATED? WERE THEY BANNED? WERE THEY TEMPBANNED? WERE THEY WARNED? I.E DO THEY HAVE A HISTORY?
 

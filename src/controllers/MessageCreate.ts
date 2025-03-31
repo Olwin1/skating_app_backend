@@ -2,6 +2,7 @@ import firebase from "firebase-admin";
 import { TokenMessage } from "firebase-admin/lib/messaging/messaging-api";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
+import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -63,6 +64,9 @@ const createMessage = async (
     });
     const user = await prisma.users.findUnique({ where: { user_id: userId } });
 
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.selfUserMessage);
+
     if (userChannel != null) {
       console.log(2);
 
@@ -73,7 +77,7 @@ const createMessage = async (
         // Prepare the message to be sent via FCM
         const message = {
           notification: {
-            title: user?.username,
+            title: user!.username,
             body: content,
           },
           android: {
@@ -86,8 +90,8 @@ const createMessage = async (
           },
           data: {
             // Additional data to identify the chat
-            channelId: userChannel?.channel_id.toString(), // The ID of the chat
-            senderId: user?.user_id.toString(),
+            channelId: userChannel!.channel_id.toString(), // The ID of the chat
+            senderId: user!.user_id.toString(),
             click_action: "FLUTTER_NOTIFICATION_CLICK", // Required to handle notification clicks in Flutter
           },
           token: currentToken,

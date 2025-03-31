@@ -6,6 +6,7 @@ import HandleBlocks from "../utils/handleBlocks";
 
 import RouteBuilder from "../utils/RouteBuilder";
 import CheckNulls from "../utils/checkNulls";
+import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 
 const router = Router(); // create router to create route bundle
 
@@ -17,8 +18,9 @@ const generator = new Worker(0, 1, {
 });
 
 // Define a route that allows a user to follow another user
-router.post("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/follow",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
 
@@ -33,6 +35,12 @@ router.post("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
         ...HandleBlocks.getIncludeBlockInfo(req.userId!),
       },
     });
+
+    // Check if the target user was found.
+    if (!targetUser) {
+      throw new UserNotFoundError(UserNotFoundError.targetUserMessage);
+    }
+
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
     if (isBlocked) {
@@ -80,14 +88,24 @@ router.post("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
         return res.status(200).json({ success: true, requested: false });
       }
     }
-}));
+  })
+);
 
 // Define a route for sending a friend request
-router.post("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.post(
+  "/friend",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const targetUser = await prisma.users.findFirst({
       where: { user_id: req.body.user },
       include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      targetUser,
+      UserNotFoundError.targetUserMessage
+    );
+
     // Check if the user is blocked or the other way round
     const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
     if (isBlocked) {
@@ -104,11 +122,13 @@ router.post("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
       },
     });
     return res.status(200).json({ success: true });
-}));
+  })
+);
 
 // Define a route for unfollowing a user
-router.post("/unfollow", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/unfollow",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
 
@@ -121,6 +141,12 @@ router.post("/unfollow", ...RouteBuilder.createRouteHandler(async (req, res) => 
         },
       },
     });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      targetUser,
+      UserNotFoundError.targetUserMessage
+    );
 
     // Check if a follow request exists for unfollowing
     if (
@@ -148,11 +174,13 @@ router.post("/unfollow", ...RouteBuilder.createRouteHandler(async (req, res) => 
       ]);
       return res.status(200).json({ success: true, requested: false });
     }
-}));
+  })
+);
 
 // Define a route for unfollowing a user as the follower
-router.post("/unfollower", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/unfollower",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
 
@@ -165,6 +193,12 @@ router.post("/unfollower", ...RouteBuilder.createRouteHandler(async (req, res) =
         },
       },
     });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      targetUser,
+      UserNotFoundError.targetUserMessage
+    );
 
     // Check if a follow request exists for unfollowing as the follower
     if (
@@ -192,11 +226,13 @@ router.post("/unfollower", ...RouteBuilder.createRouteHandler(async (req, res) =
       ]);
       return res.status(200).json({ success: true, request: false });
     }
-}));
+  })
+);
 
 // Define a route for unfriending a user
-router.post("/unfriend", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.post(
+  "/unfriend",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
     const target = BigInt(req.body.user);
 
@@ -217,6 +253,13 @@ router.post("/unfriend", ...RouteBuilder.createRouteHandler(async (req, res) => 
         },
       },
     });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      friendInfo,
+      UserNotFoundError.targetUserMessage
+    );
+
     const length =
       friendInfo?.friend_requests_friend_requests_requestee_idTousers.length;
     if (length != null && length != 0) {
@@ -244,30 +287,40 @@ router.post("/unfriend", ...RouteBuilder.createRouteHandler(async (req, res) => 
     } else {
       return res.status(400).json({ success: false });
     }
-}));
+  })
+);
 
 // Define a route to retrieve a user's followers
-router.get("/followers", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.get(
+  "/followers",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
-    if(req.headers.user && req.headers.user instanceof String) {
+    if (req.headers.user && req.headers.user instanceof String) {
       target = BigInt(req.headers.user as string);
     }
     // Retrieve the list of follower users for the target user
-    const followerUsersRaw = await prisma.users
-      .findUnique({
-        where: { user_id: target },
-        include: {followers_followers_user_idTousers: {
+    const followerUsersRaw = await prisma.users.findUnique({
+      where: { user_id: target },
+      include: {
+        followers_followers_user_idTousers: {
           take: 20,
           skip: page * 20,
           include: {
             users_followers_follower_user_idTousers: true,
           },
-        }, ...HandleBlocks.getIncludeBlockInfo(target),}
-      })
+        },
+        ...HandleBlocks.getIncludeBlockInfo(target),
+      },
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      followerUsersRaw,
+      UserNotFoundError.targetUserMessage
+    );
 
     // If the user is blocked then don't get anything for them
     if (target != req.userId) {
@@ -279,7 +332,6 @@ router.get("/followers", ...RouteBuilder.createRouteHandler(async (req, res) => 
     }
 
     const followerUsers = followerUsersRaw?.followers_followers_user_idTousers;
-
 
     let returningUsers = [];
     if (followerUsers == null) {
@@ -303,16 +355,18 @@ router.get("/followers", ...RouteBuilder.createRouteHandler(async (req, res) => 
       });
     }
     return res.status(200).json(returningUsers);
-}));
+  })
+);
 
 // Define a route to retrieve a user's following users
-router.get("/following", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/following",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
-
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
-    if(req.headers.user && req.headers.user instanceof String) {
+    if (req.headers.user && req.headers.user instanceof String) {
       target = BigInt(req.headers.user as string);
     }
     // Retrieve the list of followed users for the target user
@@ -330,6 +384,12 @@ router.get("/following", ...RouteBuilder.createRouteHandler(async (req, res) => 
       },
     });
 
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      followedUsersRaw,
+      UserNotFoundError.targetUserMessage
+    );
+
     // If the user is blocked then don't get anything for them
     if (target != req.userId) {
       // Check if the user is blocked or the other way round
@@ -338,12 +398,10 @@ router.get("/following", ...RouteBuilder.createRouteHandler(async (req, res) => 
         throw Error("Target user has been blocked by you or has blocked you");
       }
     }
-    const followedUsers = followedUsersRaw?.following_following_user_idTousers;
+    const followedUsers = followedUsersRaw!.following_following_user_idTousers;
 
     let returningUsers = [];
-    if (followedUsers == null) {
-      throw new Error("No followed users found");
-    }
+
     for (let followedUser of followedUsers) {
       returningUsers.push({
         user_id: followedUser.users_following_following_user_idTousers.user_id,
@@ -363,19 +421,23 @@ router.get("/following", ...RouteBuilder.createRouteHandler(async (req, res) => 
       });
     }
     return res.status(200).json(returningUsers);
-}));
+  })
+);
 
 // Define a route to retrieve a user's friends
-router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
+router.get(
+  "/friends",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
-    if(req.headers.user && req.headers.user instanceof String) {
+    if (req.headers.user && req.headers.user instanceof String) {
       target = BigInt(req.headers.user as string);
     }
     const pageSize = 20;
 
+    // TODO remove this transaction as it is completely pointless
     // Use a transaction to retrieve a combined list of user1's and user2's friends
     prisma.$transaction(async (tx) => {
       try {
@@ -391,11 +453,13 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
             },
           },
         });
+        // Check if the target user was found.  If not then throw an error to reflect that.
+        UserNotFoundError.throwIfNull(
+          user1Friends,
+          UserNotFoundError.targetUserMessage
+        );
 
-        const len =
-          user1Friends == null
-            ? 0
-            : user1Friends.friends_friends_user1_idTousers.length;
+        const len = user1Friends!.friends_friends_user1_idTousers.length;
         const user2Friends = await tx.users.findUnique({
           where: { user_id: target },
           include: {
@@ -408,6 +472,11 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
             },
           },
         });
+        // Check if the target user was found.  If not then throw an error to reflect that.
+        UserNotFoundError.throwIfNull(
+          user2Friends,
+          UserNotFoundError.targetUserMessage
+        );
 
         // If the user is blocked then don't get anything for them
         if (target != req.userId) {
@@ -415,9 +484,16 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
             where: { user_id: target },
             include: HandleBlocks.getIncludeBlockInfo(req.userId!),
           });
+          // Check if the target user was found.  If not then throw an error to reflect that.
+          UserNotFoundError.throwIfNull(
+            targetUser,
+            UserNotFoundError.targetUserMessage
+          );
+
           // Check if the user is blocked or the other way round
           const isBlocked = HandleBlocks.checkIsBlocked(targetUser);
           if (isBlocked) {
+            // TODO handle block error
             throw Error(
               "Target user has been blocked by you or has blocked you"
             );
@@ -425,36 +501,32 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
         }
 
         let returningUsers = [];
-        if (user1Friends != null) {
-          for (let friendUser of user1Friends.friends_friends_user1_idTousers) {
-            const friendUserData = friendUser.users_friends_user2_idTousers;
-            returningUsers.push({
-              user_id: friendUserData.user_id,
-              avatar_id: friendUserData.avatar_id,
-              description: friendUserData.description,
-              public_profile: friendUserData.public_profile,
-              country: friendUserData.country,
-              username: friendUserData.username,
-              display_name: friendUserData.display_name,
-              user_role: friendUserData.user_role,
-            });
-          }
+        for (let friendUser of user1Friends!.friends_friends_user1_idTousers) {
+          const friendUserData = friendUser.users_friends_user2_idTousers;
+          returningUsers.push({
+            user_id: friendUserData.user_id,
+            avatar_id: friendUserData.avatar_id,
+            description: friendUserData.description,
+            public_profile: friendUserData.public_profile,
+            country: friendUserData.country,
+            username: friendUserData.username,
+            display_name: friendUserData.display_name,
+            user_role: friendUserData.user_role,
+          });
         }
 
-        if (user2Friends != null) {
-          for (let friendUser of user2Friends.friends_friends_user2_idTousers) {
-            const friendUserData = friendUser.users_friends_user1_idTousers;
-            returningUsers.push({
-              user_id: friendUserData.user_id,
-              avatar_id: friendUserData.avatar_id,
-              description: friendUserData.description,
-              public_profile: friendUserData.public_profile,
-              country: friendUserData.country,
-              username: friendUserData.username,
-              display_name: friendUserData.display_name,
-              user_role: friendUserData.user_role,
-            });
-          }
+        for (let friendUser of user2Friends!.friends_friends_user2_idTousers) {
+          const friendUserData = friendUser.users_friends_user1_idTousers;
+          returningUsers.push({
+            user_id: friendUserData.user_id,
+            avatar_id: friendUserData.avatar_id,
+            description: friendUserData.description,
+            public_profile: friendUserData.public_profile,
+            country: friendUserData.country,
+            username: friendUserData.username,
+            display_name: friendUserData.display_name,
+            user_role: friendUserData.user_role,
+          });
         }
 
         return res.status(200).json(returningUsers);
@@ -463,9 +535,13 @@ router.get("/friends", ...RouteBuilder.createRouteHandler(async (req, res) => {
         res.status(400).json({ error });
       }
     });
-}));
+  })
+);
 
-router.patch("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => { // Current user's ID
+router.patch(
+  "/follow",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // Current user's ID
     const target = BigInt(req.body.user); // Target user's ID
     const accepted = req.body.accepted; // Whether the follow request is accepted
 
@@ -475,7 +551,8 @@ router.patch("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
     });
 
     if (!followRequest) {
-      throw "No follow request made";
+      // TODO handle error proper
+      throw new Error("No follow request made");
     }
 
     // Delete the follow request
@@ -509,11 +586,13 @@ router.patch("/follow", ...RouteBuilder.createRouteHandler(async (req, res) => {
 
     // If the request is not accepted, respond with success and rejection status
     return res.status(200).json({ success: true, accepted: false });
-}));
+  })
+);
 
 // This is a route handler for a PATCH request to "/friend".
-router.patch("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
-
+router.patch(
+  "/friend",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request body.
     const target = BigInt(req.body.user);
 
@@ -543,6 +622,7 @@ router.patch("/friend", ...RouteBuilder.createRouteHandler(async (req, res) => {
       // If the "accepted" flag is not set, return a response indicating that the request was not accepted.
       return res.status(200).json({ success: true, accepted: false });
     }
-}));
+  })
+);
 
 export default router;
