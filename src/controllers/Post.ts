@@ -12,6 +12,8 @@ import RouteBuilder from "../utils/RouteBuilder";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import UserBlockedError from "../Exceptions/Client/UserBlockedError";
 import InvalidIdError from "../Exceptions/Client/InvalidIdError";
+import ClientError from "../Exceptions/Client/ClientError";
+import TransactionHandler from "../utils/transactionHandler";
 
 const ec = "error_code";
 const router = Router(); // create router to create route bundle
@@ -118,42 +120,39 @@ router.get(
 router.post(
   "/like",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const postId = InvalidIdError.convertToBigInt(req.body.post);
     // Check if the user has already liked the post
     const postLike = await prisma.post_likes.findFirst({
       where: {
-        post_id: InvalidIdError.convertToBigInt(req.body.post),
+        post_id: postId,
         user_id: req.userId,
       },
     });
     if (!postLike) {
-      try {
-        // Begin a database transaction
-        await prisma.$transaction(async (tx) => {
-          // Increment the like count of the post and create a new like record
-          const post = await tx.posts.update({
-            where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
-            data: {
-              like_count: { increment: 1 },
-              post_likes: {},
-            },
-          });
-
-          const postLikeNew = await tx.post_likes.create({
-            data: {
-              like_id: generator.nextId(),
-              post_id: post.post_id,
-              user_id: req.userId!,
-              timestamp: new Date().toISOString(),
-            },
-          });
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+      // TODO handle no update registered.
+      // Begin a database transaction
+      await TransactionHandler.createTransaction(prisma, [
+        // Increment the like count of the post and create a new like record
+        prisma.posts.update({
+          where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
+          data: {
+            like_count: { increment: 1 },
+            post_likes: {},
+          },
+        }),
+        prisma.post_likes.create({
+          data: {
+            like_id: generator.nextId(),
+            post_id: postId,
+            user_id: req.userId!,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      ]);
+      return res.status(200).json({ success: true });
     } else {
       // If the user has already liked the post, return an error
-      return res.status(409).json({ error: "Post already liked" });
+      throw new ClientError("User has already liked the post.");
     }
   })
 );
@@ -163,38 +162,38 @@ router.post(
   "/unlike",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Check if the user has already liked the post
+    const postId = InvalidIdError.convertToBigInt(req.body.post);
     const postLike = await prisma.post_likes.findFirst({
       where: {
-        post_id: InvalidIdError.convertToBigInt(req.body.post),
+        post_id: postId,
         user_id: req.userId,
       },
     });
     if (postLike) {
-      try {
-        // Begin a database transaction
-        await prisma.$transaction(async (tx) => {
-          // Decrement the like count of the post and delete the like record
-          const post = await tx.posts.update({
-            where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
-            data: {
-              like_count: { decrement: 1 },
-              post_likes: {},
-            },
-          });
+      //TODO handle update fails and likes not.
+      // Begin a database transaction
+      await TransactionHandler.createTransaction(prisma, [
+        // Decrement the like count of the post and delete the like record
+        prisma.posts.update({
+          where: { post_id: postId },
+          data: {
+            like_count: { decrement: 1 },
+            post_likes: {},
+          },
+        }),
 
-          const postLikeNew = await tx.post_likes.delete({
-            where: {
-              like_id: postLike.like_id,
-            },
-          });
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+        prisma.post_likes.delete({
+          where: {
+            like_id: postLike.like_id,
+          },
+        }),
+      ]);
+      return res.status(200).json({ success: true });
     } else {
       // If the user hasn't liked the post, return an error
-      return res.status(409).json({ error: "Post isn't liked" });
+      throw new ClientError(
+        "Post Isn't liked. Cannot remove a like that does not exist."
+      );
     }
   })
 );
@@ -290,43 +289,36 @@ router.post(
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the user ID from the request
     CheckNulls.checkNullUser(req.userId);
+    const commentId = InvalidIdError.convertToBigInt(req.body.comment);
 
     // Check if the user has already liked the comment
     const commentLike = await prisma.comment_likes.findFirst({
       where: {
-        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        comment_id: commentId,
         user_id: req.userId,
       },
     });
 
     if (!commentLike) {
-      try {
-        // Use a transaction to update the comment's like count and create a new comment_like entry
-        await prisma.$transaction(async (tx) => {
-          const comment = await tx.comments.update({
-            where: {
-              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
-            },
-            data: {
-              like_count: { increment: 1 }, // Increment the like count by 1
-            },
-          });
-
-          const commentLikeNew = await tx.comment_likes.create({
-            data: {
+      // Update the comment's like count and create a new comment_like entry
+      await prisma.comments.update({
+        where: {
+          comment_id: commentId,
+        },
+        data: {
+          like_count: { increment: 1 }, // Increment the like count by 1
+          comment_likes: {
+            create: {
               like_id: generator.nextId(), // Generate a unique like ID
-              comment_id: comment.post_id, // Set the comment ID
               user_id: req.userId!, // Set the user ID
               timestamp: new Date().toISOString(),
             },
-          });
+          },
+        },
+      });
 
-          // Send a success message as a JSON response
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+      // Send a success message as a JSON response
+      return res.status(200).json({ success: true });
     } else {
       // Send an error message if the comment is already liked
       return res.json({ error: "Comment already liked" });
@@ -347,38 +339,30 @@ router.post(
     });
 
     if (commentLike) {
-      try {
-        // Use a transaction to update the comment's like count and delete the comment_like entry
-        await prisma.$transaction(async (tx) => {
-          const comment = await tx.comments.update({
-            where: {
-              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
-            },
-            data: {
-              like_count: { decrement: 1 }, // Decrement the like count by 1
-            },
-          });
+      // Update the comment's like count and delete the comment_like entry
+      await prisma.comments.update({
+        where: {
+          comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        },
+        data: {
+          like_count: { decrement: 1 }, // Decrement the like count by 1
+          comment_likes: { delete: { like_id: commentLike.like_id } }, // Delete the like.
+        },
+      });
 
-          const commentLikeNew = await tx.comment_likes.delete({
-            where: {
-              like_id: commentLike.like_id, // Delete the comment_like entry using its ID
-            },
-          });
-
-          // Send a success message as a JSON response
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+      // Send a success message as a JSON response
+      return res.status(200).json({ success: true });
     } else {
       // Send an error message if the comment is not liked
-      return res.json({ error: "Comment isn't liked" });
+      throw new ClientError(
+        "Comment isn't liked.  Can't remove a like that doesn't exist. "
+      );
     }
   })
 );
 
 // Define a route to like a comment
+// TODO Add a check for like and remove like if there is
 router.post(
   "/dislike_comment",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
@@ -391,80 +375,68 @@ router.post(
     });
 
     if (!commentDislike) {
-      try {
-        // Use a transaction to update the comment's like count and create a new comment_like entry
-        await prisma.$transaction(async (tx) => {
-          const comment = await tx.comments.update({
-            where: {
-              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
-            },
-            data: {
-              dislike_count: { increment: 1 }, // Increment the like count by 1
-            },
-          });
-
-          const commentDislikeNew = await tx.comment_likes.create({
-            data: {
-              like_id: generator.nextId(), // Generate a unique like ID
-              comment_id: comment.post_id, // Set the comment ID
+      // Use a transaction to update the comment's like count and create a new comment_like entry
+      const commentId = InvalidIdError.convertToBigInt(req.body.comment);
+      const comment = await prisma.comments.update({
+        where: {
+          comment_id: commentId,
+        },
+        data: {
+          dislike_count: { increment: 1 }, // Increment the like count by 1
+          comment_dislikes: {
+            create: {
+              dislike_id: generator.nextId(), // Generate a unique dislike ID
               user_id: req.userId!, // Set the user ID
               timestamp: new Date().toISOString(),
             },
-          });
+          },
+        },
+      });
 
-          // Send a success message as a JSON response
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+      // Send a success message as a JSON response
+      return res.status(200).json({ success: true });
     } else {
       // Send an error message if the comment is already liked
-      return res.json({ error: "Comment already liked" });
+      throw new ClientError("Comment already disliked. ");
     }
   })
 );
 
-// Define a route to unlike a comment
+// Define a route to undislike a comment
 router.post(
   "/undislike_comment",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const commentId = InvalidIdError.convertToBigInt(req.body.comment);
     // Check if the user has already liked the comment
     const commentDislike = await prisma.comment_dislikes.findFirst({
       where: {
-        comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        comment_id: commentId,
         user_id: req.userId,
       },
     });
 
     if (commentDislike) {
-      try {
-        // Use a transaction to update the comment's like count and delete the comment_like entry
-        await prisma.$transaction(async (tx) => {
-          const comment = await tx.comments.update({
-            where: {
-              comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+      // Use a transaction to update the comment's like count and delete the comment_like entry
+      const comment = await prisma.comments.update({
+        where: {
+          comment_id: InvalidIdError.convertToBigInt(req.body.comment),
+        },
+        data: {
+          like_count: { decrement: 1 }, // Decrement the like count by 1
+          comment_dislikes: {
+            delete: {
+              // Delete the dislike entry
+              dislike_id: commentDislike.dislike_id,
             },
-            data: {
-              like_count: { decrement: 1 }, // Decrement the like count by 1
-            },
-          });
+          },
+        },
+      });
 
-          const commentDislikeNew = await tx.comment_likes.delete({
-            where: {
-              like_id: commentDislike.dislike_id, // Delete the comment_like entry using its ID
-            },
-          });
-
-          // Send a success message as a JSON response
-          return res.status(200).json({ success: true });
-        });
-      } catch (error) {
-        console.error("Error in transaction:", error);
-      }
+      // Send a success message as a JSON response
+      return res.status(200).json({ success: true });
     } else {
       // Send an error message if the comment is not liked
-      return res.json({ error: "Comment isn't liked" });
+      throw new ClientError("Comment isn't disliked so cannot remove.");
     }
   })
 );

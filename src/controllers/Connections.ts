@@ -9,6 +9,8 @@ import CheckNulls from "../utils/checkNulls";
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import UserBlockedError from "../Exceptions/Client/UserBlockedError";
 import InvalidIdError from "../Exceptions/Client/InvalidIdError";
+import TransactionHandler from "../utils/transactionHandler";
+import ClientError from "../Exceptions/Client/ClientError";
 
 const router = Router(); // create router to create route bundle
 
@@ -81,10 +83,13 @@ router.post(
           user_id: target,
           timestamp: new Date().toISOString(),
         };
-        const result = await prisma.$transaction([
+
+        // Run Prisma query within transaction
+        await TransactionHandler.createTransaction(prisma, [
           prisma.following.create({ data: followingData }),
           prisma.followers.create({ data: followerData }),
         ]);
+        // TODO change response to a default
         return res.status(200).json({ success: true, requested: false });
       }
     }
@@ -161,7 +166,8 @@ router.post(
       return res.status(200).json({ success: true, requested: true });
     } else {
       // If no follow request exists, remove the follower-following relationship
-      const result = await prisma.$transaction([
+      // Run within a transaction to cancel if errors occur.
+      await TransactionHandler.createTransaction(prisma, [
         prisma.following.deleteMany({
           where: { following_user_id: target, user_id: req.userId },
         }),
@@ -213,7 +219,7 @@ router.post(
       return res.status(200).json({ success: true, request: true });
     } else {
       // If no follow request exists, remove the follower-following relationship
-      const result = await prisma.$transaction([
+      await TransactionHandler.createTransaction(prisma, [
         prisma.following.deleteMany({
           where: { following_user_id: req.userId, user_id: target },
         }),
@@ -432,100 +438,90 @@ router.get(
     }
     const pageSize = 20;
 
-    // TODO remove this transaction as it is completely pointless
-    // Use a transaction to retrieve a combined list of user1's and user2's friends
-    prisma.$transaction(async (tx) => {
-      try {
-        const user1Friends = await tx.users.findUnique({
-          where: { user_id: target },
+    // Retrieve a combined list of user1's and user2's friends
+    const user1Friends = await prisma.users.findUnique({
+      where: { user_id: target },
+      include: {
+        friends_friends_user1_idTousers: {
+          take: pageSize,
+          skip: page * pageSize,
           include: {
-            friends_friends_user1_idTousers: {
-              take: pageSize,
-              skip: page * pageSize,
-              include: {
-                users_friends_user2_idTousers: true,
-              },
-            },
+            users_friends_user2_idTousers: true,
           },
-        });
-        // Check if the target user was found.  If not then throw an error to reflect that.
-        UserNotFoundError.throwIfNull(
-          user1Friends,
-          UserNotFoundError.targetUserMessage
-        );
-
-        const len = user1Friends!.friends_friends_user1_idTousers.length;
-        const user2Friends = await tx.users.findUnique({
-          where: { user_id: target },
-          include: {
-            friends_friends_user2_idTousers: {
-              take: pageSize - len,
-              skip: Math.max(0, page * pageSize - len),
-              include: {
-                users_friends_user1_idTousers: true,
-              },
-            },
-          },
-        });
-        // Check if the target user was found.  If not then throw an error to reflect that.
-        UserNotFoundError.throwIfNull(
-          user2Friends,
-          UserNotFoundError.targetUserMessage
-        );
-
-        // If the user is blocked then don't get anything for them
-        if (target != req.userId) {
-          const targetUser = await tx.users.findFirst({
-            where: { user_id: target },
-            include: HandleBlocks.getIncludeBlockInfo(req.userId!),
-          });
-          // Check if the target user was found.  If not then throw an error to reflect that.
-          UserNotFoundError.throwIfNull(
-            targetUser,
-            UserNotFoundError.targetUserMessage
-          );
-
-          // Check if the user is blocked or the other way round
-          UserBlockedError.throwIfBlocked(
-            HandleBlocks.checkIsBlocked(targetUser)
-          );
-        }
-
-        let returningUsers = [];
-        for (let friendUser of user1Friends!.friends_friends_user1_idTousers) {
-          const friendUserData = friendUser.users_friends_user2_idTousers;
-          returningUsers.push({
-            user_id: friendUserData.user_id,
-            avatar_id: friendUserData.avatar_id,
-            description: friendUserData.description,
-            public_profile: friendUserData.public_profile,
-            country: friendUserData.country,
-            username: friendUserData.username,
-            display_name: friendUserData.display_name,
-            user_role: friendUserData.user_role,
-          });
-        }
-
-        for (let friendUser of user2Friends!.friends_friends_user2_idTousers) {
-          const friendUserData = friendUser.users_friends_user1_idTousers;
-          returningUsers.push({
-            user_id: friendUserData.user_id,
-            avatar_id: friendUserData.avatar_id,
-            description: friendUserData.description,
-            public_profile: friendUserData.public_profile,
-            country: friendUserData.country,
-            username: friendUserData.username,
-            display_name: friendUserData.display_name,
-            user_role: friendUserData.user_role,
-          });
-        }
-
-        return res.status(200).json(returningUsers);
-      } catch (error) {
-        // Handle any errors that occur during this process
-        res.status(400).json({ error });
-      }
+        },
+      },
     });
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      user1Friends,
+      UserNotFoundError.targetUserMessage
+    );
+
+    const len = user1Friends!.friends_friends_user1_idTousers.length;
+    const user2Friends = await prisma.users.findUnique({
+      where: { user_id: target },
+      include: {
+        friends_friends_user2_idTousers: {
+          take: pageSize - len,
+          skip: Math.max(0, page * pageSize - len),
+          include: {
+            users_friends_user1_idTousers: true,
+          },
+        },
+      },
+    });
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(
+      user2Friends,
+      UserNotFoundError.targetUserMessage
+    );
+
+    // If the user is blocked then don't get anything for them
+    if (target != req.userId) {
+      const targetUser = await prisma.users.findFirst({
+        where: { user_id: target },
+        include: HandleBlocks.getIncludeBlockInfo(req.userId!),
+      });
+      // Check if the target user was found.  If not then throw an error to reflect that.
+      UserNotFoundError.throwIfNull(
+        targetUser,
+        UserNotFoundError.targetUserMessage
+      );
+
+      // Check if the user is blocked or the other way round
+      UserBlockedError.throwIfBlocked(HandleBlocks.checkIsBlocked(targetUser));
+    }
+
+    let returningUsers = [];
+    for (let friendUser of user1Friends!.friends_friends_user1_idTousers) {
+      const friendUserData = friendUser.users_friends_user2_idTousers;
+      returningUsers.push({
+        user_id: friendUserData.user_id,
+        avatar_id: friendUserData.avatar_id,
+        description: friendUserData.description,
+        public_profile: friendUserData.public_profile,
+        country: friendUserData.country,
+        username: friendUserData.username,
+        display_name: friendUserData.display_name,
+        user_role: friendUserData.user_role,
+      });
+    }
+
+    for (let friendUser of user2Friends!.friends_friends_user2_idTousers) {
+      const friendUserData = friendUser.users_friends_user1_idTousers;
+      returningUsers.push({
+        user_id: friendUserData.user_id,
+        avatar_id: friendUserData.avatar_id,
+        description: friendUserData.description,
+        public_profile: friendUserData.public_profile,
+        country: friendUserData.country,
+        username: friendUserData.username,
+        display_name: friendUserData.display_name,
+        user_role: friendUserData.user_role,
+      });
+    }
+
+    return res.status(200).json(returningUsers);
   })
 );
 
@@ -543,36 +539,39 @@ router.patch(
 
     if (!followRequest) {
       // TODO handle error proper
-      throw new Error("No follow request made");
+      throw new ClientError("No follow request has been made.");
     }
+    const deleteRequestData = {
+      where: { request_id: followRequest!.request_id },
+    };
 
-    // Delete the follow request
-    const deletionFollowRequest = await prisma.follow_requests.delete({
-      where: { request_id: followRequest?.request_id },
-    });
-
+    // If the request is accepted, create records in 'following' and 'followers' tables & delete follow request
     if (accepted) {
-      // If the request is accepted, create records in 'following' and 'followers' tables
-      const following = await prisma.following.create({
-        data: {
-          following_id: generator.nextId(),
-          following_user_id: target,
-          user_id: req.userId!,
-          timestamp: new Date().toISOString(),
-        },
-      });
-      const followers = await prisma.followers.create({
-        data: {
-          follower_id: generator.nextId(),
-          follower_user_id: req.userId!,
-          user_id: target,
-          timestamp: new Date().toISOString(),
-        },
-      });
-      //TODO verify target and id right way round
+      // Run Prisma query within transaction
+      await TransactionHandler.createTransaction(prisma, [
+        prisma.follow_requests.delete(deleteRequestData),
+        prisma.following.create({
+          data: {
+            following_id: generator.nextId(),
+            following_user_id: target,
+            user_id: req.userId!,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+        prisma.followers.create({
+          data: {
+            follower_id: generator.nextId(),
+            follower_user_id: req.userId!,
+            user_id: target,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      ]);
 
       // Respond with success and acceptance status
       return res.status(200).json({ success: true, accepted: true });
+    } else {
+      await prisma.follow_requests.delete(deleteRequestData);
     }
 
     // If the request is not accepted, respond with success and rejection status

@@ -12,7 +12,7 @@ class Logger {
   // Define instance variables
 
   // Holds the global instance
-  static _instance: Logger;
+  private static _instance: Logger;
 
   // Stores the logger instance
   private _logger: winston.Logger;
