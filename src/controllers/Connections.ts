@@ -85,7 +85,7 @@ router.post(
         };
 
         // Run Prisma query within transaction
-        await TransactionHandler.createTransaction(prisma, [
+        await TransactionHandler.createTransactionArray(prisma, [
           prisma.following.create({ data: followingData }),
           prisma.followers.create({ data: followerData }),
         ]);
@@ -167,7 +167,7 @@ router.post(
     } else {
       // If no follow request exists, remove the follower-following relationship
       // Run within a transaction to cancel if errors occur.
-      await TransactionHandler.createTransaction(prisma, [
+      await TransactionHandler.createTransactionArray(prisma, [
         prisma.following.deleteMany({
           where: { following_user_id: target, user_id: req.userId },
         }),
@@ -219,7 +219,7 @@ router.post(
       return res.status(200).json({ success: true, request: true });
     } else {
       // If no follow request exists, remove the follower-following relationship
-      await TransactionHandler.createTransaction(prisma, [
+      await TransactionHandler.createTransactionArray(prisma, [
         prisma.following.deleteMany({
           where: { following_user_id: req.userId, user_id: target },
         }),
@@ -548,7 +548,7 @@ router.patch(
     // If the request is accepted, create records in 'following' and 'followers' tables & delete follow request
     if (accepted) {
       // Run Prisma query within transaction
-      await TransactionHandler.createTransaction(prisma, [
+      await TransactionHandler.createTransactionArray(prisma, [
         prisma.follow_requests.delete(deleteRequestData),
         prisma.following.create({
           data: {

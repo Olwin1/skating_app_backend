@@ -8,6 +8,7 @@ import HandleBlocks from "../utils/handleBlocks";
 import CheckNulls from "../utils/checkNulls";
 import RouteBuilder from "../utils/RouteBuilder";
 import InvalidIdError from "../Exceptions/Client/InvalidIdError";
+import TransactionHandler from "../utils/transactionHandler";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -52,26 +53,33 @@ router.post(
     let participants = JSON.parse(req.body.participants).concat([req.userId]);
     // Generate a unique channel ID.
     const channelId = generator.nextId();
-    // Create a new channel in the database.
-    const channel = await prisma.message_channels.create({
-      data: {
-        channel_id: channelId,
-        creation_date: new Date().toISOString(),
-        last_message_count: 0,
-      },
-    });
-    // Create participant rows for the channel in the database.
-    let participantRows = await prisma.participants.createMany({
+
+    const participantsData = {
       data: participants.map((userId: bigint) => ({
         participant_id: generator.nextId(),
         user_id: userId,
         channel_id: channelId,
       })),
-    });
+    };
+
+    // Perform a transaction to do the following:
+    //  - Create a new channel in the database.
+    //  - Create participant rows for the channel in the database.
+    
+    const transactionResponse = await TransactionHandler.createTransactionArray(prisma, [
+      prisma.message_channels.create({
+        data: {
+          channel_id: channelId,
+          creation_date: new Date().toISOString(),
+          last_message_count: 0,
+        },
+      }),
+      prisma.participants.createMany(participantsData)
+    ]);
     // Return a success response with the created channel and participants.
     return res
       .status(200)
-      .json({ channel: channel, participants: participantRows });
+      .json({ channel: transactionResponse[0], participants: transactionResponse[1] });
   })
 );
 

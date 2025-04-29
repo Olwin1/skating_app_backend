@@ -131,7 +131,7 @@ router.post(
     if (!postLike) {
       // TODO handle no update registered.
       // Begin a database transaction
-      await TransactionHandler.createTransaction(prisma, [
+      await TransactionHandler.createTransactionArray(prisma, [
         // Increment the like count of the post and create a new like record
         prisma.posts.update({
           where: { post_id: InvalidIdError.convertToBigInt(req.body.post) },
@@ -172,7 +172,7 @@ router.post(
     if (postLike) {
       //TODO handle update fails and likes not.
       // Begin a database transaction
-      await TransactionHandler.createTransaction(prisma, [
+      await TransactionHandler.createTransactionArray(prisma, [
         // Decrement the like count of the post and delete the like record
         prisma.posts.update({
           where: { post_id: postId },

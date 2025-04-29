@@ -3,6 +3,7 @@ import { TokenMessage } from "firebase-admin/lib/messaging/messaging-api";
 import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
+import TransactionHandler from "../utils/transactionHandler";
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -24,8 +25,9 @@ const createMessage = async (
   try {
     console.log(1);
 
+    const [userChannel, result] = await TransactionHandler.createTransactionFunction(prisma, async (tx) => { 
     // Update the last_message_count for a message channel in the database
-    const userChannel = await prisma.message_channels.update({
+      const userChannel = await tx.message_channels.update({
       where: {
         channel_id: channel,
       },
@@ -49,6 +51,9 @@ const createMessage = async (
         channel_id: userChannel?.channel_id,
       },
     });
+    return [userChannel, result];
+  });
+
 
     // Create an array to store participant IDs (excluding the sender's ID)
     let participants = [] as bigint[];
