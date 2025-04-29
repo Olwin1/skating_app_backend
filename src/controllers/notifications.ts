@@ -20,15 +20,18 @@ router.post(
       // Extract the user's req.userId from the request
       CheckNulls.checkNullUser(req.userId);
 
+      // TODO: support multiple notifications
       // Try to upsert an FCM token record in the database
       const fcmToken = await prisma.fcm_tokens.upsert({
-        where: { user_id: req.userId, token: req.body.fcm_token as string },
+        where: { token: req.body.fcm_token as string },
         create: {
           token_id: generator.nextId(),
           user_id: req.userId!,
           token: req.body.fcm_token,
         },
-        update: {}, // This is empty because it's an upsert operation
+        update: {
+          user_id: req.userId!
+        }, // This is empty because it's an upsert operation
       });
 
       // Send a JSON response with the upserted FCM token
