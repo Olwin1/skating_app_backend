@@ -16,7 +16,7 @@ class ErrorHandler {
     if (!err.isOperational) {
       // Send alert to monitoring system (e.g., Sentry, Datadog)
       Logger.instance.logger.error(
-        `Unexpected Error: [${err.name}] ${err.message}`
+        `Unexpected Error: [${err.name}] ${err.message}\n\nStack Trace: \n${err.stack}`
       );
     } else {
       Logger.instance.logger.warn(`[${err.name}] ${err.message}`);
