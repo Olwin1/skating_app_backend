@@ -17,26 +17,46 @@ const router = Router();
 router.post(
   "/token",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
-      // Extract the user's req.userId from the request
-      CheckNulls.checkNullUser(req.userId);
+    const userId = req.userId;
+    const newToken = req.body.fcm_token as string;
 
-      // TODO: support multiple notifications
-      // Try to upsert an FCM token record in the database
-      const fcmToken = await prisma.fcm_tokens.upsert({
-        where: { token: req.body.fcm_token as string },
-        create: {
-          token_id: generator.nextId(),
-          user_id: req.userId!,
-          token: req.body.fcm_token,
-        },
-        update: {
-          user_id: req.userId!
-        }, // This is empty because it's an upsert operation
+    CheckNulls.checkNullUser(req.userId);
+
+    // Get all tokens for this user
+    const existingTokens = await prisma.fcm_tokens.findMany({
+      where: { user_id: userId! },
+      orderBy: { created_at: "asc" }, // or 'updated_at'
+    });
+
+    // If user already has 5 tokens and it's a new token
+    if (
+      existingTokens.length >= 5 &&
+      !existingTokens.some((t) => t.token === newToken)
+    ) {
+      const tokenToDelete = existingTokens[0]; // Least recently added/used
+      await prisma.fcm_tokens.delete({
+        where: { token: tokenToDelete.token },
       });
+    }
 
-      // Send a JSON response with the upserted FCM token
-      return res.json(fcmToken);
-  }
-));
+    // Upsert the new or existing token
+    const fcmToken = await prisma.fcm_tokens.upsert({
+      where: { token: newToken },
+      create: {
+        token_id: generator.nextId(),
+        user_id: userId!,
+        token: newToken,
+      },
+      update: {
+        user_id: userId!,
+        created_at: new Date(),
+        // or updated_at
+      },
+    });
+
+    // Send a JSON response with the upserted FCM token
+    return res.json(fcmToken);
+  })
+);
 
 export default router;
