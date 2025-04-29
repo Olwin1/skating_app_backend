@@ -759,8 +759,8 @@ router.post(
           friends_only: post.friends_only,
           location: "",
           liked: post.post_likes.length > 0,
-          total_likes: InvalidIdError.convertToBigInt(post._count.post_likes),
-          comment_count: InvalidIdError.convertToBigInt(post._count.comments),
+          total_likes: BigInt(post._count.post_likes),
+          comment_count: BigInt(post._count.comments),
           influencer: true,
           timestamp: post.timestamp,
           saved: post.saved_posts.length > 0 ? true : false,
@@ -826,10 +826,10 @@ router.post(
           friends_only: post.posts.friends_only,
           location: "",
           liked: true,
-          total_likes: InvalidIdError.convertToBigInt(
+          total_likes: BigInt(
             post.posts._count.post_likes
           ),
-          comment_count: InvalidIdError.convertToBigInt(
+          comment_count: BigInt(
             post.posts._count.comments
           ),
           timestamp: post.timestamp,

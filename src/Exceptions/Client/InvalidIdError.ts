@@ -11,7 +11,7 @@ class InvalidIdError extends InvalidArgumentsError {
    */
   static convertToBigInt(sId: any): bigint {
     try {
-      const userId = BigInt(sId as string);
+      const userId = BigInt(sId);
       if (userId <= 1) {
         throw new InvalidIdError(sId);
       } else {
