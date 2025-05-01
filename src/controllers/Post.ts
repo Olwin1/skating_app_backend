@@ -855,7 +855,7 @@ router.get(
     const page = CheckNulls.checkNullPage(req.headers.page);
 
     const targetUser = await prisma.users.findFirst({
-      where: { user_id: InvalidIdError.convertToBigInt(req.headers.user) },
+      where: { user_id: InvalidIdError.convertToBigInt(req.headers.user, req.userId) },
       include: HandleBlocks.getIncludeBlockInfo(req.userId!),
     });
 
@@ -871,7 +871,7 @@ router.get(
     // Query the database for posts authored by the current user, sorted by date in descending order
     // The "skip" and "limit" options are used for pagination
     const posts = await prisma.posts.findMany({
-      where: { author_id: InvalidIdError.convertToBigInt(req.headers.user) },
+      where: { author_id: InvalidIdError.convertToBigInt(req.headers.user, req.userId) },
       orderBy: { timestamp: Prisma.SortOrder.desc },
       skip: 20 * page,
       take: 20,

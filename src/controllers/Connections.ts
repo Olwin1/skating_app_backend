@@ -26,7 +26,7 @@ router.post(
   "/follow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = InvalidIdError.convertToBigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -119,7 +119,7 @@ router.post(
       data: {
         request_id: generator.nextId(),
         requester_id: req.userId!,
-        requestee_id: InvalidIdError.convertToBigInt(req.body.user),
+        requestee_id: InvalidIdError.convertToBigInt(req.body.user, req.userId),
         timestamp: new Date().toISOString(),
       },
     });
@@ -132,7 +132,7 @@ router.post(
   "/unfollow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = InvalidIdError.convertToBigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -185,7 +185,7 @@ router.post(
   "/unfollower",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = InvalidIdError.convertToBigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId);
 
     // Retrieve information about the target user, including follow requests
     const targetUser = await prisma.users.findUnique({
@@ -237,7 +237,7 @@ router.post(
   "/unfriend",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request
-    const target = InvalidIdError.convertToBigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId);
 
     // Retrieve information about the target user, including friend requests and friend relationships
     const friendInfo = await prisma.users.findUnique({
@@ -302,7 +302,7 @@ router.get(
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
     if (req.headers.user && req.headers.user instanceof String) {
-      target = InvalidIdError.convertToBigInt(req.headers.user);
+      target = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     }
     // Retrieve the list of follower users for the target user
     const followerUsersRaw = await prisma.users.findUnique({
@@ -369,7 +369,7 @@ router.get(
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
     if (req.headers.user) {
-      target = InvalidIdError.convertToBigInt(req.headers.user);
+      target = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     }
     // Retrieve the list of followed users for the target user
     const followedUsersRaw = await prisma.users.findUnique({
@@ -434,7 +434,7 @@ router.get(
     // Extract the target user's ID from the request headers (or use the user's own ID)
     let target = req.userId!;
     if (req.headers.user) {
-      target = InvalidIdError.convertToBigInt(req.headers.user);
+      target = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     }
     const pageSize = 20;
 
@@ -529,7 +529,7 @@ router.patch(
   "/follow",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Current user's ID
-    const target = InvalidIdError.convertToBigInt(req.body.user); // Target user's ID
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId); // Target user's ID
     const accepted = req.body.accepted; // Whether the follow request is accepted
 
     // Find the follow request in the database
@@ -584,7 +584,7 @@ router.patch(
   "/friend",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
     // Extract the target user's ID from the request body.
-    const target = InvalidIdError.convertToBigInt(req.body.user);
+    const target = InvalidIdError.convertToBigInt(req.body.user, req.userId);
 
     // Delete any existing friend requests between the current user and the target user.
     const request = await prisma.friend_requests.deleteMany({

@@ -42,12 +42,12 @@ const isLoggedIn: RequestHandler = async (req: CustomRequest, res, next) => {
           }
           // store user data in request object
           req.user = {
-            userId: payload._id,
+            userId: payload.userId,
             username: payload.username,
             iat: payload.iat,
           } as User;
           // Store their id
-          req.userId = InvalidIdError.convertToBigInt(req.user.userId);
+          req.userId = BigInt(req.user.userId);
           next();
         } else {
           res.status(400).json({ error: "token verification failed" });
@@ -59,6 +59,7 @@ const isLoggedIn: RequestHandler = async (req: CustomRequest, res, next) => {
       res.status(400).json({ error: "No authorization header" });
     }
   } catch (error) {
+    console.log(`New error: ${error}`);
     res.status(400).json({ error });
   }
 };

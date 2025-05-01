@@ -295,7 +295,7 @@ router.get(
     //res.status(200).json({ "is_banned": isBanned, "is_muted": isMuted, "end_timestamp": endTimestamp});
     res.status(200).json({
       is_banned: isBanned,
-      is_muted: true,
+      is_muted: isMuted,
       end_timestamp: endTimestamp,
     });
   })
@@ -310,14 +310,16 @@ router.get(
     } else if (!req.headers.id) {
       throw new InvalidIdError("Expected an id argument");
     }
+    let userId = req.headers.id ?? "0";
+    if(userId == "0") {
+      req.userId;
+    }
+    let bigIntUserId = InvalidIdError.convertToBigInt(req.headers.id, req.userId);
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
       where: {
-        user_id:
-          (req.headers.id ?? "0") != "0"
-            ? InvalidIdError.convertToBigInt(req.headers.id)
-            : req.userId,
+        user_id: bigIntUserId,
       },
       include: {
         _count: {
@@ -412,7 +414,7 @@ router.get(
       .json(
         await checkUserFollows(
           req.userId!,
-          InvalidIdError.convertToBigInt(req.headers.user)
+          InvalidIdError.convertToBigInt(req.headers.user, req.userId)
         )
       );
   })
@@ -432,7 +434,7 @@ router.get(
       .json(
         await checkUserFollows(
           req.userId!,
-          InvalidIdError.convertToBigInt(req.headers.user)
+          InvalidIdError.convertToBigInt(req.headers.user, req.userId)
         )
       );
   })

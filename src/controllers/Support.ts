@@ -624,7 +624,7 @@ router.get(
     // TODO handle null user
     let targetUser: bigint;
     try {
-      targetUser = InvalidIdError.convertToBigInt(req.headers.user);
+      targetUser = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     } catch (e) {
       targetUser = req.userId!;
     }

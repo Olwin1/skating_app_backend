@@ -9,10 +9,13 @@ class InvalidIdError extends InvalidArgumentsError {
    *
    * @param sId - The string version of the id (does't have to be a string but if not will throw an [InvalidIdError] error)
    */
-  static convertToBigInt(sId: any): bigint {
+  static convertToBigInt(sId: any, requestUserId: bigint | undefined = undefined): bigint {
     try {
       const userId = BigInt(sId);
       if (userId <= 1) {
+        if(requestUserId && userId == BigInt(0)) {
+          return requestUserId;
+        }
         throw new InvalidIdError(sId);
       } else {
         return userId;
