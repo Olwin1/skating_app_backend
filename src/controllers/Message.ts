@@ -167,6 +167,8 @@ router.get(
 router.get(
   "/channels",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+
+    const skip = 20 * CheckNulls.checkNullPage(req.headers.page);
     // Retrieve a list of channels associated with the user.
     const channels = await prisma.participants.findMany({
       where: {
@@ -191,6 +193,8 @@ router.get(
           },
         },
       },
+      skip: skip,
+      take: 20
     });
     let channelIds: bigint[] = [];
     let channelLastMessageNumber: number[] = [];
