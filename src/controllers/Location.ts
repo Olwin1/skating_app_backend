@@ -124,10 +124,10 @@ const getCountry = (country: string): string => {
 const searchByPostcode = async (postcode: string, res: Response) => {
   try {
     const data = await getPostcodeData(postcode);
-    return res.json({ lng: data.lng, lat: data.lat });
+    return { lng: data.lng, lat: data.lat };
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "Failed to fetch postcode data" });
+    throw Error("Failed to fetch postcode data");
   }
 };
 
@@ -172,7 +172,7 @@ const searchByTown = async (
     }
   } catch (error) {
     console.error("Error:", error);
-    return res.status(500).json({ error: "Failed to fetch town data" });
+    throw Error("Failed to fetch town data");
   }
 };
 
@@ -184,21 +184,18 @@ const searchByCountry = async (country: string, res: Response) => {
     if (result) {
       return result;
     } else {
-      res.status(404).json({ error: "ERROR: No Records Found" });
-      return null;
+      throw Error("ERROR: No Records Found");
     }
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "Failed to fetch country data" });
-    return null;
+    throw Error(`Failed to fetch country data. ${error}`);
   }
 };
 
 // Function to handle search requests
 const handleSearch = async (req: CustomRequest, res: Response) => {
   try {
-    const { Geonames } = req.context!
-      .models as mongoose.Models;
+    const { Geonames } = req.context!.models as mongoose.Models;
     const query = JSON.parse(req.body.terms);
     let result;
 
@@ -264,16 +261,13 @@ const handleSearch = async (req: CustomRequest, res: Response) => {
 
     // Return result
     if (result) {
-      res.json(result);
-      return;
+      return res.json(result);
     } else {
-      res.status(404).json({ error: "ERROR: No Records Found" });
-      return;
+      return res.status(404).json({ error: "ERROR: No Records Found" });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, error: error });
-    return;
+    return res.status(500).json({ success: false, error: error });
   }
 };
 
