@@ -121,7 +121,7 @@ const getCountry = (country: string): string => {
 };
 
 // Function to search by postcode and return coordinates
-const searchByPostcode = async (postcode: string, res: Response) => {
+const searchByPostcode = async (postcode: string) => {
   try {
     const data = await getPostcodeData(postcode);
     return { lng: data.lng, lat: data.lat };
@@ -135,8 +135,7 @@ const searchByPostcode = async (postcode: string, res: Response) => {
 const searchByTown = async (
   town: string,
   country: string,
-  Geonames: any,
-  res: any
+  Geonames: any
 ) => {
   try {
     const code = country ? getCountry(country) : undefined;
@@ -200,9 +199,9 @@ const handleSearch = async (req: CustomRequest, res: Response) => {
     let result;
 
     if (query.postcode) {
-      result = await searchByPostcode(query.postcode, res);
+      result = await searchByPostcode(query.postcode);
     } else if (query.town) {
-      result = await searchByTown(query.town, query.country, Geonames, res);
+      result = await searchByTown(query.town, query.country, Geonames);
       if (query.name) {
         // Search by name otherwise return result
       }
@@ -261,6 +260,7 @@ const handleSearch = async (req: CustomRequest, res: Response) => {
 
     // Return result
     if (result) {
+      console.log(`Result: ${result}`);
       return res.json(result);
     } else {
       return res.status(404).json({ error: "ERROR: No Records Found" });
