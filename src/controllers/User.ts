@@ -310,10 +310,7 @@ router.get(
     } else if (!req.headers.id) {
       throw new InvalidIdError("Expected an id argument");
     }
-    let userId = req.headers.id ?? "0";
-    if(userId == "0") {
-      req.userId;
-    }
+
     let bigIntUserId = InvalidIdError.convertToBigInt(req.headers.id, req.userId);
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
@@ -331,9 +328,7 @@ router.get(
             posts: true,
           },
         },
-        blocked_users_blocked_users_blocked_user_idTousers: {
-          where: { blocking_user_id: req.userId },
-        },
+        ...HandleBlocks.getIncludeBlockInfo(req.userId!)
       },
     });
 
@@ -388,10 +383,7 @@ router.get(
         user_follows: follows,
         user_friends: friends,
         // Check if user is blocked by requester or not
-        blocked:
-          user!.blocked_users_blocked_users_blocked_user_idTousers.length > 0
-            ? true
-            : false,
+        blocked: HandleBlocks.checkIsBlocked(user)
       };
     }
 
