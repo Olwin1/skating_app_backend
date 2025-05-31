@@ -135,7 +135,7 @@ router.post("/login", async (req: CustomRequest, res) => {
         { username: user!.username, userId: user!.user_id },
         SECRET
       );
-      return res.status(200).json({ token: token, verified: isVerified });
+      return res.status(200).json({ token: token, verified: isVerified, user_id: user!.user_id.toString()});
     } else {
       // Return a 400 Bad Request response with an error code for an incorrect password
       res.status(400).json({ ec: ErrorCode.IncorrectPassword });
@@ -298,6 +298,28 @@ router.get(
       is_muted: isMuted,
       end_timestamp: endTimestamp,
     });
+  })
+);
+
+// Retrieves user id.
+router.get(
+  "/id",
+  ...RouteBuilder.createRouteHandler(async (req, res) => {
+
+    // Retrieve user information from the database based on the user_id provided in the request headers.
+    const user = await prisma.users.findUnique({
+      where: {
+        user_id: req.userId,
+      },
+      select: {user_id: true}
+    });
+
+    // Check if the target user was found.  If not then throw an error to reflect that.
+    UserNotFoundError.throwIfNull(user, UserNotFoundError.targetUserMessage);
+
+
+    // Send a JSON response with the user information.
+    return res.status(200).json({"user_id": user!.user_id});
   })
 );
 
