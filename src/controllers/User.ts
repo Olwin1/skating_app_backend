@@ -135,7 +135,13 @@ router.post("/login", async (req: CustomRequest, res) => {
         { username: user!.username, userId: user!.user_id },
         SECRET
       );
-      return res.status(200).json({ token: token, verified: isVerified, user_id: user!.user_id.toString()});
+      return res
+        .status(200)
+        .json({
+          token: token,
+          verified: isVerified,
+          user_id: user!.user_id.toString(),
+        });
     } else {
       // Return a 400 Bad Request response with an error code for an incorrect password
       res.status(400).json({ ec: ErrorCode.IncorrectPassword });
@@ -305,21 +311,19 @@ router.get(
 router.get(
   "/id",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
-
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
       where: {
         user_id: req.userId,
       },
-      select: {user_id: true}
+      select: { user_id: true },
     });
 
     // Check if the target user was found.  If not then throw an error to reflect that.
     UserNotFoundError.throwIfNull(user, UserNotFoundError.targetUserMessage);
 
-
     // Send a JSON response with the user information.
-    return res.status(200).json({"user_id": user!.user_id});
+    return res.status(200).json({ user_id: user!.user_id });
   })
 );
 
@@ -333,7 +337,10 @@ router.get(
       throw new InvalidIdError("Expected an id argument");
     }
 
-    let bigIntUserId = InvalidIdError.convertToBigInt(req.headers.id, req.userId);
+    let bigIntUserId = InvalidIdError.convertToBigInt(
+      req.headers.id,
+      req.userId
+    );
 
     // Retrieve user information from the database based on the user_id provided in the request headers.
     const user = await prisma.users.findUnique({
@@ -350,7 +357,7 @@ router.get(
             posts: true,
           },
         },
-        ...HandleBlocks.getIncludeBlockInfo(req.userId!)
+        ...HandleBlocks.getIncludeBlockInfo(req.userId!),
       },
     });
 
@@ -405,7 +412,7 @@ router.get(
         user_follows: follows,
         user_friends: friends,
         // Check if user is blocked by requester or not
-        blocked: HandleBlocks.checkIsBlocked(user)
+        blocked: HandleBlocks.checkIsBlocked(user),
       };
     }
 
@@ -595,6 +602,8 @@ router.post(
 router.get(
   "/blocked_users",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    const pageSize = 10;
+    const skip = pageSize * parseInt(req.headers.page as string);
     // Get all user records showing the users that the user has blocked
     const users = await prisma.blocked_users.findMany({
       where: {
@@ -609,7 +618,8 @@ router.get(
           },
         },
       },
-      take: 10,
+      take: pageSize,
+      skip: skip,
     });
 
     const returns = [];
