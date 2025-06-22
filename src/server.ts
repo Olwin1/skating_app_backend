@@ -58,9 +58,9 @@ initFirebase();
 io.on("connection", (socket) => {
   try {
     // Check if authorization token exists in query params
-    if (socket.handshake.headers.token) {
+    if (socket.handshake.auth.token) {
       // Retrieve the token from the query params and cast it as a string
-      const token = socket.handshake.headers.token as string;
+      const token = socket.handshake.auth.token as string;
       // Verify the token using the secret and retrieve the payload
       if (token) {
         const payload = jwt.verify(token, process.env.SECRET as Secret);
