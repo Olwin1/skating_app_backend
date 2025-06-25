@@ -293,134 +293,275 @@ router.post(
   })
 );
 
-// Define a route to retrieve a user's followers
+// Define a route to retrieve a user's followers with friendship and friend request info
 router.get(
   "/followers",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // Parse and validate the pagination page number from request headers
     const page = CheckNulls.checkNullPage(req.headers.page);
 
-    // Extract the target user's ID from the request headers (or use the user's own ID)
+    // Determine the target user ID:
+    // - By default, use the authenticated user's ID (req.userId)
+    // - If a specific user ID is passed in the headers, validate and convert it to BigInt
     let target = req.userId!;
     if (req.headers.user && req.headers.user instanceof String) {
       target = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     }
-    // Retrieve the list of follower users for the target user
+
+    // Query the database for the target user and their followers
+    // Includes up to 20 followers (pagination applied), and some additional block info
     const followerUsersRaw = await prisma.users.findUnique({
       where: { user_id: target },
       include: {
         followers_followers_user_idTousers: {
-          take: 20,
-          skip: page * 20,
+          take: 20, // Limit results per page
+          skip: page * 20, // Skip pages * 20 for pagination
           include: {
-            users_followers_follower_user_idTousers: true,
+            users_followers_follower_user_idTousers: true, // Include follower user data
           },
         },
-        ...HandleBlocks.getIncludeBlockInfo(target),
+        ...HandleBlocks.getIncludeBlockInfo(target), // Include blocking info for later checks
       },
     });
 
-    // Check if the target user was found.  If not then throw an error to reflect that.
+    // Throw an error if the target user does not exist
     UserNotFoundError.throwIfNull(
       followerUsersRaw,
       UserNotFoundError.targetUserMessage
     );
 
-    // If the user is blocked then don't get anything for them
+    // If the target is someone other than the requester,
+    // check if either user has blocked the other and throw an error if so
     if (target != req.userId) {
-      // Check if the user is blocked or the other way round
       UserBlockedError.throwIfBlocked(
         HandleBlocks.checkIsBlocked(followerUsersRaw)
       );
     }
 
-    const followerUsers = followerUsersRaw!.followers_followers_user_idTousers;
+    // Extract the list of follower records (may be empty)
+    const followerUsers =
+      followerUsersRaw!.followers_followers_user_idTousers ?? [];
 
-    let returningUsers = [];
+    // Extract follower user IDs to query friendship and friend request status
+    const followerIds = followerUsers.map(
+      (f) => f.users_followers_follower_user_idTousers.user_id
+    );
+
+    // Parallel queries:
+    // 1) Find all friendships between the requester and any of the followers
+    // 2) Find all friend requests either sent or received by the requester involving any of the followers
+    const [friendRecords, friendRequestRecords] = await Promise.all([
+      prisma.friends.findMany({
+        where: {
+          OR: [
+            { user1_id: req.userId, user2_id: { in: followerIds } },
+            { user2_id: req.userId, user1_id: { in: followerIds } },
+          ],
+        },
+      }),
+      prisma.friend_requests.findMany({
+        where: {
+          OR: [
+            { requester_id: req.userId, requestee_id: { in: followerIds } },
+            { requestee_id: req.userId, requester_id: { in: followerIds } },
+          ],
+        },
+      }),
+    ]);
+
+    // Defensive check - throw error if no followers found (optional)
     if (followerUsers == null) {
       throw new Error("No followed users found");
     }
+
+    // Prepare the array to return the processed follower data
+    let returningUsers = [];
+
+    // Loop through each follower to enrich their info with friendship/request status
     for (let followerUser of followerUsers) {
+      const user = followerUser.users_followers_follower_user_idTousers;
+      const followerId = user.user_id;
+
+      // Check if follower is a confirmed friend of the requester
+      const isFriend = friendRecords.some(
+        (fr) =>
+          (fr.user1_id === req.userId && fr.user2_id === followerId) ||
+          (fr.user2_id === req.userId && fr.user1_id === followerId)
+      );
+
+      // Find any friend request involving the follower and requester
+      const friendRequest = friendRequestRecords.find(
+        (request) =>
+          (request.requester_id === req.userId &&
+            request.requestee_id === followerId) ||
+          (request.requestee_id === req.userId &&
+            request.requester_id === followerId)
+      );
+
+      // Initialize friend request direction flags
+      let requestedOutgoing = false; // Friend request sent by requester to follower
+      let requestedIncoming = false; // Friend request sent by follower to requester
+
+      // Set the direction flags if a friend request exists
+      if (friendRequest) {
+        if (friendRequest.requester_id === req.userId) {
+          requestedOutgoing = true;
+        } else {
+          requestedIncoming = true;
+        }
+      }
+
+      // Add this follower's data and friendship/request info to the response array
       returningUsers.push({
-        user_id: followerUser.users_followers_follower_user_idTousers.user_id,
-        avatar_id:
-          followerUser.users_followers_follower_user_idTousers.avatar_id,
-        description:
-          followerUser.users_followers_follower_user_idTousers.description,
-        public_profile:
-          followerUser.users_followers_follower_user_idTousers.public_profile,
-        country: followerUser.users_followers_follower_user_idTousers.country,
-        username: followerUser.users_followers_follower_user_idTousers.username,
-        display_name:
-          followerUser.users_followers_follower_user_idTousers.display_name,
-        user_role:
-          followerUser.users_followers_follower_user_idTousers.user_role,
+        user_id: user.user_id,
+        avatar_id: user.avatar_id,
+        description: user.description,
+        public_profile: user.public_profile,
+        country: user.country,
+        username: user.username,
+        display_name: user.display_name,
+        user_role: user.user_role,
+        user_friends: {
+          friends: isFriend,
+          requestedOutgoing: requestedOutgoing,
+          requestedIncoming: requestedIncoming,
+        },
       });
     }
+
+    // Respond with enriched list of followers including friend status info
     return res.status(200).json(returningUsers);
   })
 );
 
-// Define a route to retrieve a user's following users
 router.get(
   "/following",
   ...RouteBuilder.createRouteHandler(async (req, res) => {
+    // Extract and validate the pagination header, defaulting if null or invalid
     const page = CheckNulls.checkNullPage(req.headers.page);
 
-    // Extract the target user's ID from the request headers (or use the user's own ID)
+    // Determine the target user whose "following" list is to be fetched.
+    // Default is the currently authenticated user (req.userId)
     let target = req.userId!;
-    if (req.headers.user) {
+    if (req.headers.user && req.headers.user instanceof String) {
+      // If a specific user is passed in headers, convert it to BigInt safely
       target = InvalidIdError.convertToBigInt(req.headers.user, req.userId);
     }
-    // Retrieve the list of followed users for the target user
+
+    // Query the database for the target user's "following" list, with pagination
+    // Also includes block-related information via a helper
     const followedUsersRaw = await prisma.users.findUnique({
       where: { user_id: target },
       include: {
         following_following_user_idTousers: {
-          take: 20,
-          skip: page * 20,
+          take: 20, // Limit results for pagination
+          skip: page * 20, // Skip based on page number
           include: {
+            // Include full user data for each followed user
             users_following_following_user_idTousers: true,
           },
         },
-        ...HandleBlocks.getIncludeBlockInfo(target),
+        ...HandleBlocks.getIncludeBlockInfo(target), // Include blocking info if needed
       },
     });
 
-    // Check if the target user was found.  If not then throw an error to reflect that.
+    // If the target user doesn't exist, throw a "user not found" error
     UserNotFoundError.throwIfNull(
       followedUsersRaw,
       UserNotFoundError.targetUserMessage
     );
 
-    // If the user is blocked then don't get anything for them
+    // If the requester is viewing someone else's following list,
+    // Check if the target has blocked them
     if (target != req.userId) {
-      // Check if the user is blocked or the other way round
       UserBlockedError.throwIfBlocked(
         HandleBlocks.checkIsBlocked(followedUsersRaw)
       );
     }
-    const followedUsers = followedUsersRaw!.following_following_user_idTousers;
 
+    // Extract the list of followed user entries or fallback to empty array
+    const followedUsers =
+      followedUsersRaw!.following_following_user_idTousers ?? [];
+
+    // Extract just the user IDs of those being followed
+    const followedIds = followedUsers.map(
+      (f) => f.users_following_following_user_idTousers.user_id
+    );
+
+    // Query both friendships and friend requests between the requester and followed users
+    const [friendRecords, friendRequestRecords] = await Promise.all([
+      prisma.friends.findMany({
+        where: {
+          OR: [
+            { user1_id: req.userId, user2_id: { in: followedIds } },
+            { user2_id: req.userId, user1_id: { in: followedIds } },
+          ],
+        },
+      }),
+      prisma.friend_requests.findMany({
+        where: {
+          OR: [
+            { requester_id: req.userId, requestee_id: { in: followedIds } },
+            { requestee_id: req.userId, requester_id: { in: followedIds } },
+          ],
+        },
+      }),
+    ]);
+
+    // Build the final list of users to return, enriched with friendship status
     let returningUsers = [];
 
     for (let followedUser of followedUsers) {
+      const user = followedUser.users_following_following_user_idTousers;
+      const followedId = user.user_id;
+
+      // Check if there's an existing friendship with the followed user
+      const isFriend = friendRecords.some(
+        (fr) =>
+          (fr.user1_id === req.userId && fr.user2_id === followedId) ||
+          (fr.user2_id === req.userId && fr.user1_id === followedId)
+      );
+
+      // Check if there's a friend request between requester and followed user
+      const friendRequest = friendRequestRecords.find(
+        (request) =>
+          (request.requester_id === req.userId &&
+            request.requestee_id === followedId) ||
+          (request.requestee_id === req.userId &&
+            request.requester_id === followedId)
+      );
+
+      // Track the direction of any friend requests
+      let requestedOutgoing = false;
+      let requestedIncoming = false;
+
+      if (friendRequest) {
+        if (friendRequest.requester_id === req.userId) {
+          requestedOutgoing = true;
+        } else {
+          requestedIncoming = true;
+        }
+      }
+
+      // Construct the user object to be returned
       returningUsers.push({
-        user_id: followedUser.users_following_following_user_idTousers.user_id,
-        avatar_id:
-          followedUser.users_following_following_user_idTousers.avatar_id,
-        description:
-          followedUser.users_following_following_user_idTousers.description,
-        public_profile:
-          followedUser.users_following_following_user_idTousers.public_profile,
-        country: followedUser.users_following_following_user_idTousers.country,
-        username:
-          followedUser.users_following_following_user_idTousers.username,
-        display_name:
-          followedUser.users_following_following_user_idTousers.display_name,
-        user_role:
-          followedUser.users_following_following_user_idTousers.user_role,
+        user_id: user.user_id,
+        avatar_id: user.avatar_id,
+        description: user.description,
+        public_profile: user.public_profile,
+        country: user.country,
+        username: user.username,
+        display_name: user.display_name,
+        user_role: user.user_role,
+        user_friends: {
+          friends: isFriend,
+          requestedOutgoing: requestedOutgoing,
+          requestedIncoming: requestedIncoming,
+        },
       });
     }
+
+    // Return the result with HTTP 200 OK
     return res.status(200).json(returningUsers);
   })
 );
