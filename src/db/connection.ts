@@ -27,7 +27,8 @@ let bucket;
 
 // Listen for the "connected" event and create a new GridFSBucket instance
 mongoose.connection.on("connected", () => {
-  var db = mongoose.connections[0].db;
+  //TODO add proper handler for making sure db is not null
+  var db = mongoose.connections[0].db!;
   bucket = new mongoose.mongo.GridFSBucket(db, {
     bucketName: "newBucket",
   });

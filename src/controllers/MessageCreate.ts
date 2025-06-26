@@ -4,6 +4,7 @@ import prisma from "../db/postgres";
 import { Worker } from "snowflake-uuid"; // Import a unique ID generator library
 import UserNotFoundError from "../Exceptions/Client/UserNotFoundError";
 import TransactionHandler from "../utils/transactionHandler";
+import { $Enums } from '@prisma/client';
 
 // Create a unique ID generator instance
 const generator = new Worker(0, 1, {
@@ -49,6 +50,7 @@ const createMessage = async (
         //img: img,
         message_number: userChannel?.last_message_count,
         channel_id: userChannel?.channel_id,
+        type: $Enums.message_type.text
       },
     });
     return [userChannel, result];

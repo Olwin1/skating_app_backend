@@ -23,7 +23,6 @@ interface ReportType {
   assigned_to: bigint | null;
   created_at: Date;
   response: string | null;
-  responder_user_id: bigint | null;
 }
 
 // Create an instance of Express Router
@@ -340,7 +339,6 @@ router.post(
         report_id: generator.nextId(),
         reporter_id: req.userId!,
         reported_user_id: req.body.reported_user_id,
-        report_type: req.body.report_type,
         description: req.body.description != "" ? req.body.description : null,
         status: $Enums.report_status.pending_review,
         timestamp: new Date().toISOString(),

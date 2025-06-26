@@ -42,8 +42,8 @@ model blocked_users {
   users_blocked_users_blocked_user_idTousers  users    @relation("blocked_users_blocked_user_idTousers", fields: [blocked_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_blocked_users_blocking_user_idTousers users    @relation("blocked_users_blocking_user_idTousers", fields: [blocking_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([blocked_user_id])
-  @@index([blocking_user_id])
+  @@index([blocked_user_id], map: "idx_blocked_users_blocked")
+  @@index([blocking_user_id], map: "idx_blocked_users_blocking")
 }
 
 model comment_likes {
@@ -54,7 +54,7 @@ model comment_likes {
   comments   comments @relation(fields: [comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
   users      users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([comment_id])
+  @@index([comment_id], map: "idx_comment_likes_comment_id")
 }
 
 model comments {
@@ -70,8 +70,8 @@ model comments {
   posts            posts              @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
   users            users              @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([post_id])
-  @@index([sender_id])
+  @@index([post_id], map: "idx_comments_post_id")
+  @@index([sender_id], map: "idx_comments_sender_id")
 }
 
 model content_categories {
@@ -104,8 +104,8 @@ model follow_requests {
   users_follow_requests_requestee_idTousers users    @relation("follow_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_follow_requests_requester_idTousers users    @relation("follow_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([requestee_id])
-  @@index([requester_id])
+  @@index([requestee_id], map: "idx_follow_requests_requestee")
+  @@index([requester_id], map: "idx_follow_requests_requester")
 }
 
 model followers {
@@ -116,8 +116,8 @@ model followers {
   users_followers_follower_user_idTousers users    @relation("followers_follower_user_idTousers", fields: [follower_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_followers_user_idTousers          users    @relation("followers_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([follower_user_id])
-  @@index([user_id])
+  @@index([follower_user_id], map: "idx_followers_follower_id")
+  @@index([user_id], map: "idx_followers_user_id")
 }
 
 model following {
@@ -128,8 +128,8 @@ model following {
   users_following_following_user_idTousers users    @relation("following_following_user_idTousers", fields: [following_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_following_user_idTousers           users    @relation("following_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([following_user_id])
-  @@index([user_id])
+  @@index([following_user_id], map: "idx_following_following_id")
+  @@index([user_id], map: "idx_following_user_id")
 }
 
 model friend_requests {
@@ -140,8 +140,8 @@ model friend_requests {
   users_friend_requests_requestee_idTousers users    @relation("friend_requests_requestee_idTousers", fields: [requestee_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_friend_requests_requester_idTousers users    @relation("friend_requests_requester_idTousers", fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([requestee_id])
-  @@index([requester_id])
+  @@index([requestee_id], map: "idx_friend_requests_requestee")
+  @@index([requester_id], map: "idx_friend_requests_requester")
 }
 
 model friends {
@@ -152,8 +152,8 @@ model friends {
   users_friends_user1_idTousers users    @relation("friends_user1_idTousers", fields: [user1_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_friends_user2_idTousers users    @relation("friends_user2_idTousers", fields: [user2_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([user1_id])
-  @@index([user2_id])
+  @@index([user1_id], map: "idx_friends_user1")
+  @@index([user2_id], map: "idx_friends_user2")
 }
 
 model location_data {
@@ -180,7 +180,7 @@ model message_readers {
   messages          messages @relation(fields: [message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
   users             users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([message_id])
+  @@index([message_id], map: "idx_message_readers_msg_id")
 }
 
 model messages {
@@ -190,12 +190,16 @@ model messages {
   content          String?
   message_number   Int
   channel_id       BigInt
+  replied_message  BigInt?
+  type             message_type
   message_readers  message_readers[]
   message_channels message_channels  @relation(fields: [channel_id], references: [channel_id], onDelete: NoAction, onUpdate: NoAction)
+  messages         messages?         @relation("messagesTomessages", fields: [replied_message], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
+  other_messages   messages[]        @relation("messagesTomessages")
   users            users             @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([channel_id])
-  @@index([message_number])
+  @@index([channel_id], map: "idx_messages_channel_id")
+  @@index([message_number], map: "idx_messages_number")
 }
 
 model participants {
@@ -222,7 +226,7 @@ model payment_history {
   subscription_expiry DateTime?       @db.Timestamp(6)
   users               users           @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([user_id])
+  @@index([user_id], map: "idx_payment_user_id")
 }
 
 model post_content_categories {
@@ -241,7 +245,7 @@ model post_likes {
   posts     posts    @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
   users     users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([post_id])
+  @@index([post_id], map: "idx_post_likes_post_id")
 }
 
 model posts {
@@ -259,19 +263,18 @@ model posts {
   users                   users                     @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   saved_posts             saved_posts[]
 
-  @@index([author_id])
+  @@index([author_id], map: "idx_posts_author_id")
 }
 
 model reports {
   report_id                             BigInt                 @id
   reporter_id                           BigInt
   reported_user_id                      BigInt
-  report_type                           String?                @db.VarChar
+  reported_content                      reported_content?
+  reported_content_id                   BigInt?
   description                           String?
   status                                report_status?
   timestamp                             DateTime               @db.Timestamp(6)
-  reported_content_id                   BigInt?
-  reported_content                      reported_content?
   users_reports_reported_user_idTousers users                  @relation("reports_reported_user_idTousers", fields: [reported_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   users_reports_reporter_idTousers      users                  @relation("reports_reporter_idTousers", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   user_report_messages                  user_report_messages[]
@@ -298,7 +301,7 @@ model sessions {
   session_images  session_images[]
   users           users                    @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([author_id])
+  @@index([author_id], map: "idx_sessions_author_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -320,94 +323,92 @@ model user_activity_logs {
 }
 
 model user_feedback_and_support {
-  feedback_id                                              BigInt                  @id
-  user_id                                                  BigInt
-  type                                                     feedback_type?
-  subject                                                  String?                 @db.VarChar
-  content                                                  String?
-  status                                                   feedback_status?
-  assigned_to                                              BigInt?
-  created_at                                               DateTime                @db.Timestamp(6)
-  response                                                 String?
-  responder_user_id                                        BigInt?
-  users_user_feedback_and_support_assigned_toTousers       users?                  @relation("user_feedback_and_support_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_user_feedback_and_support_responder_user_idTousers users?                  @relation("user_feedback_and_support_responder_user_idTousers", fields: [responder_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  users_user_feedback_and_support_user_idTousers           users                   @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  user_support_messages                                    user_support_messages[]
+  feedback_id                                        BigInt                  @id
+  user_id                                            BigInt
+  type                                               feedback_type?
+  subject                                            String?                 @db.VarChar
+  content                                            String?
+  status                                             feedback_status?
+  assigned_to                                        BigInt?
+  created_at                                         DateTime                @db.Timestamp(6)
+  response                                           String?
+  users_user_feedback_and_support_assigned_toTousers users?                  @relation("user_feedback_and_support_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_feedback_and_support_user_idTousers     users                   @relation("user_feedback_and_support_user_idTousers", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  user_support_messages                              user_support_messages[]
 
-  @@index([type])
-  @@index([user_id])
+  @@index([assigned_to], map: "idx_support_assigned_to")
+  @@index([type], map: "idx_support_type")
+  @@index([user_id], map: "idx_support_user_id")
 }
 
 model users {
-  user_id                                                                      BigInt                      @id
-  avatar_id                                                                    String?                     @db.Char(24)
-  description                                                                  String?
-  email                                                                        String?                     @db.VarChar
-  email_notifications                                                          Boolean?
-  dyslexia_font                                                                Boolean?
-  public_profile                                                               Boolean?
-  hide_location                                                                Boolean?
-  analytics_enabled                                                            Boolean?
-  background                                                                   Int?                        @db.SmallInt
-  country                                                                      String?                     @db.VarChar
-  password_hash                                                                String                      @unique @db.VarChar
-  username                                                                     String                      @unique @db.VarChar
-  display_name                                                                 String?                     @db.VarChar
-  user_role                                                                    user_role?
-  created_at                                                                   DateTime                    @db.Timestamp(6)
-  account_activity_logs                                                        account_activity_logs[]
-  analytics_data                                                               analytics_data[]
-  blocked_users_blocked_users_blocked_user_idTousers                           blocked_users[]             @relation("blocked_users_blocked_user_idTousers")
-  blocked_users_blocked_users_blocking_user_idTousers                          blocked_users[]             @relation("blocked_users_blocking_user_idTousers")
-  comment_dislikes                                                             comment_dislikes[]
-  comment_likes                                                                comment_likes[]
-  comments                                                                     comments[]
-  email_verifications                                                          email_verifications[]
-  fcm_tokens                                                                   fcm_tokens[]
-  follow_requests_follow_requests_requestee_idTousers                          follow_requests[]           @relation("follow_requests_requestee_idTousers")
-  follow_requests_follow_requests_requester_idTousers                          follow_requests[]           @relation("follow_requests_requester_idTousers")
-  followers_followers_follower_user_idTousers                                  followers[]                 @relation("followers_follower_user_idTousers")
-  followers_followers_user_idTousers                                           followers[]                 @relation("followers_user_idTousers")
-  following_following_following_user_idTousers                                 following[]                 @relation("following_following_user_idTousers")
-  following_following_user_idTousers                                           following[]                 @relation("following_user_idTousers")
-  friend_requests_friend_requests_requestee_idTousers                          friend_requests[]           @relation("friend_requests_requestee_idTousers")
-  friend_requests_friend_requests_requester_idTousers                          friend_requests[]           @relation("friend_requests_requester_idTousers")
-  friends_friends_user1_idTousers                                              friends[]                   @relation("friends_user1_idTousers")
-  friends_friends_user2_idTousers                                              friends[]                   @relation("friends_user2_idTousers")
-  location_data                                                                location_data[]
-  message_readers                                                              message_readers[]
-  messages                                                                     messages[]
-  participants                                                                 participants[]
-  payment_history                                                              payment_history[]
-  post_likes                                                                   post_likes[]
-  posts                                                                        posts[]
-  reports_reports_reported_user_idTousers                                      reports[]                   @relation("reports_reported_user_idTousers")
-  reports_reports_reporter_idTousers                                           reports[]                   @relation("reports_reporter_idTousers")
-  saved_posts                                                                  saved_posts[]
-  sessions                                                                     sessions[]
-  user_actions_user_actions_moderator_idTousers                                user_actions[]              @relation("user_actions_moderator_idTousers")
-  user_actions_user_actions_user_idTousers                                     user_actions[]              @relation("user_actions_user_idTousers")
-  user_activity_logs                                                           user_activity_logs[]
-  user_feedback_and_support_user_feedback_and_support_assigned_toTousers       user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
-  user_feedback_and_support_user_feedback_and_support_responder_user_idTousers user_feedback_and_support[] @relation("user_feedback_and_support_responder_user_idTousers")
-  user_feedback_and_support_user_feedback_and_support_user_idTousers           user_feedback_and_support[] @relation("user_feedback_and_support_user_idTousers")
-  user_report_messages                                                         user_report_messages[]
-  user_support_messages                                                        user_support_messages[]
-  backgrounds                                                                  backgrounds?                @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
-  countries                                                                    countries?                  @relation(fields: [country], references: [country_code], onDelete: NoAction, onUpdate: NoAction)
+  user_id                                                                BigInt                      @id
+  avatar_id                                                              String?                     @db.Char(24)
+  description                                                            String?
+  email                                                                  String?                     @db.VarChar
+  email_notifications                                                    Boolean
+  dyslexia_font                                                          Boolean
+  public_profile                                                         Boolean
+  hide_location                                                          Boolean
+  analytics_enabled                                                      Boolean
+  background                                                             Int?                        @db.SmallInt
+  country                                                                String?                     @db.VarChar
+  password_hash                                                          String                      @unique @db.VarChar
+  username                                                               String                      @unique @db.VarChar
+  display_name                                                           String?                     @db.VarChar
+  user_role                                                              user_role
+  created_at                                                             DateTime                    @db.Timestamp(6)
+  account_activity_logs                                                  account_activity_logs[]
+  analytics_data                                                         analytics_data[]
+  blocked_users_blocked_users_blocked_user_idTousers                     blocked_users[]             @relation("blocked_users_blocked_user_idTousers")
+  blocked_users_blocked_users_blocking_user_idTousers                    blocked_users[]             @relation("blocked_users_blocking_user_idTousers")
+  comment_dislikes                                                       comment_dislikes[]
+  comment_likes                                                          comment_likes[]
+  comments                                                               comments[]
+  email_verifications                                                    email_verifications[]
+  fcm_tokens                                                             fcm_tokens[]
+  follow_requests_follow_requests_requestee_idTousers                    follow_requests[]           @relation("follow_requests_requestee_idTousers")
+  follow_requests_follow_requests_requester_idTousers                    follow_requests[]           @relation("follow_requests_requester_idTousers")
+  followers_followers_follower_user_idTousers                            followers[]                 @relation("followers_follower_user_idTousers")
+  followers_followers_user_idTousers                                     followers[]                 @relation("followers_user_idTousers")
+  following_following_following_user_idTousers                           following[]                 @relation("following_following_user_idTousers")
+  following_following_user_idTousers                                     following[]                 @relation("following_user_idTousers")
+  friend_requests_friend_requests_requestee_idTousers                    friend_requests[]           @relation("friend_requests_requestee_idTousers")
+  friend_requests_friend_requests_requester_idTousers                    friend_requests[]           @relation("friend_requests_requester_idTousers")
+  friends_friends_user1_idTousers                                        friends[]                   @relation("friends_user1_idTousers")
+  friends_friends_user2_idTousers                                        friends[]                   @relation("friends_user2_idTousers")
+  location_data                                                          location_data[]
+  message_readers                                                        message_readers[]
+  messages                                                               messages[]
+  participants                                                           participants[]
+  payment_history                                                        payment_history[]
+  post_likes                                                             post_likes[]
+  posts                                                                  posts[]
+  reports_reports_reported_user_idTousers                                reports[]                   @relation("reports_reported_user_idTousers")
+  reports_reports_reporter_idTousers                                     reports[]                   @relation("reports_reporter_idTousers")
+  saved_posts                                                            saved_posts[]
+  sessions                                                               sessions[]
+  user_actions_user_actions_moderator_idTousers                          user_actions[]              @relation("user_actions_moderator_idTousers")
+  user_actions_user_actions_user_idTousers                               user_actions[]              @relation("user_actions_user_idTousers")
+  user_activity_logs                                                     user_activity_logs[]
+  user_feedback_and_support_user_feedback_and_support_assigned_toTousers user_feedback_and_support[] @relation("user_feedback_and_support_assigned_toTousers")
+  user_feedback_and_support_user_feedback_and_support_user_idTousers     user_feedback_and_support[] @relation("user_feedback_and_support_user_idTousers")
+  user_report_messages                                                   user_report_messages[]
+  user_support_messages                                                  user_support_messages[]
+  backgrounds                                                            backgrounds?                @relation(fields: [background], references: [background_id], onDelete: NoAction, onUpdate: NoAction)
+  countries                                                              countries?                  @relation(fields: [country], references: [country_code], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([username])
+  @@index([username], map: "idx_users_username")
 }
 
 model fcm_tokens {
   token_id   BigInt    @id
   user_id    BigInt
   token      String    @unique
-  created_at DateTime? @db.Timestamp(6)
+  updated_at DateTime? @db.Timestamp(6)
   users      users     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([user_id])
+  @@index([user_id], map: "idx_fcm_tokens_user_id")
 }
 
 model saved_posts {
@@ -418,7 +419,7 @@ model saved_posts {
   posts         posts    @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
   users         users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([user_id])
+  @@index([user_id], map: "idx_saved_posts_user_id")
 }
 
 model comment_dislikes {
@@ -429,7 +430,7 @@ model comment_dislikes {
   comments   comments @relation(fields: [comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
   users      users    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([comment_id])
+  @@index([comment_id], map: "idx_comment_dislikes_comment_id")
 }
 
 model user_report_messages {
@@ -440,9 +441,6 @@ model user_report_messages {
   timestamp  DateTime? @db.Timestamp(6)
   reports    reports   @relation(fields: [report_id], references: [report_id], onDelete: NoAction, onUpdate: NoAction)
   users      users     @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([report_id])
-  @@index([sender_id])
 }
 
 model user_support_messages {
@@ -453,9 +451,6 @@ model user_support_messages {
   timestamp                 DateTime?                 @db.Timestamp(6)
   user_feedback_and_support user_feedback_and_support @relation(fields: [feedback_id], references: [feedback_id], onDelete: NoAction, onUpdate: NoAction)
   users                     users                     @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([feedback_id])
-  @@index([sender_id])
 }
 
 model user_actions {
@@ -569,4 +564,9 @@ enum user_action_type {
   ban
   mute
   warning
+}
+
+enum message_type {
+  image
+  text
 }

@@ -27,9 +27,9 @@
     "i18n-iso-countries": "^7.7.0",
     "is-animated": "^2.0.2",
     "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.0.2",
+    "mongoose": "^8.16.1",
     "morgan": "^1.10.0",
-    "multer": "^1.4.4",
+    "multer": "^2.0.1",
     "multer-gridfs-storage": "^5.0.2",
     "secure-pin": "^1.0.14",
     "sharp": "^0.32.1",
@@ -50,6 +50,6 @@
     "nodemon": "^3.1.4",
     "prisma": "^5.5.2",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.2"
+    "typescript": "^5.8.3"
   }
 }

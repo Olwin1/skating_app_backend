@@ -25,7 +25,7 @@ router.post(
     // Get all tokens for this user
     const existingTokens = await prisma.fcm_tokens.findMany({
       where: { user_id: userId! },
-      orderBy: { created_at: "asc" }, // or 'updated_at'
+      orderBy: { updated_at: "asc" }, // or 'updated_at'
     });
 
     // If user already has 5 tokens and it's a new token
@@ -49,7 +49,7 @@ router.post(
       },
       update: {
         user_id: userId!,
-        created_at: new Date(),
+        updated_at: new Date(),
         // or updated_at
       },
     });

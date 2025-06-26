@@ -18,8 +18,9 @@ mongoose.set("debug", true);
 
 // Listening for the 'open' event to ensure the connection is established before accessing collections
 conn.once("open", () => {
-  files = conn.db.collection("uploads.files");
-  filesChunks = conn.db.collection("uploads.chunks");
+  //TODO add proper handler for making sure db is not null
+  files = conn.db!.collection("uploads.files");
+  filesChunks = conn.db!.collection("uploads.chunks");
 });
 
 // Configuring GridFS storage engine for Multer

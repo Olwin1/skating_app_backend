@@ -76,6 +76,12 @@ router.post("/signup", async (req: CustomRequest, res) => {
             expiry_timestamp: new Date(Date.now() + 8.64e7), // Expires in a day
           },
         },
+        email_notifications: false,
+        dyslexia_font: false,
+        public_profile: true,
+        hide_location: false,
+        analytics_enabled: true,
+        user_role: $Enums.user_role.regular,
         created_at: new Date().toISOString(),
       },
     });
@@ -135,13 +141,11 @@ router.post("/login", async (req: CustomRequest, res) => {
         { username: user!.username, userId: user!.user_id },
         SECRET
       );
-      return res
-        .status(200)
-        .json({
-          token: token,
-          verified: isVerified,
-          user_id: user!.user_id.toString(),
-        });
+      return res.status(200).json({
+        token: token,
+        verified: isVerified,
+        user_id: user!.user_id.toString(),
+      });
     } else {
       // Return a 400 Bad Request response with an error code for an incorrect password
       res.status(400).json({ ec: ErrorCode.IncorrectPassword });
