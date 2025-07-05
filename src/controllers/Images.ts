@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { Buffer } from "buffer";
 import * as fs from "fs";
 import { CustomRequest } from "express-override";
+import path from "path";
 // TODO Handle LoggedIn / Not Logged in check access
 
 const router = Router(); // create router to create route bundle
@@ -123,21 +124,28 @@ const getImage = async (req: CustomRequest, res: any, thumbnail: boolean) => {
 };
 
 router.get("/background/:image", async (req: CustomRequest, res) => {
-  fs.readFile("./src/assets/" + req.params.image, async function (err, data) {
-    if (err) throw err;
-    var ia: Buffer = await sharp(data) // create a new instance of the Sharp image processing library with the provided "img"
-      .resize(parseInt(req.headers.width as string), parseInt(req.headers.height as string), {
-        fit: "cover",
-        background: { r: 0, g: 0, b: 0 },
-      }) // resize the image to fit within a 240x240 bounding box, with a black background
-      .jpeg({ quality: 80 }) // convert the image to JPEG format with a quality level of 80
-      .toBuffer();
-    res.writeHead(200, {
-      "Content-Type": "image/jpeg",
-      "Content-Length": ia.length,
-    });
-    return res.end(ia); // send the processed image as the response to the request
-  });
+  fs.readFile(
+    path.join(process.cwd(), "src", "assets", req.params.image),
+    async function (err, data) {
+      if (err) return res.status(400).json({ error: err });
+      var ia: Buffer = await sharp(data) // create a new instance of the Sharp image processing library with the provided "img"
+        .resize(
+          parseInt(req.headers.width as string),
+          parseInt(req.headers.height as string),
+          {
+            fit: "cover",
+            background: { r: 0, g: 0, b: 0 },
+          }
+        ) // resize the image to fit within a 240x240 bounding box, with a black background
+        .jpeg({ quality: 80 }) // convert the image to JPEG format with a quality level of 80
+        .toBuffer();
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": ia.length,
+      });
+      return res.end(ia); // send the processed image as the response to the request
+    }
+  );
 });
 
 export default router;
