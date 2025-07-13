@@ -4,6 +4,7 @@ export enum ErrorCode {
   InvalidUsername = 0x003,
   IncorrectPassword = 0x004,
   RecordNotFound = 0x005,
+  EmailNotVerified = 0x006
 }
 
 export const ErrorMessage: Record<ErrorCode, string> = {
@@ -13,4 +14,5 @@ export const ErrorMessage: Record<ErrorCode, string> = {
   [ErrorCode.IncorrectPassword]: "Password does not match that stored",
   [ErrorCode.RecordNotFound]:
     "A record could not be found for the specified parameters",
+    [ErrorCode.EmailNotVerified]: "The corresponding email has not yet been verified."
 };

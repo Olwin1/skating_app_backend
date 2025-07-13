@@ -132,9 +132,19 @@ router.post("/login", async (req: CustomRequest, res) => {
     );
     if (result) {
       const verified = await prisma.email_verifications.findFirst({
-        where: { user_id: user!.user_id, is_verified: true },
+        where: { user_id: user!.user_id },
       });
       const isVerified = verified?.is_verified ?? false;
+
+      // If the user is not yet verified then return a 403 - forbidden response
+      if (!verified) {
+        return res.status(403).json({
+          ec: ErrorCode.EmailNotVerified,
+          message:
+            "Email not verified. Please verify your email before logging in.",
+          user_id: user!.user_id.toString(),
+        });
+      }
 
       // If the passwords match, generate a JWT token and return it in the response
       const token = jwt.sign(
@@ -143,7 +153,6 @@ router.post("/login", async (req: CustomRequest, res) => {
       );
       return res.status(200).json({
         token: token,
-        verified: isVerified,
         user_id: user!.user_id.toString(),
       });
     } else {
