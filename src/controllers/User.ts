@@ -49,6 +49,8 @@ function generateSecureNumericCode() {
 
 router.post("/signup", async (req: CustomRequest, res) => {
   try {
+    //TODO add link for html button
+
     // Check if the email is valid
     const isEmail = validator.isEmail(req.body.email);
     // Check if the password meets length requirements
