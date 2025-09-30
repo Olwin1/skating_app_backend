@@ -30,22 +30,19 @@ const generator = new Worker(0, 1, {
 // User Authentication Endpoints
 // These endpoints are used to authorize and authenticate users
 
-
-
 // Method to generate a secure code to be used to verify an email address
 function generateSecureNumericCode() {
   let length = 8;
 
-    const result = parseInt(EMAIL_VERIFICATION_CODE_LENGTH);
-    if(result > 0) {
-      length = result;
-    }
+  const result = parseInt(EMAIL_VERIFICATION_CODE_LENGTH);
+  if (result > 0) {
+    length = result;
+  }
   const max = Math.pow(10, length);
   let code;
-    code = crypto.randomInt(0, max);
-  return code.toString().padStart(length, "0");;
+  code = crypto.randomInt(0, max);
+  return code.toString().padStart(length, "0");
 }
-
 
 router.post("/signup", async (req: CustomRequest, res) => {
   try {
@@ -83,34 +80,34 @@ router.post("/signup", async (req: CustomRequest, res) => {
     // Generate a secure pin code
     const verifCode = generateSecureNumericCode();
 
-    // // Create a new user in the database using Prisma
-    // const data = await prisma.users.create({
-    //   data: {
-    //     user_id: userId,
-    //     username: req.body.username,
-    //     password_hash: passwordHash,
-    //     email: req.body.email,
-    //     email_verifications: {
-    //       create: {
-    //         verification_id: generator.nextId(),
-    //         verification_code: verifCode,
-    //         is_verified: false,
-    //         expiry_timestamp: new Date(Date.now() + 8.64e7), // Expires in a day
-    //       },
-    //     },
-    //     email_notifications: false,
-    //     dyslexia_font: false,
-    //     public_profile: true,
-    //     hide_location: false,
-    //     analytics_enabled: true,
-    //     user_role: $Enums.user_role.regular,
-    //     created_at: new Date().toISOString(),
-    //   },
-    // });
+    // Create a new user in the database using Prisma
+    const data = await prisma.users.create({
+      data: {
+        user_id: userId,
+        username: req.body.username,
+        password_hash: passwordHash,
+        email: req.body.email,
+        email_verifications: {
+          create: {
+            verification_id: generator.nextId(),
+            verification_code: verifCode,
+            is_verified: false,
+            expiry_timestamp: new Date(Date.now() + 8.64e7), // Expires in a day
+          },
+        },
+        email_notifications: false,
+        dyslexia_font: false,
+        public_profile: true,
+        hide_location: false,
+        analytics_enabled: true,
+        user_role: $Enums.user_role.regular,
+        created_at: new Date().toISOString(),
+      },
+    });
     EmailService.getInstance().sendVerificationEmail(req.body.email, verifCode);
 
     // Return a 201 Created response for successful user registration
-    res.status(201).json({ success: true });
+    res.status(201).json({ success: true, userId: userId });
   } catch (error) {
     // Return a 400 Bad Request response with the error if something went wrong
     res.status(400).json({ error });
@@ -175,8 +172,10 @@ router.post("/login", async (req: CustomRequest, res) => {
         SECRET
       );
       return res.status(200).json({
+        // Return the login token, the user's id, and if their email has been verified
         token: token,
         user_id: user!.user_id.toString(),
+        is_verified: isVerified,
       });
     } else {
       // Return a 400 Bad Request response with an error code for an incorrect password
@@ -242,13 +241,16 @@ router.post(
 );
 
 // Route handler to update user's email verification
+// They do not need to be logged in they simply
+// must provide the correct user id and code
 router.post(
   "/verify_email",
-  ...RouteBuilder.createRouteHandler(async (req, res) => {
+
+  async (req, res) => {
     // Update the user's email in the database
     const emailVerification = await prisma.email_verifications.findFirst({
       where: {
-        user_id: req.userId,
+        user_id: req.body.user_id,
         expiry_timestamp: { gt: new Date() },
         verification_code: req.body.code,
       },
@@ -263,7 +265,7 @@ router.post(
     } else {
       res.status(400).json({ success: false, verified: false });
     }
-  })
+  }
 );
 // Route handler to update user's email
 router.get(
