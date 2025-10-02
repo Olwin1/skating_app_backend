@@ -267,6 +267,34 @@ router.post(
     }
   }
 );
+
+// TODO add a server-side countdown
+router.post("/resend_email", async (req, res) => {
+  // Generate a new secure code
+  const verifCode = generateSecureNumericCode();
+  // Delete the existing records of email verifications
+  await prisma.email_verifications.deleteMany({
+    where: { user_id: req.body.user_id },
+  });
+  // Create a new record with the new code for the specified user
+  // Set it to expire in a day
+  const user = await prisma.users.findFirst({
+    where: { user_id: req.body.user_id },
+  });
+  await prisma.email_verifications.create({
+    data: {
+      verification_id: generator.nextId(),
+      verification_code: verifCode,
+      is_verified: false,
+      expiry_timestamp: new Date(Date.now() + 8.64e7), // Expires in a day
+      user_id: req.body.user_id!,
+    },
+  });
+
+  // Send email to user
+  EmailService.getInstance().sendVerificationEmail(user!.email!, verifCode);
+});
+
 // Route handler to update user's email
 router.get(
   "/is_verified",
