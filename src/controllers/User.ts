@@ -157,7 +157,7 @@ router.post("/login", async (req: CustomRequest, res) => {
       const isVerified = verified?.is_verified ?? false;
 
       // If the user is not yet verified then return a 403 - forbidden response
-      if (!verified) {
+      if (!verified || !isVerified) {
         return res.status(403).json({
           ec: ErrorCode.EmailNotVerified,
           message:
@@ -261,7 +261,7 @@ router.post(
         data: { is_verified: true },
       });
       // Return the response from the database update
-      res.status(200).json({ success: true, verified: false });
+      res.status(200).json({ success: true, verified: true });
     } else {
       res.status(400).json({ success: false, verified: false });
     }
